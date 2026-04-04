@@ -1,7 +1,10 @@
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from __future__ import annotations
+
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy import select, delete
 from contextlib import asynccontextmanager
 import os
+from typing import Optional
 
 from models.user import Base, User, Payment, GenerationLog, AssistantConversation
 
@@ -27,7 +30,7 @@ async def get_session():
             raise
 
 
-async def get_user(telegram_id: int) -> User | None:
+async def get_user(telegram_id: int) -> Optional[User]:
     async with get_session() as session:
         result = await session.execute(
             select(User).where(User.telegram_id == telegram_id)
@@ -64,11 +67,11 @@ async def get_or_create_user(telegram_id: int, username: str = None, full_name: 
 
 async def save_user(user: User):
     async with get_session() as session:
-        merged = await session.merge(user)
+        await session.merge(user)
         await session.flush()
 
 
-async def get_conversation_history(telegram_id: int, limit: int = 10) -> list[AssistantConversation]:
+async def get_conversation_history(telegram_id: int, limit: int = 10):
     async with get_session() as session:
         result = await session.execute(
             select(AssistantConversation)
@@ -135,7 +138,7 @@ async def save_payment(telegram_id: int, amount_rub: float, package: str, paymen
         return payment
 
 
-async def update_payment_status(payment_id: str, status: str) -> Payment | None:
+async def update_payment_status(payment_id: str, status: str) -> Optional[Payment]:
     async with get_session() as session:
         result = await session.execute(
             select(Payment).where(Payment.payment_id == payment_id)

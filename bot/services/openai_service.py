@@ -1,7 +1,22 @@
 from openai import AsyncOpenAI
 import os
 
-client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Поддержка OpenRouter и обычного OpenAI
+# Если OPENROUTER_API_KEY задан — используем OpenRouter
+_openrouter_key = os.getenv("OPENROUTER_API_KEY", "")
+_openai_key = os.getenv("OPENAI_API_KEY", "")
+
+if _openrouter_key:
+    client = AsyncOpenAI(
+        api_key=_openrouter_key,
+        base_url="https://openrouter.ai/api/v1",
+        default_headers={
+            "HTTP-Referer": "https://t.me/topbestworkerbot",
+            "X-Title": "ResumeAI Bot",
+        },
+    )
+else:
+    client = AsyncOpenAI(api_key=_openai_key)
 
 
 async def chat_completion(

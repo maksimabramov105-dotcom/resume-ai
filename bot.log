@@ -1,0 +1,5 @@
+2026-04-04 23:50:19,263 [INFO] __main__: Database initialized.
+2026-04-04 23:50:19,266 [INFO] __main__: Bot started.
+2026-04-04 23:50:19,267 [INFO] aiogram.dispatcher: Start polling
+2026-04-04 23:50:22,449 [INFO] aiogram.dispatcher: Run polling for bot @topbestworkerbot id=8442677408 - 'Resume AI'
+2026-04-04 23:53:54,224 [INFO] aiogram.event: Update id=793914224 is handled. Duration 404 ms by bot id=8442677408

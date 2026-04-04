@@ -1,8 +1,8 @@
-aiogram==3.13.1
-openai==1.57.0
-sqlalchemy==2.0.36
-aiosqlite==0.20.0
-fpdf2==2.8.2
-aiocryptopay==0.3.2
-python-dotenv==1.0.1
-aiohttp==3.11.10
+aiogram
+openai
+sqlalchemy
+aiosqlite
+fpdf2
+aiocryptopay
+python-dotenv
+aiohttp
