@@ -121,6 +121,44 @@ def profile_kb() -> InlineKeyboardMarkup:
     ])
 
 
+def payment_method_kb(package_key: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="💎 Криптовалюта (USDT)", callback_data=f"pay_method:{package_key}:crypto")],
+        [InlineKeyboardButton(text="🇷🇺 Карта РФ (перевод)", callback_data=f"pay_method:{package_key}:rucard")],
+        [InlineKeyboardButton(text="💳 Revolut", callback_data=f"pay_method:{package_key}:revolut")],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="buy_credits")],
+    ])
+
+
+def crypto_check_kb(invoice_id: str, package_key: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Проверить оплату", callback_data=f"check_crypto:{invoice_id}:{package_key}")],
+        [InlineKeyboardButton(text="🏠 В меню", callback_data="main_menu")],
+    ])
+
+
+def manual_paid_kb(payment_db_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Я оплатил — отправить чек", callback_data=f"manual_paid:{payment_db_id}")],
+        [InlineKeyboardButton(text="🏠 В меню", callback_data="main_menu")],
+    ])
+
+
+def admin_approve_kb(payment_db_id: int, telegram_id: int, package_key: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(
+                text="✅ Подтвердить",
+                callback_data=f"admin_ok:{payment_db_id}:{telegram_id}:{package_key}",
+            ),
+            InlineKeyboardButton(
+                text="❌ Отклонить",
+                callback_data=f"admin_no:{payment_db_id}:{telegram_id}:{package_key}",
+            ),
+        ],
+    ])
+
+
 def payment_check_kb(payment_id: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="✅ Проверить оплату", callback_data=f"check_payment:{payment_id}")],

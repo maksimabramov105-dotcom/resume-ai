@@ -1,66 +1,65 @@
-import uuid
-from config import PRICING, YUKASSA_SHOP_ID, YUKASSA_SECRET_KEY
+"""
+Payment service supporting three methods:
+  1. CryptoBot — automatic crypto payments via @CryptoBot API (USDT/TON/BTC etc.)
+  2. RU Card    — manual transfer to Russian bank card, admin approval
+  3. Revolut    — manual transfer to Revolut, admin approval
+"""
+from config import PRICING, CRYPTOBOT_TOKEN
 
 
-async def create_payment(telegram_id: int, package: str) -> tuple[str, str]:
-    """Create a payment and return (confirmation_url, payment_id)."""
-    from yookassa import Configuration, Payment as YooPayment
+# ---------------------------------------------------------------------------
+# CryptoBot
+# ---------------------------------------------------------------------------
 
-    Configuration.account_id = YUKASSA_SHOP_ID
-    Configuration.secret_key = YUKASSA_SECRET_KEY
+async def create_crypto_invoice(telegram_id: int, package: str) -> tuple[str, str]:
+    """
+    Create CryptoBot invoice.
+    Returns (pay_url, invoice_id_as_str).
+    Requires: pip install aiocryptopay
+    Get token: @CryptoBot → /pay → Create App
+    """
+    from aiocryptopay import AioCryptoPay, Networks
+
+    crypto = AioCryptoPay(token=CRYPTOBOT_TOKEN, network=Networks.MAIN_NET)
 
     pkg = PRICING[package]
-    price = pkg["price_rub"]
+    price_usdt = pkg.get("price_usdt", 1.00)
 
-    payment = YooPayment.create(
-        {
-            "amount": {
-                "value": f"{price:.2f}",
-                "currency": "RUB",
-            },
-            "confirmation": {
-                "type": "redirect",
-                "return_url": "https://t.me/resumeai_bot",
-            },
-            "capture": True,
-            "description": f"РезюмеАИ: {pkg['name']} — {pkg['description']}",
-            "metadata": {
-                "telegram_id": str(telegram_id),
-                "package": package,
-            },
-        },
-        str(uuid.uuid4()),
+    invoice = await crypto.create_invoice(
+        asset="USDT",
+        amount=price_usdt,
+        description=f"РезюмеАИ: {pkg['name']}",
+        payload=f"{telegram_id}:{package}",
+        expires_in=3600,  # 1 hour
     )
+    await crypto.close()
 
-    return payment.confirmation.confirmation_url, payment.id
-
-
-async def get_payment_status(payment_id: str) -> tuple[str, str]:
-    """Get payment status and package. Returns (status, package_key)."""
-    from yookassa import Configuration, Payment as YooPayment
-
-    Configuration.account_id = YUKASSA_SHOP_ID
-    Configuration.secret_key = YUKASSA_SECRET_KEY
-
-    payment = YooPayment.find_one(payment_id)
-    package = payment.metadata.get("package", "") if payment.metadata else ""
-    return payment.status, package
+    return invoice.bot_invoice_url, str(invoice.invoice_id)
 
 
-async def process_payment_webhook(payment_data: dict, bot):
-    """Handle webhook from ЮKassa after successful payment."""
-    if payment_data.get("event") != "payment.succeeded":
-        return
+async def check_crypto_invoice(invoice_id: str) -> str:
+    """
+    Check CryptoBot invoice status.
+    Returns: 'paid' | 'active' | 'expired'
+    """
+    from aiocryptopay import AioCryptoPay, Networks
 
-    obj = payment_data.get("object", {})
-    metadata = obj.get("metadata", {})
-    telegram_id = int(metadata.get("telegram_id", 0))
-    package = metadata.get("package", "")
+    crypto = AioCryptoPay(token=CRYPTOBOT_TOKEN, network=Networks.MAIN_NET)
+    invoices = await crypto.get_invoices(invoice_ids=[int(invoice_id)])
+    await crypto.close()
 
-    if not telegram_id or not package or package not in PRICING:
-        return
+    if not invoices:
+        return "expired"
+    return invoices[0].status  # 'active', 'paid', 'expired'
 
-    from database.db import get_or_create_user, save_user, update_payment_status
+
+# ---------------------------------------------------------------------------
+# Credits helper (shared between all payment methods)
+# ---------------------------------------------------------------------------
+
+async def apply_package_credits(telegram_id: int, package: str):
+    """Add credits to user after successful payment."""
+    from database.db import get_or_create_user, save_user
     pkg = PRICING[package]
     user = await get_or_create_user(telegram_id)
 
@@ -81,13 +80,3 @@ async def process_payment_webhook(payment_data: dict, bot):
         user.subscription_expires = datetime.utcnow() + timedelta(days=pkg["duration_days"])
 
     await save_user(user)
-    await update_payment_status(obj.get("id", ""), "succeeded")
-
-    try:
-        await bot.send_message(
-            telegram_id,
-            f"✅ Оплата прошла! Пакет «{pkg['name']}» активирован.\n"
-            f"Ваш баланс обновлён.",
-        )
-    except Exception:
-        pass

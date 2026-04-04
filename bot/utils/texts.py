@@ -93,7 +93,64 @@ ASSISTANT_NO_CREDITS = """💬 У тебя закончились сообщен
 ASSISTANT_LOW_CREDITS = "\n\n⚠️ <i>Осталось {n} сообщений.</i>"
 ASSISTANT_LAST_MESSAGE = "\n\n❌ <i>Это было последнее сообщение.</i>"
 
-PAYMENT_PENDING = "⏳ Переходи по ссылке для оплаты:\n{url}\n\nПосле оплаты нажми кнопку ниже."
-PAYMENT_SUCCESS = "✅ Оплата прошла! Пакет «{name}» активирован.\nВаш баланс обновлён."
-PAYMENT_CHECK_PENDING = "⏳ Платёж ещё обрабатывается. Попробуй через минуту."
-PAYMENT_NOT_FOUND = "Платёж не найден. Если оплата прошла, обратись в поддержку."
+PAYMENT_SUCCESS = "✅ Оплата подтверждена! Пакет «{name}» активирован.\nВаш баланс обновлён."
+PAYMENT_CHECK_PENDING = "⏳ Платёж ещё не поступил. Попробуй через минуту."
+PAYMENT_NOT_FOUND = "Платёж не найден. Если оплата прошла — обратись в поддержку."
+
+# Crypto
+PAYMENT_CRYPTO_PENDING = (
+    "💎 <b>Оплата криптовалютой (USDT)</b>\n\n"
+    "Сумма: <b>{usdt} USDT</b>\n\n"
+    "👉 Перейди по ссылке и оплати через @CryptoBot:\n"
+    "{url}\n\n"
+    "После оплаты нажми <b>Проверить оплату</b>."
+)
+PAYMENT_CRYPTO_CHECKING = "⏳ Проверяю..."
+
+# Manual — RU Card
+PAYMENT_MANUAL_RU = (
+    "🇷🇺 <b>Перевод на карту РФ</b>\n\n"
+    "Сумма: <b>{amount}₽</b>\n"
+    "Банк: <b>{bank}</b>\n"
+    "Номер карты:\n"
+    "<code>{card}</code>\n"
+    "Получатель: <b>{holder}</b>\n\n"
+    "1. Переведи точную сумму\n"
+    "2. Сделай скриншот подтверждения\n"
+    "3. Нажми кнопку ниже и отправь скриншот"
+)
+
+# Manual — Revolut
+PAYMENT_MANUAL_REVOLUT = (
+    "💳 <b>Перевод на Revolut</b>\n\n"
+    "Сумма: <b>{amount_rub}₽</b> (≈ <b>{amount_usdt} USDT</b>)\n"
+    "Revolut: <b>{revolut}</b>\n\n"
+    "1. Переведи сумму в любой валюте (RUB/EUR/GBP/USDT)\n"
+    "2. Сделай скриншот подтверждения\n"
+    "3. Нажми кнопку ниже и отправь скриншот"
+)
+
+PAYMENT_RECEIPT_ASK = "📸 Отправь скриншот подтверждения оплаты (фото):"
+PAYMENT_RECEIPT_SENT = (
+    "✅ Чек получен! Мы проверим оплату и зачислим кредиты в течение нескольких минут.\n\n"
+    "Ожидай уведомления."
+)
+
+# Admin notifications
+ADMIN_PAYMENT_NOTIFY = (
+    "💰 <b>Новый платёж на проверку</b>\n\n"
+    "Пользователь: <a href='tg://user?id={user_id}'>{full_name}</a>\n"
+    "Username: @{username}\n"
+    "ID: <code>{user_id}</code>\n"
+    "Пакет: {package}\n"
+    "Сумма: {amount}₽\n"
+    "Payment DB ID: {payment_db_id}"
+)
+ADMIN_PAYMENT_APPROVED = "✅ <b>ОДОБРЕНО</b>"
+ADMIN_PAYMENT_REJECTED = "❌ <b>ОТКЛОНЕНО</b>"
+
+PAYMENT_APPROVED_USER = "✅ Оплата подтверждена! Пакет «{name}» активирован. Баланс обновлён."
+PAYMENT_REJECTED_USER = (
+    "❌ Оплата не подтверждена.\n\n"
+    "Если ты действительно оплатил — напиши в поддержку и приложи скриншот."
+)
