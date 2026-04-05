@@ -1,20 +1,50 @@
 import os
 from fpdf import FPDF
 
+# Candidate paths for DejaVuSans fonts (bundled first, then OS paths)
+_FONT_CANDIDATES = [
+    # Bundled in project
+    (
+        os.path.join(os.path.dirname(__file__), '..', 'fonts', 'DejaVuSans.ttf'),
+        os.path.join(os.path.dirname(__file__), '..', 'fonts', 'DejaVuSans-Bold.ttf'),
+    ),
+    # Linux system fonts (Ubuntu/Debian)
+    (
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+    ),
+    # macOS (Homebrew)
+    (
+        '/opt/homebrew/share/fonts/dejavu-fonts/DejaVuSans.ttf',
+        '/opt/homebrew/share/fonts/dejavu-fonts/DejaVuSans-Bold.ttf',
+    ),
+]
+
+
+def _find_fonts():
+    """Return (regular, bold) TTF paths or (None, None) if not found."""
+    for regular, bold in _FONT_CANDIDATES:
+        if os.path.exists(regular) and os.path.exists(bold):
+            # Quick sanity check: real TTF starts with specific magic bytes
+            with open(regular, 'rb') as f:
+                magic = f.read(4)
+            # Valid TTF/OTF magic: 0x00010000, 'OTTO', 'true', 'typ1'
+            if magic[:2] in (b'\x00\x01', b'OT', b'tr', b'ty'):
+                return regular, bold
+    return None, None
+
 
 class ResumePDF(FPDF):
     def __init__(self):
         super().__init__()
-        font_dir = os.path.join(os.path.dirname(__file__), '..', 'fonts')
-        dejavu = os.path.join(font_dir, 'DejaVuSans.ttf')
-        dejavu_bold = os.path.join(font_dir, 'DejaVuSans-Bold.ttf')
+        regular, bold = _find_fonts()
 
-        if os.path.exists(dejavu) and os.path.exists(dejavu_bold):
-            self.add_font('DejaVu', '', dejavu)
-            self.add_font('DejaVu', 'B', dejavu_bold)
+        if regular and bold:
+            self.add_font('DejaVu', '', regular)
+            self.add_font('DejaVu', 'B', bold)
             self._font = 'DejaVu'
         else:
-            # Fallback to built-in font (no Cyrillic support)
+            # Fallback to built-in font (no Cyrillic, but won't crash)
             self._font = 'Helvetica'
 
     def generate(self, resume_text: str, full_name: str) -> bytes:
