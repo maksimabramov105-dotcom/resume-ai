@@ -6,6 +6,7 @@ load_dotenv()
 # Telegram
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
+WEBAPP_URL = os.getenv("WEBAPP_URL", "")  # HTTPS URL of the Mini App
 
 # OpenAI
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")

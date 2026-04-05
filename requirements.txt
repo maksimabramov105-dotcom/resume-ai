@@ -6,3 +6,6 @@ fpdf2
 aiocryptopay
 python-dotenv
 aiohttp
+fastapi
+uvicorn[standard]
+greenlet

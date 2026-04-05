@@ -1,8 +1,10 @@
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+
+from config import WEBAPP_URL
 
 
 def main_menu_kb() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(inline_keyboard=[
+    rows = [
         [
             InlineKeyboardButton(text="📄 Создать резюме", callback_data="create_resume"),
             InlineKeyboardButton(text="✉️ Сопр. письмо", callback_data="cover_letter"),
@@ -21,7 +23,12 @@ def main_menu_kb() -> InlineKeyboardMarkup:
         [
             InlineKeyboardButton(text="🎁 Пригласить друга", callback_data="referral"),
         ],
-    ])
+    ]
+    if WEBAPP_URL:
+        rows.insert(0, [
+            InlineKeyboardButton(text="🌐 Открыть Mini App", web_app=WebAppInfo(url=WEBAPP_URL)),
+        ])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def after_resume_kb() -> InlineKeyboardMarkup:
