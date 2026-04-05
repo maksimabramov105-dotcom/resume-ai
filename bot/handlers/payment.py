@@ -20,8 +20,10 @@ from utils.texts import (
     PAYMENT_CRYPTO_PENDING, PAYMENT_CRYPTO_CHECKING,
     PAYMENT_MANUAL_RU, PAYMENT_MANUAL_REVOLUT,
     PAYMENT_RECEIPT_ASK, PAYMENT_RECEIPT_SENT,
+    PAYMENT_RECEIPT_CHECKING, PAYMENT_AUTO_APPROVED,
     PAYMENT_CHECK_PENDING, PAYMENT_NOT_FOUND,
-    ADMIN_PAYMENT_NOTIFY, ADMIN_PAYMENT_APPROVED, ADMIN_PAYMENT_REJECTED,
+    ADMIN_PAYMENT_NOTIFY, ADMIN_PAYMENT_AI_ANALYSIS,
+    ADMIN_PAYMENT_APPROVED, ADMIN_PAYMENT_REJECTED,
     PAYMENT_APPROVED_USER, PAYMENT_REJECTED_USER,
 )
 
@@ -153,7 +155,7 @@ async def pay_rucard(callback: CallbackQuery, state: FSMContext):
     )
 
     await state.set_state(PaymentStates.waiting_receipt)
-    await state.update_data(payment_db_id=db_payment.id, package_key=package_key)
+    await state.update_data(payment_db_id=db_payment.id, package_key=package_key, payment_method="rucard")
 
     text = PAYMENT_MANUAL_RU.format(
         amount=pkg["price_rub"],
@@ -180,7 +182,7 @@ async def pay_revolut(callback: CallbackQuery, state: FSMContext):
     )
 
     await state.set_state(PaymentStates.waiting_receipt)
-    await state.update_data(payment_db_id=db_payment.id, package_key=package_key)
+    await state.update_data(payment_db_id=db_payment.id, package_key=package_key, payment_method="revolut")
 
     revolut_ref = REVOLUT_LINK or REVOLUT_TAG
     text = PAYMENT_MANUAL_REVOLUT.format(
@@ -209,50 +211,127 @@ async def ask_for_receipt(callback: CallbackQuery, state: FSMContext):
 
 
 # ---------------------------------------------------------------------------
-# Step 4 — User sends screenshot → forward to admin
+# Step 4 — User sends screenshot → AI check → auto-approve or → admin
 # ---------------------------------------------------------------------------
 
 @router.message(PaymentStates.waiting_receipt, F.photo)
 async def got_receipt(message: Message, state: FSMContext, bot: Bot):
     data = await state.get_data()
     payment_db_id = data.get("payment_db_id", 0)
-    package_key = data.get("package_key", "unknown")
+    package_key   = data.get("package_key", "unknown")
+    payment_method = data.get("payment_method", "rucard")   # "rucard" | "revolut"
 
     await state.clear()
 
-    user = await get_or_create_user(message.from_user.id)
-    pkg = PRICING.get(package_key, {})
+    pkg  = PRICING.get(package_key, {})
+    file_id = message.photo[-1].file_id
 
-    # Mark payment as awaiting review
+    # Tell the user we're checking
+    checking_msg = await message.answer(PAYMENT_RECEIPT_CHECKING)
+
+    # ── Mark payment as awaiting_review in DB ─────────────────────────────
     from database.db import get_session
     from models.user import Payment
     from sqlalchemy import select
     async with get_session() as session:
         result = await session.execute(select(Payment).where(Payment.id == payment_db_id))
-        payment = result.scalar_one_or_none()
-        if payment:
-            payment.status = "awaiting_review"
+        payment_row = result.scalar_one_or_none()
+        if payment_row:
+            payment_row.status = "awaiting_review"
 
-    # Notify admin
-    caption = ADMIN_PAYMENT_NOTIFY.format(
-        user_id=message.from_user.id,
-        username=message.from_user.username or "—",
-        full_name=message.from_user.full_name or "—",
-        package=pkg.get("name", package_key),
-        amount=pkg.get("price_rub", "?"),
-        payment_db_id=payment_db_id,
+    # ── AI receipt analysis ───────────────────────────────────────────────
+    try:
+        from services.receipt_checker import check_receipt
+        ai_result = await check_receipt(
+            file_id=file_id,
+            expected_amount_rub=pkg.get("price_rub", 0),
+            payment_method=payment_method,
+            card_number=RU_CARD_NUMBER,
+            revolut_tag=REVOLUT_TAG,
+        )
+    except Exception as e:
+        from services.receipt_checker import ReceiptResult
+        ai_result = ReceiptResult(
+            verdict="manual", confidence=0.0,
+            reason=f"Ошибка AI: {e}",
+            analysis="AI-проверка не удалась.",
+        )
+
+    # ── AUTO-APPROVE ──────────────────────────────────────────────────────
+    if ai_result.verdict == "approve":
+        try:
+            from services.payment_service import apply_package_credits
+            await apply_package_credits(message.from_user.id, package_key)
+            await update_payment_status_by_id(payment_db_id, "succeeded")
+
+            await checking_msg.delete()
+            await message.answer(
+                PAYMENT_AUTO_APPROVED.format(name=pkg.get("name", package_key)),
+                reply_markup=main_menu_kb(),
+            )
+
+            # Notify admin about auto-approval (FYI, no action needed)
+            admin_caption = (
+                ADMIN_PAYMENT_NOTIFY.format(
+                    user_id=message.from_user.id,
+                    username=message.from_user.username or "—",
+                    full_name=message.from_user.full_name or "—",
+                    package=pkg.get("name", package_key),
+                    amount=pkg.get("price_rub", "?"),
+                    payment_db_id=payment_db_id,
+                )
+                + "\n\n✅ <b>Подтверждено автоматически AI</b>"
+                + ADMIN_PAYMENT_AI_ANALYSIS.format(
+                    verdict_emoji="✅",
+                    reason=ai_result.reason,
+                    confidence=f"{ai_result.confidence:.0%}",
+                    analysis=ai_result.analysis,
+                )
+            )
+            try:
+                await bot.send_photo(
+                    ADMIN_ID,
+                    photo=file_id,
+                    caption=admin_caption[:1020],   # Telegram caption limit
+                )
+            except Exception:
+                pass
+        except Exception as e:
+            await checking_msg.delete()
+            await message.answer(f"⚠️ Ошибка начисления: {e}", reply_markup=main_menu_kb())
+        return
+
+    # ── MANUAL REVIEW → forward to admin ─────────────────────────────────
+    verdict_emoji = "⚠️" if ai_result.confidence < 0.4 else "🤔"
+
+    admin_caption = (
+        ADMIN_PAYMENT_NOTIFY.format(
+            user_id=message.from_user.id,
+            username=message.from_user.username or "—",
+            full_name=message.from_user.full_name or "—",
+            package=pkg.get("name", package_key),
+            amount=pkg.get("price_rub", "?"),
+            payment_db_id=payment_db_id,
+        )
+        + ADMIN_PAYMENT_AI_ANALYSIS.format(
+            verdict_emoji=verdict_emoji,
+            reason=ai_result.reason,
+            confidence=f"{ai_result.confidence:.0%}",
+            analysis=ai_result.analysis,
+        )
     )
 
     try:
         await bot.send_photo(
             ADMIN_ID,
-            photo=message.photo[-1].file_id,
-            caption=caption,
+            photo=file_id,
+            caption=admin_caption[:1020],
             reply_markup=admin_approve_kb(payment_db_id, message.from_user.id, package_key),
         )
     except Exception:
-        pass  # If admin notification fails, payment is still awaiting_review
+        pass
 
+    await checking_msg.delete()
     await message.answer(PAYMENT_RECEIPT_SENT, reply_markup=main_menu_kb())
 
 

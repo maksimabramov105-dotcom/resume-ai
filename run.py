@@ -25,7 +25,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from config import BOT_TOKEN  # flat import (bot/ is in sys.path)
 from database.db import init_db
-from handlers import start, resume, cover_letter, interview, vacancy_analysis, ai_assistant, payment, profile
+from handlers import start, resume, cover_letter, interview, vacancy_analysis, ai_assistant, payment, profile, support
 
 logging.basicConfig(
     level=logging.INFO,
@@ -51,6 +51,7 @@ async def run_bot() -> None:
     dp.include_router(ai_assistant.router)
     dp.include_router(payment.router)
     dp.include_router(profile.router)
+    dp.include_router(support.router)
     logger.info("Bot started.")
     await dp.start_polling(bot)
 

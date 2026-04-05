@@ -23,6 +23,9 @@ def main_menu_kb() -> InlineKeyboardMarkup:
         [
             InlineKeyboardButton(text="🎁 Пригласить друга", callback_data="referral"),
         ],
+        [
+            InlineKeyboardButton(text="🆘 Поддержка", callback_data="support"),
+        ],
     ]
     if WEBAPP_URL:
         rows.insert(0, [
@@ -169,6 +172,12 @@ def admin_approve_kb(payment_db_id: int, telegram_id: int, package_key: str) -> 
 def payment_check_kb(payment_id: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="✅ Проверить оплату", callback_data=f"check_payment:{payment_id}")],
+        [InlineKeyboardButton(text="🏠 В меню", callback_data="main_menu")],
+    ])
+
+
+def support_kb() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🏠 В меню", callback_data="main_menu")],
     ])
 
