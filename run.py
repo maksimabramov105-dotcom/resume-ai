@@ -26,6 +26,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from config import BOT_TOKEN  # flat import (bot/ is in sys.path)
 from database.db import init_db
 from handlers import start, resume, cover_letter, interview, vacancy_analysis, ai_assistant, payment, profile, support
+from utils.texts import BOT_DESCRIPTION, BOT_SHORT_DESCRIPTION
 
 logging.basicConfig(
     level=logging.INFO,
@@ -42,6 +43,19 @@ async def run_bot() -> None:
         token=BOT_TOKEN,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
+
+    # Set description visible before /start and in "About" section
+    try:
+        await bot.set_my_description(description=BOT_DESCRIPTION, language_code="ru")
+        logger.info("Bot description set (%d chars).", len(BOT_DESCRIPTION))
+    except Exception as e:
+        logger.warning("Could not set description: %s", e)
+    try:
+        await bot.set_my_short_description(short_description=BOT_SHORT_DESCRIPTION, language_code="ru")
+        logger.info("Bot short description set (%d chars).", len(BOT_SHORT_DESCRIPTION))
+    except Exception as e:
+        logger.warning("Could not set short description: %s", e)
+
     dp = Dispatcher(storage=MemoryStorage())
     dp.include_router(start.router)
     dp.include_router(resume.router)
