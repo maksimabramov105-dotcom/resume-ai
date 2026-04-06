@@ -9,3 +9,4 @@ aiohttp
 fastapi
 uvicorn[standard]
 greenlet
+apscheduler

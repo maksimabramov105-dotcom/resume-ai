@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, text
 from contextlib import asynccontextmanager
 import os
 from typing import Optional
@@ -17,6 +17,12 @@ AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    # Migrate: add specialty column if missing
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text("ALTER TABLE users ADD COLUMN specialty VARCHAR"))
+    except Exception:
+        pass  # Column already exists
 
 
 @asynccontextmanager
@@ -101,6 +107,14 @@ async def clear_conversation_history(telegram_id: int):
                 AssistantConversation.telegram_id == telegram_id
             )
         )
+
+
+async def get_all_users() -> list:
+    """Return all users (for digest etc.)."""
+    from models.user import User
+    async with get_session() as session:
+        result = await session.execute(select(User))
+        return result.scalars().all()
 
 
 async def log_generation(

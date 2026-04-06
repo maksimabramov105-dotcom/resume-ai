@@ -97,9 +97,11 @@ async def _generate_and_send(message: Message, state: FSMContext, user):
 
     # Send text (truncate if too long for Telegram)
     text_preview = resume_text[:3800] if len(resume_text) > 3800 else resume_text
+    from utils.md_cleaner import md_to_telegram
+    clean_preview = md_to_telegram(text_preview)
     await status_msg.edit_text(
-        f"📄 <b>Ваше резюме готово!</b>\n\n{text_preview}",
-        reply_markup=after_resume_kb(),
+        f"📄 <b>Ваше резюме готово!</b>\n\n{clean_preview}",
+        reply_markup=after_resume_kb(referral_code=user.referral_code or ""),
     )
 
     # Generate and send PDF

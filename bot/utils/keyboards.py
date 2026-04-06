@@ -34,8 +34,9 @@ def main_menu_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def after_resume_kb() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(inline_keyboard=[
+def after_resume_kb(bot_username: str = "topbestworkerbot", referral_code: str = "") -> InlineKeyboardMarkup:
+    share_url = f"https://t.me/share/url?url=https://t.me/{bot_username}?start=ref_{referral_code}&text=Попробуй%20РезюмеАИ%20—%20резюме%20за%2030%20секунд%21"
+    rows = [
         [
             InlineKeyboardButton(text="✉️ Письмо под эту вакансию", callback_data="cover_letter"),
             InlineKeyboardButton(text="🎯 Собес под эту вакансию", callback_data="interview"),
@@ -44,7 +45,15 @@ def after_resume_kb() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="📄 Новое резюме", callback_data="create_resume"),
             InlineKeyboardButton(text="🏠 В меню", callback_data="main_menu"),
         ],
-    ])
+    ]
+    if referral_code:
+        rows.insert(0, [
+            InlineKeyboardButton(
+                text="🎁 Поделиться → получить бесплатное резюме",
+                url=share_url,
+            )
+        ])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def after_cover_letter_kb() -> InlineKeyboardMarkup:

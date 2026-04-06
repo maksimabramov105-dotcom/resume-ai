@@ -32,6 +32,7 @@ class User(Base):
     experience_text = Column(Text, nullable=True)
     education_text = Column(Text, nullable=True)
     skills_text = Column(Text, nullable=True)
+    specialty = Column(String, nullable=True)   # job title / field, e.g. "Python Developer"
 
     # Referral
     referral_code = Column(String, nullable=True, unique=True)

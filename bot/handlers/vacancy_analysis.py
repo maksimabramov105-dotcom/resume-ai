@@ -33,7 +33,9 @@ async def got_vacancy(message: Message, state: FSMContext):
     await log_generation(message.from_user.id, "analysis", vacancy, analysis_text, tokens)
 
     text_preview = analysis_text[:3800] if len(analysis_text) > 3800 else analysis_text
+    from utils.md_cleaner import md_to_telegram
+    clean_preview = md_to_telegram(text_preview)
     await status_msg.edit_text(
-        f"🔍 <b>Анализ вакансии:</b>\n\n{text_preview}",
+        f"🔍 <b>Анализ вакансии:</b>\n\n{clean_preview}",
         reply_markup=after_vacancy_analysis_kb(),
     )

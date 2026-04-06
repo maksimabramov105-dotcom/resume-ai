@@ -22,6 +22,8 @@ from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
 from aiogram.fsm.storage.memory import MemoryStorage
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 from config import BOT_TOKEN  # flat import (bot/ is in sys.path)
 from database.db import init_db
@@ -66,6 +68,19 @@ async def run_bot() -> None:
     dp.include_router(payment.router)
     dp.include_router(profile.router)
     dp.include_router(support.router)
+    # Weekly digest — every Monday 10:00 Moscow time (UTC+3 = 07:00 UTC)
+    scheduler = AsyncIOScheduler()
+    from services.digest import send_weekly_digest
+    scheduler.add_job(
+        send_weekly_digest,
+        CronTrigger(day_of_week='mon', hour=7, minute=0),
+        args=[bot],
+        id='weekly_digest',
+        replace_existing=True,
+    )
+    scheduler.start()
+    logger.info("Weekly digest scheduler started (Mon 10:00 MSK).")
+
     logger.info("Bot started.")
     await dp.start_polling(bot)
 
