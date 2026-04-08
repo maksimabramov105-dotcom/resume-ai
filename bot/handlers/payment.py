@@ -112,7 +112,8 @@ async def pay_crypto(callback: CallbackQuery):
 async def check_crypto(callback: CallbackQuery):
     _, invoice_id, package_key = callback.data.split(":", 2)
 
-    await callback.answer(PAYMENT_CRYPTO_CHECKING)
+    # Answer callback ONCE immediately — removes Telegram's loading spinner
+    await callback.answer()
 
     try:
         from services.payment_service import check_crypto_invoice, apply_package_credits
@@ -122,7 +123,6 @@ async def check_crypto(callback: CallbackQuery):
             pkg = PRICING[package_key]
             await apply_package_credits(callback.from_user.id, package_key)
             await update_payment_status(invoice_id, "succeeded")
-
             await callback.message.edit_text(
                 PAYMENT_SUCCESS.format(name=pkg["name"]),
                 reply_markup=main_menu_kb(),
@@ -133,10 +133,17 @@ async def check_crypto(callback: CallbackQuery):
                 reply_markup=buy_credits_kb(),
             )
         else:
-            await callback.answer(PAYMENT_CHECK_PENDING, show_alert=True)
+            # Not paid yet — edit message so user sees clear feedback
+            await callback.message.edit_text(
+                PAYMENT_CHECK_PENDING,
+                reply_markup=crypto_check_kb(invoice_id, package_key),
+            )
 
     except Exception as e:
-        await callback.answer(f"Ошибка: {e}", show_alert=True)
+        await callback.message.edit_text(
+            f"⚠️ Ошибка при проверке: {e}\n\nПопробуй ещё раз.",
+            reply_markup=crypto_check_kb(invoice_id, package_key),
+        )
 
 
 # ---------------------------------------------------------------------------

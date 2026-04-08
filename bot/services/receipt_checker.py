@@ -9,19 +9,25 @@ Verdicts:
 """
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
 import logging
 from dataclasses import dataclass
 from typing import Optional
 
+import os
+
 import aiohttp
 
-from config import OPENROUTER_API_KEY, OPENAI_API_KEY, BOT_TOKEN
+from config import OPENAI_API_KEY, BOT_TOKEN
+
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 
 logger = logging.getLogger(__name__)
 
-VISION_MODEL = "openai/gpt-4o"   # cheapest model with reliable vision
+VISION_MODEL = "openai/gpt-4o-mini"  # faster than gpt-4o, still handles vision
+AI_TIMEOUT = 13  # hard timeout in seconds — must respond before 15s UX limit
 
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -102,103 +108,117 @@ When in doubt, always choose "manual". It is better to be safe than to approve a
 """
 
 
+async def _call_vision_api(b64: str, prompt: str) -> ReceiptResult:
+    """Call OpenRouter vision API. Raises on error."""
+    api_key = OPENROUTER_API_KEY or OPENAI_API_KEY
+    base_url = (
+        "https://openrouter.ai/api/v1"
+        if OPENROUTER_API_KEY
+        else "https://api.openai.com/v1"
+    )
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    if OPENROUTER_API_KEY:
+        headers["HTTP-Referer"] = "https://t.me/topbestworkerbot"
+        headers["X-Title"] = "РезюмеАИ"
+
+    payload = {
+        "model": VISION_MODEL,
+        "messages": [{
+            "role": "user",
+            "content": [
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{b64}",
+                        "detail": "low",   # low = much faster, enough for receipt reading
+                    },
+                },
+                {"type": "text", "text": prompt},
+            ],
+        }],
+        "max_tokens": 300,
+        "temperature": 0.1,
+    }
+
+    timeout = aiohttp.ClientTimeout(connect=5, total=AI_TIMEOUT)
+    async with aiohttp.ClientSession() as session:
+        async with session.post(
+            f"{base_url}/chat/completions",
+            headers=headers,
+            json=payload,
+            timeout=timeout,
+        ) as resp:
+            result = await resp.json()
+
+    raw = result["choices"][0]["message"]["content"].strip()
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+
+    parsed = json.loads(raw)
+    verdict    = parsed.get("verdict", "manual")
+    confidence = float(parsed.get("confidence", 0.5))
+    reason     = parsed.get("reason", "")
+    analysis   = parsed.get("analysis", "")
+
+    if verdict == "approve" and confidence < 0.80:
+        verdict = "manual"
+        reason  = f"[Уверенность {confidence:.0%}] " + reason
+
+    logger.info("Receipt check: verdict=%s confidence=%.2f", verdict, confidence)
+    return ReceiptResult(verdict=verdict, confidence=confidence,
+                         reason=reason, analysis=analysis)
+
+
 async def check_receipt(
     file_id: str,
     expected_amount_rub: int,
-    payment_method: str,            # "rucard" | "revolut"
+    payment_method: str,
     card_number: Optional[str] = None,
     revolut_tag: Optional[str] = None,
 ) -> ReceiptResult:
     """
-    Main entry point.  Downloads the photo, sends to GPT-4o vision,
-    returns a ReceiptResult with verdict + analysis.
+    Download photo → GPT-4o-mini vision check.
+    Hard 13-second timeout; any failure → "manual" (forward to admin).
     """
+    _timeout_result = ReceiptResult(
+        verdict="manual",
+        confidence=0.0,
+        reason="Проверка заняла слишком долго — требуется ручная проверка",
+        analysis="AI не успел проверить чек за отведённое время.",
+    )
+
     try:
-        image_bytes = await _download_telegram_photo(file_id)
-        b64 = _to_base64(image_bytes)
-        prompt = _build_prompt(expected_amount_rub, payment_method, card_number, revolut_tag)
-
-        api_key = OPENROUTER_API_KEY or OPENAI_API_KEY
-        base_url = (
-            "https://openrouter.ai/api/v1"
-            if OPENROUTER_API_KEY
-            else "https://api.openai.com/v1"
+        image_bytes = await asyncio.wait_for(
+            _download_telegram_photo(file_id), timeout=5.0
         )
-
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        }
-        if OPENROUTER_API_KEY:
-            headers["HTTP-Referer"] = "https://t.me/topbestworkerbot"
-            headers["X-Title"] = "РезюмеАИ"
-
-        payload = {
-            "model": VISION_MODEL,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{b64}",
-                                "detail": "high",
-                            },
-                        },
-                        {"type": "text", "text": prompt},
-                    ],
-                }
-            ],
-            "max_tokens": 500,
-            "temperature": 0.1,
-        }
-
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"{base_url}/chat/completions",
-                headers=headers,
-                json=payload,
-                timeout=aiohttp.ClientTimeout(total=40),
-            ) as resp:
-                result = await resp.json()
-
-        raw = result["choices"][0]["message"]["content"].strip()
-
-        # Strip markdown code blocks if present
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-
-        parsed = json.loads(raw)
-        verdict = parsed.get("verdict", "manual")
-        confidence = float(parsed.get("confidence", 0.5))
-        reason = parsed.get("reason", "")
-        analysis = parsed.get("analysis", "")
-
-        # Extra safety: downgrade to manual if confidence is borderline
-        if verdict == "approve" and confidence < 0.80:
-            verdict = "manual"
-            reason = f"[Низкая уверенность {confidence:.0%}] " + reason
-
-        logger.info(
-            "Receipt check: verdict=%s confidence=%.2f reason=%s",
-            verdict, confidence, reason
-        )
+    except Exception as e:
+        logger.warning("Photo download failed: %s", e)
         return ReceiptResult(
-            verdict=verdict,
-            confidence=confidence,
-            reason=reason,
-            analysis=analysis,
+            verdict="manual", confidence=0.0,
+            reason=f"Не удалось загрузить фото: {e}",
+            analysis="Ошибка загрузки. Требуется ручная проверка.",
         )
 
+    b64    = _to_base64(image_bytes)
+    prompt = _build_prompt(expected_amount_rub, payment_method, card_number, revolut_tag)
+
+    try:
+        result = await asyncio.wait_for(
+            _call_vision_api(b64, prompt), timeout=float(AI_TIMEOUT)
+        )
+        return result
+    except asyncio.TimeoutError:
+        logger.warning("Receipt AI check timed out after %ds", AI_TIMEOUT)
+        return _timeout_result
     except Exception as e:
         logger.exception("Receipt AI check failed: %s", e)
-        # On any error — send to admin for manual review
         return ReceiptResult(
-            verdict="manual",
-            confidence=0.0,
-            reason=f"Ошибка AI-проверки: {e}",
+            verdict="manual", confidence=0.0,
+            reason=f"Ошибка AI: {e}",
             analysis="AI-проверка не удалась. Требуется ручная проверка.",
         )
