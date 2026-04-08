@@ -32,7 +32,7 @@ async def start_resume(callback: CallbackQuery, state: FSMContext):
     await callback.message.edit_text(RESUME_ASK_VACANCY, reply_markup=cancel_kb())
 
 
-@router.message(ResumeStates.waiting_vacancy)
+@router.message(ResumeStates.waiting_vacancy, F.text)
 async def got_vacancy(message: Message, state: FSMContext):
     await state.update_data(vacancy=message.text)
     user = await get_or_create_user(message.from_user.id)
@@ -50,25 +50,45 @@ async def got_vacancy(message: Message, state: FSMContext):
         await message.answer(RESUME_ASK_EXPERIENCE, reply_markup=cancel_kb())
 
 
-@router.message(ResumeStates.waiting_experience)
+@router.message(ResumeStates.waiting_vacancy)
+async def resume_vacancy_wrong_type(message: Message):
+    await message.answer("📋 Пожалуйста, отправь текст вакансии.")
+
+
+@router.message(ResumeStates.waiting_experience, F.text)
 async def got_experience(message: Message, state: FSMContext):
     await state.update_data(experience=message.text)
     await state.set_state(ResumeStates.waiting_education)
     await message.answer(RESUME_ASK_EDUCATION, reply_markup=cancel_kb())
 
 
-@router.message(ResumeStates.waiting_education)
+@router.message(ResumeStates.waiting_experience)
+async def resume_experience_wrong_type(message: Message):
+    await message.answer("💼 Пожалуйста, опиши опыт работы текстом.")
+
+
+@router.message(ResumeStates.waiting_education, F.text)
 async def got_education(message: Message, state: FSMContext):
     await state.update_data(education=message.text)
     await state.set_state(ResumeStates.waiting_skills)
     await message.answer(RESUME_ASK_SKILLS, reply_markup=cancel_kb())
 
 
-@router.message(ResumeStates.waiting_skills)
+@router.message(ResumeStates.waiting_education)
+async def resume_education_wrong_type(message: Message):
+    await message.answer("🎓 Пожалуйста, напиши об образовании текстом.")
+
+
+@router.message(ResumeStates.waiting_skills, F.text)
 async def got_skills(message: Message, state: FSMContext):
     await state.update_data(skills=message.text)
     user = await get_or_create_user(message.from_user.id)
     await _generate_and_send(message, state, user)
+
+
+@router.message(ResumeStates.waiting_skills)
+async def resume_skills_wrong_type(message: Message):
+    await message.answer("🛠 Пожалуйста, напиши навыки текстом.")
 
 
 async def _generate_and_send(message: Message, state: FSMContext, user):

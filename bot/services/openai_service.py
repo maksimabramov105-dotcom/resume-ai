@@ -1,3 +1,5 @@
+import asyncio
+
 from openai import AsyncOpenAI
 import os
 
@@ -30,15 +32,20 @@ async def chat_completion(
     Returns (response text, tokens used).
     """
     try:
-        response = await client.chat.completions.create(
-            model=model,
-            messages=messages,
-            max_tokens=max_tokens,
-            temperature=temperature,
+        response = await asyncio.wait_for(
+            client.chat.completions.create(
+                model=model,
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=temperature,
+            ),
+            timeout=45.0,
         )
         text = response.choices[0].message.content
         tokens = response.usage.total_tokens
         return text, tokens
+    except asyncio.TimeoutError:
+        return "⚠️ AI не ответил вовремя. Попробуйте ещё раз.", 0
     except Exception as e:
         return f"Произошла ошибка при обращении к AI: {str(e)}", 0
 

@@ -27,13 +27,28 @@ async def open_support(callback: CallbackQuery, state: FSMContext):
     await callback.message.edit_text(SUPPORT_MESSAGE, reply_markup=support_kb())
 
 
-# ── Receive support message ───────────────────────────────────────────────────
+# ── Receive support message (also handles admin replies — same state, merged) ──
 
 @router.message(SupportStates.waiting_message, F.text)
 async def got_support_message(message: Message, state: FSMContext, bot: Bot):
+    data = await state.get_data()
+    reply_user_id = data.get("reply_to_user_id")
+
     await state.clear()
 
-    # Forward to admin
+    # ── Admin is replying to a user ───────────────────────────────────────────
+    if reply_user_id:
+        try:
+            await bot.send_message(
+                reply_user_id,
+                f"💬 <b>Ответ поддержки:</b>\n\n{message.text}",
+            )
+            await message.answer("✅ Ответ отправлен пользователю.")
+        except Exception as e:
+            await message.answer(f"⚠️ Не удалось отправить: {e}")
+        return
+
+    # ── Regular user support message → forward to admin ──────────────────────
     notify = ADMIN_SUPPORT_NOTIFY.format(
         user_id=message.from_user.id,
         full_name=message.from_user.full_name or "—",
@@ -93,26 +108,6 @@ async def admin_reply_prompt(callback: CallbackQuery, state: FSMContext):
         f"✏️ Напиши ответ пользователю <code>{user_id}</code>:"
     )
     await callback.answer()
-
-
-@router.message(SupportStates.waiting_message, F.text)
-async def admin_send_reply(message: Message, state: FSMContext, bot: Bot):
-    data = await state.get_data()
-    reply_user_id = data.get("reply_to_user_id")
-
-    if not reply_user_id:
-        # Regular user support message (handled above)
-        return
-
-    await state.clear()
-    try:
-        await bot.send_message(
-            reply_user_id,
-            f"💬 <b>Ответ поддержки:</b>\n\n{message.text}",
-        )
-        await message.answer("✅ Ответ отправлен пользователю.")
-    except Exception as e:
-        await message.answer(f"⚠️ Не удалось отправить: {e}")
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

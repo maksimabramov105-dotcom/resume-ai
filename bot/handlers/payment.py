@@ -353,6 +353,7 @@ async def receipt_not_photo(message: Message):
 
 @router.callback_query(F.data.startswith("admin_ok:"))
 async def admin_approve(callback: CallbackQuery, bot: Bot):
+    await callback.answer()
     _, payment_db_id_str, telegram_id_str, package_key = callback.data.split(":", 3)
     payment_db_id = int(payment_db_id_str)
     telegram_id = int(telegram_id_str)
@@ -362,7 +363,7 @@ async def admin_approve(callback: CallbackQuery, bot: Bot):
         await apply_package_credits(telegram_id, package_key)
         await update_payment_status_by_id(payment_db_id, "succeeded")
 
-        pkg = PRICING[package_key]
+        pkg = PRICING.get(package_key, {"name": package_key})
 
         # Notify user
         try:
@@ -374,15 +375,15 @@ async def admin_approve(callback: CallbackQuery, bot: Bot):
         except Exception:
             pass
 
-        await callback.message.edit_caption(
-            caption=callback.message.caption + "\n\n" + ADMIN_PAYMENT_APPROVED,
-        )
+        new_caption = ((callback.message.caption or "") + "\n\n" + ADMIN_PAYMENT_APPROVED)[:1020]
+        await callback.message.edit_caption(caption=new_caption)
     except Exception as e:
         await callback.answer(f"Ошибка: {e}", show_alert=True)
 
 
 @router.callback_query(F.data.startswith("admin_no:"))
 async def admin_reject(callback: CallbackQuery, bot: Bot):
+    await callback.answer()
     _, payment_db_id_str, telegram_id_str, package_key = callback.data.split(":", 3)
     payment_db_id = int(payment_db_id_str)
     telegram_id = int(telegram_id_str)
@@ -394,9 +395,8 @@ async def admin_reject(callback: CallbackQuery, bot: Bot):
     except Exception:
         pass
 
-    await callback.message.edit_caption(
-        caption=callback.message.caption + "\n\n" + ADMIN_PAYMENT_REJECTED,
-    )
+    new_caption = ((callback.message.caption or "") + "\n\n" + ADMIN_PAYMENT_REJECTED)[:1020]
+    await callback.message.edit_caption(caption=new_caption)
 
 
 # ---------------------------------------------------------------------------

@@ -27,7 +27,7 @@ async def start_cover_letter(callback: CallbackQuery, state: FSMContext):
     await callback.message.edit_text(COVER_LETTER_ASK_VACANCY, reply_markup=cancel_kb())
 
 
-@router.message(CoverLetterStates.waiting_vacancy)
+@router.message(CoverLetterStates.waiting_vacancy, F.text)
 async def got_vacancy(message: Message, state: FSMContext):
     vacancy = message.text
     await state.clear()
@@ -59,3 +59,8 @@ async def got_vacancy(message: Message, state: FSMContext):
         f"✉️ <b>Сопроводительное письмо готово!</b>\n\n{text_preview}",
         reply_markup=after_cover_letter_kb(),
     )
+
+
+@router.message(CoverLetterStates.waiting_vacancy)
+async def cover_letter_wrong_type(message: Message):
+    await message.answer("📋 Пожалуйста, напиши текст вакансии.")

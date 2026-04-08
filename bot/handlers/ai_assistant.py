@@ -41,7 +41,7 @@ async def start_assistant(callback: CallbackQuery, state: FSMContext):
     )
 
 
-@router.message(AssistantStates.active)
+@router.message(AssistantStates.active, F.text)
 async def handle_assistant_message(message: Message, state: FSMContext):
     user = await get_or_create_user(message.from_user.id)
 
@@ -89,10 +89,15 @@ async def handle_assistant_message(message: Message, state: FSMContext):
     elif user.credits_assistant == 0:
         warning = ASSISTANT_LAST_MESSAGE
 
-    await message.answer(
-        f"{response}{upsell}{warning}",
-        reply_markup=assistant_kb(),
-    )
+    full_text = f"{response}{upsell}{warning}"
+    if len(full_text) > 4096:
+        full_text = full_text[:4093] + "…"
+    await message.answer(full_text, reply_markup=assistant_kb())
+
+
+@router.message(AssistantStates.active)
+async def assistant_wrong_type(message: Message):
+    await message.answer("💬 Пожалуйста, напиши свой вопрос текстом.")
 
 
 @router.callback_query(F.data == "clear_assistant_history")

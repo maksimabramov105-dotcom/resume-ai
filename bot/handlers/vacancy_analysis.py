@@ -21,7 +21,7 @@ async def start_analysis(callback: CallbackQuery, state: FSMContext):
     await callback.message.edit_text(VACANCY_ASK, reply_markup=cancel_kb())
 
 
-@router.message(VacancyAnalysisStates.waiting_vacancy)
+@router.message(VacancyAnalysisStates.waiting_vacancy, F.text)
 async def got_vacancy(message: Message, state: FSMContext):
     vacancy = message.text
     await state.clear()
@@ -39,3 +39,8 @@ async def got_vacancy(message: Message, state: FSMContext):
         f"🔍 <b>Анализ вакансии:</b>\n\n{clean_preview}",
         reply_markup=after_vacancy_analysis_kb(),
     )
+
+
+@router.message(VacancyAnalysisStates.waiting_vacancy)
+async def vacancy_wrong_type(message: Message):
+    await message.answer("📋 Пожалуйста, напиши текст вакансии.")
