@@ -1,0 +1,7 @@
+# Content marketing system dependencies
+# Install with: pip3 install -r requirements_content.txt --break-system-packages
+
+openai>=1.0.0        # OpenRouter uses OpenAI-compatible SDK
+praw>=7.7.0          # Reddit API
+vk_api>=11.9.0       # VK API
+schedule>=1.2.0      # Job scheduler

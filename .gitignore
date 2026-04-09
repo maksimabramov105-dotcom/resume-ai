@@ -10,3 +10,5 @@ credentials.json
 autoapply/autoapply.db
 *.db
 seo/manual_submissions/
+content_marketing/content_output/
+content_marketing/logs/
