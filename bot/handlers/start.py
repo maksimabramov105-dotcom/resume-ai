@@ -1,6 +1,6 @@
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandStart, Command
 
 from database.db import get_or_create_user, save_user
 from services.user_service import add_referral_bonus
@@ -14,8 +14,11 @@ _ROOT = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__fi
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 from analytics_tracker import track_start, DB_PATH as _ANALYTICS_DB_PATH
+from maintenance import is_maintenance, broadcast_maintenance_start, broadcast_maintenance_end
 
 router = Router()
+
+ADMIN_ID = int(_os.getenv("ADMIN_ID", "6246429438"))
 
 
 @router.message(CommandStart())
@@ -54,3 +57,23 @@ async def cmd_start(message: Message):
 async def go_main_menu(callback: CallbackQuery):
     await callback.answer()
     await callback.message.edit_text(START_MESSAGE, reply_markup=main_menu_kb())
+
+
+# ── Admin: maintenance broadcast commands ────────────────────────────────────
+
+@router.message(Command("maintenance_on"))
+async def cmd_maintenance_on(message: Message):
+    """Admin only: broadcast maintenance message to all active users."""
+    if message.from_user.id != ADMIN_ID:
+        return
+    await message.answer("📢 Sending maintenance notification to all users…")
+    await broadcast_maintenance_start(message.bot)
+
+
+@router.message(Command("maintenance_off"))
+async def cmd_maintenance_off(message: Message):
+    """Admin only: broadcast recovery message to all active users."""
+    if message.from_user.id != ADMIN_ID:
+        return
+    await message.answer("✅ Sending recovery notification to all users…")
+    await broadcast_maintenance_end(message.bot)

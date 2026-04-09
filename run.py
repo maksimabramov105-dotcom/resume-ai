@@ -34,6 +34,7 @@ from utils.texts import BOT_DESCRIPTION, BOT_SHORT_DESCRIPTION
 from analytics_startup import startup_analytics
 from daily_reporter import send_daily_report, send_weekly_summary, ADMIN_CHAT_ID
 from analytics_db import DB_PATH
+from maintenance import is_maintenance, broadcast_maintenance_end
 
 logging.basicConfig(
     level=logging.INFO,
@@ -67,6 +68,101 @@ async def run_bot() -> None:
         logger.warning("Could not set short description: %s", e)
 
     dp = Dispatcher(storage=MemoryStorage())
+
+    # ── Global error middleware ───────────────────────────────────────────────
+    # Catches any unhandled exception in a handler.
+    # Shows user a friendly message instead of silence.
+    # Notifies admin with traceback.
+    @dp.errors()
+    async def global_error_handler(event, exception):
+        import traceback as _tb
+        tb_text = _tb.format_exc()[-600:]
+        logger.error("Unhandled exception: %s\n%s", exception, tb_text)
+
+        # Try to reply to user with a friendly message
+        try:
+            update = event.update
+            chat_id = None
+            if update.message:
+                chat_id = update.message.chat.id
+            elif update.callback_query:
+                chat_id = update.callback_query.message.chat.id
+                try:
+                    await update.callback_query.answer()
+                except Exception:
+                    pass
+
+            if chat_id:
+                await bot.send_message(
+                    chat_id,
+                    "⚙️ <b>Временный сбой</b>\n\n"
+                    "Что-то пошло не так на нашем сервере. "
+                    "Мы уже в курсе и чиним!\n\n"
+                    "Попробуйте через несколько минут 🙏",
+                    parse_mode="HTML",
+                )
+        except Exception as notify_err:
+            logger.warning("Could not notify user about error: %s", notify_err)
+
+        # Alert admin
+        try:
+            await bot.send_message(
+                ADMIN_CHAT_ID,
+                f"🐛 <b>Bot error</b>\n<pre>{tb_text}</pre>",
+                parse_mode="HTML",
+            )
+        except Exception:
+            pass
+
+        return True  # mark as handled so aiogram doesn't re-raise
+
+    # ── Maintenance mode middleware ───────────────────────────────────────────
+    # If MAINTENANCE=1 is set in .env, all messages/callbacks get a
+    # "we're fixing it" reply instead of normal processing.
+    @dp.update.middleware()
+    async def maintenance_middleware(handler, event, data):
+        if not is_maintenance():
+            return await handler(event, data)
+
+        # Admin can still use the bot during maintenance
+        user_id = None
+        try:
+            upd = event.update if hasattr(event, "update") else event
+            if upd.message:
+                user_id = upd.message.from_user.id
+            elif upd.callback_query:
+                user_id = upd.callback_query.from_user.id
+                try:
+                    await upd.callback_query.answer()
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        if user_id == ADMIN_CHAT_ID:
+            return await handler(event, data)
+
+        # Send maintenance message to regular user
+        try:
+            if hasattr(event, "update"):
+                upd = event.update
+                chat_id = None
+                if upd.message:
+                    chat_id = upd.message.chat.id
+                elif upd.callback_query:
+                    chat_id = upd.callback_query.message.chat.id
+                if chat_id:
+                    await bot.send_message(
+                        chat_id,
+                        "⚙️ <b>Технические работы</b>\n\n"
+                        "На сервере временный сбой — мы уже чиним.\n"
+                        "Все ваши данные в безопасности.\n\n"
+                        "Бот вернётся в работу совсем скоро! 🙏",
+                        parse_mode="HTML",
+                    )
+        except Exception:
+            pass
+
     dp.include_router(start.router)
     dp.include_router(resume.router)
     dp.include_router(cover_letter.router)
@@ -98,6 +194,14 @@ async def run_bot() -> None:
         lambda: asyncio.create_task(send_weekly_summary(bot, ADMIN_CHAT_ID, DB_PATH)),
         CronTrigger(day_of_week='mon', hour=7, minute=5),
         id='weekly_summary',
+        replace_existing=True,
+    )
+    # Daily DB backup — every day at 03:00 UTC
+    from backup import run_backup
+    scheduler.add_job(
+        lambda: asyncio.create_task(run_backup()),
+        CronTrigger(hour=3, minute=0),
+        id='daily_backup',
         replace_existing=True,
     )
     scheduler.start()
