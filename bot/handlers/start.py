@@ -7,10 +7,10 @@ from services.user_service import add_referral_bonus
 from utils.keyboards import main_menu_kb
 from utils.texts import START_MESSAGE
 
-# Analytics tracker — imported here to avoid circular imports at module level
+# Analytics tracker — project root (3 levels up from bot/handlers/start.py)
 # track_start is wrapped in try/except inside analytics_tracker so it never crashes
 import sys, os as _os
-_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))  # project root
+_ROOT = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 from analytics_tracker import track_start, DB_PATH as _ANALYTICS_DB_PATH
@@ -52,4 +52,5 @@ async def cmd_start(message: Message):
 
 @router.callback_query(F.data == "main_menu")
 async def go_main_menu(callback: CallbackQuery):
+    await callback.answer()
     await callback.message.edit_text(START_MESSAGE, reply_markup=main_menu_kb())

@@ -443,12 +443,17 @@ elif page == "📣 Каналы роста":
             c_clicks   = st.number_input("Расчётных кликов", min_value=0, value=0)
             submitted  = st.form_submit_button("Добавить")
         if submitted and c_title:
-            import asyncio
-            import sys, os
-            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-            from analytics_db import log_content
-            asyncio.run(log_content(c_date.isoformat(), c_platform, c_title, c_url, c_clicks))
+            # Use sync sqlite3 directly — no asyncio needed in Streamlit context
+            import sqlite3 as _sql
+            _con = _sql.connect(DB_PATH)
+            _con.execute(
+                "INSERT INTO content_log (date, platform, post_title, post_url, estimated_clicks) VALUES (?,?,?,?,?)",
+                (c_date.isoformat(), c_platform, c_title, c_url, int(c_clicks))
+            )
+            _con.commit()
+            _con.close()
             st.success("Запись добавлена!")
+            st.cache_data.clear()
             st.rerun()
 
 
