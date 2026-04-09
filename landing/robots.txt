@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+
+# Sitemaps
+Sitemap: https://resumeai.bot/sitemap.xml
+
+# Crawl-delay (optional, keep low for good bots)
+Crawl-delay: 1
+
+# Disallow admin/internal paths if they exist
+Disallow: /admin/
+Disallow: /api/
+Disallow: /.env
+Disallow: /*.py$

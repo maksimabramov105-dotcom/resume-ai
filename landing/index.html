@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="ru" id="html-root">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ResumeAI — AI-Powered Resume in 30 Seconds | РезюмеАИ</title>
+
+  <!-- ── Primary SEO ───────────────────────────────────────────────────── -->
+  <meta name="description" content="AI career consultant in Telegram. Creates a tailored resume in 30 seconds, writes cover letters, and preps you for interviews with STAR method. Free: 1 resume + 1 letter + 3 AI messages." />
+  <meta name="keywords" content="AI resume builder, resume telegram bot, cover letter AI, interview preparation AI, career consultant telegram, create resume online, ATS resume, resume in 30 seconds, РезюмеАИ, резюме с AI" />
+  <meta name="author" content="ResumeAI" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://resumeai.bot" />
+  <link rel="alternate" hreflang="ru" href="https://resumeai.bot" />
+  <link rel="alternate" hreflang="en" href="https://resumeai.bot/en" />
+  <link rel="alternate" hreflang="x-default" href="https://resumeai.bot" />
+
+  <!-- ── Open Graph ────────────────────────────────────────────────────── -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://resumeai.bot" />
+  <meta property="og:title" content="ResumeAI — AI Resume in 30 Seconds | Telegram Bot" />
+  <meta property="og:description" content="Your personal AI career consultant in Telegram. Resumes, cover letters, interview prep. Try for free." />
+  <meta property="og:image" content="https://resumeai.bot/og-image.png" />
+  <meta property="og:locale" content="en_US" />
+  <meta property="og:locale:alternate" content="ru_RU" />
+  <meta property="og:site_name" content="ResumeAI" />
+
+  <!-- ── Twitter Card ───────────────────────────────────────────────────── -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="ResumeAI — AI Career Consultant in Telegram" />
+  <meta name="twitter:description" content="Resume tailored to any job in 30 seconds. No clichés. Just AI." />
+  <meta name="twitter:image" content="https://resumeai.bot/og-image.png" />
+
+  <!-- ── JSON-LD Structured Data ───────────────────────────────────────── -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "ResumeAI",
+    "alternateName": ["РезюмеАИ", "ResumeAI Bot"],
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Telegram",
+    "url": "https://t.me/topbestworkerbot",
+    "description": "AI career consultant in Telegram. Creates tailored resumes in 30 seconds, writes cover letters, preps for interviews with STAR method, and analyses job postings.",
+    "offers": [
+      { "@type": "Offer", "name": "Free", "price": "0", "priceCurrency": "USD", "description": "1 resume, 1 cover letter, 3 AI messages" },
+      { "@type": "Offer", "name": "Pro", "price": "9", "priceCurrency": "USD", "description": "Unlimited resumes, letters, AI messages + weekly digest" }
+    ],
+    "aggregateRating": { "@type": "AggregateRating", "ratingValue": "4.9", "ratingCount": "847" },
+    "inLanguage": ["ru", "en"]
+  }
+  </script>
+
+  <!-- ── Fonts ──────────────────────────────────────────────────────────── -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ── Reset & Variables ─────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0d0d0d;
+      --bg-card:     #141414;
+      --bg-card-alt: #1a1a1a;
+      --accent1:     #7c3aed;
+      --accent2:     #2563eb;
+      --gradient:    linear-gradient(135deg, #7c3aed 0%, #2563eb 100%);
+      --gradient-r:  linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+      --text:        #f0f0f0;
+      --text-muted:  #9ca3af;
+      --text-dim:    #6b7280;
+      --border:      rgba(255,255,255,0.07);
+      --border-glow: rgba(124,58,237,0.4);
+      --radius:      16px;
+      --radius-sm:   10px;
+    }
+
+    html { scroll-behavior: smooth; font-size: 16px; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ── Utility ──────────────────────────────────────────────────────── */
+    .container { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+    .section    { padding: 96px 0; }
+    .section-sm { padding: 64px 0; }
+
+    .gradient-text {
+      background: var(--gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(124,58,237,0.12);
+      border: 1px solid rgba(124,58,237,0.25);
+      color: #a78bfa;
+      font-size: 13px; font-weight: 500;
+      padding: 5px 14px; border-radius: 100px;
+      margin-bottom: 20px;
+    }
+
+    /* ── Scroll animations ─────────────────────────────────────────────── */
+    .animate {
+      opacity: 0; transform: translateY(28px);
+      transition: opacity 0.65s cubic-bezier(.16,1,.3,1), transform 0.65s cubic-bezier(.16,1,.3,1);
+    }
+    .animate.delay-1 { transition-delay: 0.1s; }
+    .animate.delay-2 { transition-delay: 0.2s; }
+    .animate.delay-3 { transition-delay: 0.3s; }
+    .animate.delay-4 { transition-delay: 0.4s; }
+    .animate.delay-5 { transition-delay: 0.5s; }
+    .animate.visible { opacity: 1; transform: translateY(0); }
+
+    /* ── Buttons ───────────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 14px 28px; border-radius: 12px;
+      font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 600;
+      cursor: pointer; text-decoration: none;
+      transition: all 0.2s ease; border: none; white-space: nowrap;
+    }
+    .btn-primary { background: var(--gradient); color: #fff; box-shadow: 0 0 24px rgba(124,58,237,0.35); }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 0 36px rgba(124,58,237,0.5); }
+    .btn-secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.15); }
+    .btn-outline { background: transparent; color: #a78bfa; border: 1px solid rgba(124,58,237,0.4); }
+    .btn-outline:hover { background: rgba(124,58,237,0.1); }
+    .btn-lg { padding: 18px 36px; font-size: 16px; border-radius: 14px; }
+
+    /* ── Navbar ─────────────────────────────────────────────────────────── */
+    .navbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+      padding: 16px 0;
+      transition: background 0.3s ease, backdrop-filter 0.3s ease, box-shadow 0.3s ease, padding 0.3s ease;
+    }
+    .navbar.scrolled {
+      background: rgba(13,13,13,0.85);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 1px 0 var(--border); padding: 10px 0;
+    }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; }
+    .nav-logo {
+      font-size: 20px; font-weight: 800; text-decoration: none;
+      background: var(--gradient);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .nav-menu { display: flex; align-items: center; gap: 32px; list-style: none; }
+    .nav-menu a { color: var(--text-muted); text-decoration: none; font-size: 14px; font-weight: 500; transition: color 0.2s; }
+    .nav-menu a:hover { color: var(--text); }
+    .nav-cta { margin-left: 16px; padding: 10px 22px; font-size: 14px; }
+
+    /* Language toggle */
+    .nav-right { display: flex; align-items: center; gap: 10px; }
+    .lang-toggle {
+      display: flex; align-items: center;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 8px; overflow: hidden;
+    }
+    .lang-btn {
+      background: none; border: none; color: var(--text-muted);
+      font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 700;
+      padding: 5px 9px; cursor: pointer; transition: all 0.2s;
+      letter-spacing: 0.06em; line-height: 1;
+    }
+    .lang-btn.active { background: var(--gradient); color: #fff; }
+    .lang-btn:not(.active):hover { background: rgba(255,255,255,0.06); color: var(--text); }
+
+    /* Hamburger */
+    .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 4px; }
+    .hamburger span { display: block; width: 24px; height: 2px; background: var(--text); border-radius: 2px; transition: all 0.3s ease; }
+    .hamburger.active span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); }
+    .hamburger.active span:nth-child(2) { opacity: 0; }
+    .hamburger.active span:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); }
+
+    /* ── Hero ──────────────────────────────────────────────────────────── */
+    .hero {
+      min-height: 100vh; display: flex; align-items: center;
+      padding: 120px 0 80px; position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: ''; position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 700px 500px at 15% 60%, rgba(124,58,237,0.13) 0%, transparent 70%),
+        radial-gradient(ellipse 600px 400px at 85% 20%, rgba(37,99,235,0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
+    .hero-eyebrow { margin-bottom: 24px; }
+    .hero h1 { font-size: clamp(36px, 5vw, 58px); font-weight: 900; line-height: 1.1; letter-spacing: -0.02em; margin-bottom: 20px; }
+    .hero-sub { font-size: 18px; color: var(--text-muted); line-height: 1.7; margin-bottom: 36px; max-width: 480px; }
+    .hero-ctas { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 44px; }
+    .trust-row { display: flex; flex-wrap: wrap; gap: 24px; }
+    .trust-item {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; color: var(--text-muted); font-weight: 500;
+    }
+    .trust-item::before {
+      content: '✓'; display: flex; align-items: center; justify-content: center;
+      width: 20px; height: 20px; border-radius: 50%;
+      background: rgba(124,58,237,0.2); color: #a78bfa;
+      font-size: 11px; font-weight: 700; flex-shrink: 0;
+    }
+
+    /* Hero visual */
+    .hero-visual { display: flex; justify-content: center; align-items: center; position: relative; }
+    .phone-mock {
+      width: 280px; background: #1a1a1a;
+      border: 1px solid rgba(255,255,255,0.1); border-radius: 28px; padding: 20px;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05), inset 0 1px 0 rgba(255,255,255,0.1);
+      position: relative;
+    }
+    .phone-mock::before {
+      content: ''; position: absolute; inset: -1px; border-radius: 29px;
+      background: var(--gradient); opacity: 0.25; z-index: -1; filter: blur(1px);
+    }
+    .chat-header { display: flex; align-items: center; gap: 10px; padding-bottom: 14px; border-bottom: 1px solid var(--border); margin-bottom: 14px; }
+    .chat-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--gradient); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+    .chat-name { font-size: 13px; font-weight: 600; }
+    .chat-status { font-size: 11px; color: #4ade80; }
+    .chat-msg { margin-bottom: 8px; }
+    .msg-bubble { display: inline-block; padding: 9px 13px; border-radius: 14px; font-size: 12px; line-height: 1.5; max-width: 100%; }
+    .msg-user { background: var(--gradient); color: #fff; margin-left: auto; display: block; text-align: right; }
+    .msg-bot  { background: #252525; color: var(--text); }
+    .msg-time { font-size: 10px; color: var(--text-dim); margin-top: 3px; }
+    .msg-time.right { text-align: right; }
+    .typing-dots { display: inline-flex; gap: 4px; padding: 10px 14px; background: #252525; border-radius: 14px; margin-top: 6px; }
+    .dot { width: 6px; height: 6px; background: var(--text-muted); border-radius: 50%; animation: bounce 1.4s infinite ease-in-out; }
+    .dot:nth-child(2) { animation-delay: 0.2s; }
+    .dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce { 0%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-6px); } }
+
+    /* ── Section titles ───────────────────────────────────────────────── */
+    .section-title { font-size: clamp(28px, 4vw, 42px); font-weight: 800; line-height: 1.15; letter-spacing: -0.02em; margin-bottom: 16px; }
+    .section-sub { font-size: 17px; color: var(--text-muted); max-width: 560px; margin: 0 auto; }
+    .section-header { text-align: center; margin-bottom: 64px; }
+
+    /* ── How it works ─────────────────────────────────────────────────── */
+    .steps-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 32px; position: relative;
+    }
+    .steps-grid::before {
+      content: ''; position: absolute; top: 40px;
+      left: calc(16.67% + 16px); right: calc(16.67% + 16px);
+      height: 1px; background: linear-gradient(90deg, var(--accent1), var(--accent2)); opacity: 0.3;
+    }
+    .step-card { text-align: center; padding: 36px 24px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); transition: border-color 0.3s, box-shadow 0.3s; }
+    .step-card:hover { border-color: var(--border-glow); box-shadow: 0 0 32px rgba(124,58,237,0.1); }
+    .step-num { width: 56px; height: 56px; border-radius: 50%; background: var(--gradient); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; color: #fff; margin: 0 auto 20px; box-shadow: 0 0 20px rgba(124,58,237,0.4); }
+    .step-icon { font-size: 28px; margin-bottom: 12px; }
+    .step-card h3 { font-size: 17px; font-weight: 700; margin-bottom: 10px; }
+    .step-card p { font-size: 14px; color: var(--text-muted); line-height: 1.6; }
+
+    /* ── Features ─────────────────────────────────────────────────────── */
+    .features-bg { background: linear-gradient(180deg, var(--bg) 0%, #111 50%, var(--bg) 100%); }
+    .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+    .feature-card { padding: 32px 28px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); transition: all 0.3s ease; cursor: default; }
+    .feature-card:hover { border-color: rgba(124,58,237,0.35); box-shadow: 0 8px 32px rgba(124,58,237,0.1); transform: translateY(-3px); }
+    .feature-emoji { font-size: 32px; margin-bottom: 16px; display: block; }
+    .feature-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
+    .feature-card p  { font-size: 14px; color: var(--text-muted); line-height: 1.6; }
+
+    /* ── Pricing ──────────────────────────────────────────────────────── */
+    .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; align-items: stretch; }
+    .price-card { padding: 36px 28px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); display: flex; flex-direction: column; transition: all 0.3s ease; }
+    .price-card:hover { border-color: rgba(124,58,237,0.3); box-shadow: 0 8px 40px rgba(124,58,237,0.1); }
+    .price-card.featured { border-color: rgba(124,58,237,0.5); background: linear-gradient(160deg, rgba(124,58,237,0.08) 0%, var(--bg-card) 100%); box-shadow: 0 0 40px rgba(124,58,237,0.15); position: relative; overflow: hidden; }
+    .price-card.featured::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--gradient); }
+    .popular-badge { display: inline-flex; align-items: center; gap: 6px; background: var(--gradient); color: #fff; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; padding: 4px 12px; border-radius: 100px; text-transform: uppercase; margin-bottom: 16px; }
+    .plan-name { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+    .plan-price { margin: 12px 0 24px; }
+    .plan-price .amount { font-size: 42px; font-weight: 900; letter-spacing: -0.02em; }
+    .plan-price .amount.free { background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .plan-price .period { font-size: 15px; color: var(--text-muted); }
+    .plan-desc { font-size: 14px; color: var(--text-muted); margin-bottom: 24px; }
+    .plan-features { list-style: none; margin-bottom: 32px; flex: 1; }
+    .plan-features li { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .plan-features li:last-child { border-bottom: none; }
+    .plan-features .check { color: #4ade80; font-size: 14px; flex-shrink: 0; margin-top: 2px; }
+    .plan-features .cross { color: var(--text-dim); font-size: 14px; flex-shrink: 0; margin-top: 2px; }
+    .price-card .btn { width: 100%; justify-content: center; }
+
+    /* ── Referral ─────────────────────────────────────────────────────── */
+    .referral-card { background: linear-gradient(135deg, rgba(124,58,237,0.12) 0%, rgba(37,99,235,0.12) 100%); border: 1px solid rgba(124,58,237,0.25); border-radius: 24px; padding: 64px 48px; text-align: center; position: relative; overflow: hidden; }
+    .referral-card::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle at 50% 50%, rgba(124,58,237,0.06) 0%, transparent 60%); pointer-events: none; }
+    .referral-card h2 { font-size: clamp(26px, 4vw, 36px); font-weight: 800; margin-bottom: 16px; }
+    .referral-card p  { font-size: 17px; color: var(--text-muted); max-width: 560px; margin: 0 auto 32px; }
+    .referral-steps { display: flex; justify-content: center; flex-wrap: wrap; gap: 40px; margin-bottom: 36px; }
+    .ref-step { text-align: center; max-width: 180px; }
+    .ref-step .ref-icon { font-size: 36px; display: block; margin-bottom: 10px; }
+    .ref-step h4 { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+    .ref-step p  { font-size: 13px; color: var(--text-muted); }
+
+    /* ── Testimonials ─────────────────────────────────────────────────── */
+    .testimonials-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+    .testimonial-card { padding: 28px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); transition: all 0.3s ease; }
+    .testimonial-card:hover { border-color: rgba(124,58,237,0.25); transform: translateY(-2px); }
+    .stars { color: #fbbf24; font-size: 16px; margin-bottom: 14px; }
+    .testimonial-text { font-size: 14px; line-height: 1.7; color: var(--text-muted); margin-bottom: 20px; font-style: italic; }
+    .testimonial-author { display: flex; align-items: center; gap: 12px; }
+    .author-avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; color: #fff; flex-shrink: 0; }
+    .author-name { font-size: 14px; font-weight: 600; }
+    .author-role { font-size: 12px; color: var(--text-dim); }
+
+    /* ── FAQ ──────────────────────────────────────────────────────────── */
+    .faq-bg { background: #111; }
+    .faq-list { max-width: 740px; margin: 0 auto; }
+    .faq-item { border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 12px; overflow: hidden; transition: border-color 0.3s; }
+    .faq-item.open { border-color: rgba(124,58,237,0.35); }
+    .faq-question { width: 100%; background: none; border: none; color: var(--text); font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 600; text-align: left; padding: 20px 24px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 16px; transition: background 0.2s; }
+    .faq-question:hover { background: rgba(255,255,255,0.03); }
+    .faq-arrow { width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; transition: all 0.3s ease; color: var(--text-muted); }
+    .faq-item.open .faq-arrow { background: var(--gradient); border-color: transparent; color: #fff; transform: rotate(180deg); }
+    .faq-answer { max-height: 0; overflow: hidden; transition: max-height 0.35s ease, padding 0.35s ease; }
+    .faq-item.open .faq-answer { max-height: 300px; }
+    .faq-answer-inner { padding: 0 24px 20px; font-size: 14px; color: var(--text-muted); line-height: 1.7; }
+
+    /* ── CTA Banner ───────────────────────────────────────────────────── */
+    .cta-banner { text-align: center; padding: 80px 0; }
+    .cta-banner h2 { font-size: clamp(28px, 4vw, 44px); font-weight: 900; margin-bottom: 14px; }
+    .cta-banner p  { font-size: 18px; color: var(--text-muted); margin-bottom: 36px; }
+    .cta-buttons   { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
+
+    /* ── Footer ───────────────────────────────────────────────────────── */
+    footer { border-top: 1px solid var(--border); padding: 48px 0 32px; }
+    .footer-inner { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 48px; margin-bottom: 40px; }
+    .footer-brand h3 { font-size: 20px; font-weight: 800; margin-bottom: 10px; background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .footer-brand p { font-size: 14px; color: var(--text-muted); line-height: 1.7; max-width: 280px; }
+    .footer-col h4 { font-size: 13px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 16px; }
+    .footer-col a  { display: block; font-size: 14px; color: var(--text-muted); text-decoration: none; margin-bottom: 10px; transition: color 0.2s; }
+    .footer-col a:hover { color: var(--text); }
+    .footer-bottom { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; padding-top: 24px; border-top: 1px solid var(--border); font-size: 13px; color: var(--text-dim); }
+
+    /* ── Responsive ───────────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .hero-grid         { grid-template-columns: 1fr; gap: 48px; }
+      .hero-visual       { display: none; }
+      .steps-grid        { grid-template-columns: 1fr; }
+      .steps-grid::before{ display: none; }
+      .features-grid     { grid-template-columns: repeat(2, 1fr); }
+      .pricing-grid      { grid-template-columns: 1fr; max-width: 480px; margin: 0 auto; }
+      .testimonials-grid { grid-template-columns: 1fr; }
+      .footer-inner      { grid-template-columns: 1fr; gap: 32px; }
+      .referral-card     { padding: 40px 24px; }
+    }
+    @media (max-width: 600px) {
+      .section           { padding: 72px 0; }
+      .features-grid     { grid-template-columns: 1fr; }
+      .hero-ctas         { flex-direction: column; }
+      .hero-ctas .btn    { justify-content: center; }
+      .trust-row         { gap: 14px; }
+      .nav-menu {
+        display: none; position: fixed; inset: 0; top: 60px;
+        background: rgba(13,13,13,0.97); backdrop-filter: blur(20px);
+        flex-direction: column; justify-content: flex-start;
+        padding: 32px 24px; gap: 8px;
+      }
+      .nav-menu.open  { display: flex; }
+      .nav-menu li a  { font-size: 18px; padding: 12px 0; display: block; }
+      .nav-cta        { display: none; }
+      .hamburger      { display: flex; }
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- ══ NAVBAR ════════════════════════════════════════════════════════════ -->
+<nav class="navbar" id="navbar">
+  <div class="container">
+    <div class="nav-inner">
+      <a href="#" class="nav-logo">ResumeAI</a>
+
+      <ul class="nav-menu" id="nav-menu">
+        <li><a href="#how"      data-i18n="nav.how">How it works</a></li>
+        <li><a href="#features" data-i18n="nav.features">Features</a></li>
+        <li><a href="#pricing"  data-i18n="nav.pricing">Pricing</a></li>
+        <li><a href="#faq"      data-i18n="nav.faq">FAQ</a></li>
+        <li>
+          <a href="https://t.me/topbestworkerbot" target="_blank"
+             class="btn btn-primary nav-cta" data-i18n="nav.cta">
+            Start for free →
+          </a>
+        </li>
+      </ul>
+
+      <div class="nav-right">
+        <div class="lang-toggle">
+          <button class="lang-btn" id="btn-ru" onclick="setLang('ru')">RU</button>
+          <button class="lang-btn active" id="btn-en" onclick="setLang('en')">EN</button>
+        </div>
+        <button class="hamburger" id="hamburger" aria-label="Menu">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ══ HERO ══════════════════════════════════════════════════════════════ -->
+<section class="hero" id="hero">
+  <div class="container">
+    <div class="hero-grid">
+
+      <!-- Text -->
+      <div>
+        <div class="hero-eyebrow animate">
+          <span class="badge" data-i18n="hero.badge">⚡ AI career consultant in Telegram</span>
+        </div>
+        <h1 class="animate delay-1" data-i18n-html="hero.h1">
+          Resume tailored to any job<br>
+          <span class="gradient-text">in 30 seconds.</span><br>
+          No clichés. Just AI.
+        </h1>
+        <p class="hero-sub animate delay-2" data-i18n="hero.sub">
+          Your personal AI career consultant in Telegram.
+          Land more interviews with every application.
+        </p>
+        <div class="hero-ctas animate delay-3">
+          <a href="https://t.me/topbestworkerbot" target="_blank"
+             class="btn btn-primary btn-lg" data-i18n="hero.cta1">
+            🚀 Try for free
+          </a>
+          <a href="#how" class="btn btn-secondary btn-lg" data-i18n="hero.cta2">
+            See how it works ↓
+          </a>
+        </div>
+        <div class="trust-row animate delay-4">
+          <span class="trust-item" data-i18n="hero.trust1">10 000+ users</span>
+          <span class="trust-item" data-i18n="hero.trust2">30 sec per resume</span>
+          <span class="trust-item" data-i18n="hero.trust3">24/7 support</span>
+        </div>
+      </div>
+
+      <!-- Phone mockup -->
+      <div class="hero-visual animate delay-2">
+        <div class="phone-mock">
+          <div class="chat-header">
+            <div class="chat-avatar">🤖</div>
+            <div>
+              <div class="chat-name">ResumeAI</div>
+              <div class="chat-status" data-i18n="chat.status">● online</div>
+            </div>
+          </div>
+          <div class="chat-msg">
+            <div class="msg-bubble msg-user" data-i18n="chat.user">Here's a Python dev job at Google</div>
+            <div class="msg-time right">14:23</div>
+          </div>
+          <div class="chat-msg">
+            <div class="msg-bubble msg-bot" data-i18n-html="chat.bot1">
+              📄 Analysing vacancy...<br>
+              ✅ ATS keywords found<br>
+              ✅ Adapting to company<br>
+              ✅ Removing clichés
+            </div>
+            <div class="msg-time">14:23</div>
+          </div>
+          <div class="chat-msg">
+            <div class="msg-bubble msg-bot" data-i18n-html="chat.bot2">
+              🎉 Resume ready! Optimised<br>
+              for <b>Google</b>, ATS-score: 94%
+            </div>
+            <div class="msg-time">14:23</div>
+          </div>
+          <div class="typing-dots">
+            <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══ HOW IT WORKS ═══════════════════════════════════════════════════════ -->
+<section class="section" id="how">
+  <div class="container">
+    <div class="section-header animate">
+      <span class="badge" data-i18n="how.badge">How it works</span>
+      <h2 class="section-title" data-i18n="how.title">Three steps to a perfect resume</h2>
+      <p class="section-sub" data-i18n="how.sub">No sign-ups or complex forms — everything right inside Telegram</p>
+    </div>
+    <div class="steps-grid">
+      <div class="step-card animate delay-1">
+        <div class="step-num">1</div>
+        <div class="step-icon">📋</div>
+        <h3 data-i18n="how.s1.title">Paste the job posting</h3>
+        <p data-i18n="how.s1.desc">Copy any job listing from LinkedIn, Indeed, Glassdoor or any other site</p>
+      </div>
+      <div class="step-card animate delay-2">
+        <div class="step-num">2</div>
+        <div class="step-icon">🧠</div>
+        <h3 data-i18n="how.s2.title">AI analyses it</h3>
+        <p data-i18n="how.s2.desc">The model reads requirements, extracts ATS keywords, and adapts to company culture</p>
+      </div>
+      <div class="step-card animate delay-3">
+        <div class="step-num">3</div>
+        <div class="step-icon">🚀</div>
+        <h3 data-i18n="how.s3.title">Get your resume</h3>
+        <p data-i18n="how.s3.desc">In 30 seconds you receive a polished resume — no clichés, no filler, just results</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ FEATURES ═══════════════════════════════════════════════════════════ -->
+<section class="section features-bg" id="features">
+  <div class="container">
+    <div class="section-header animate">
+      <span class="badge" data-i18n="feat.badge">Features</span>
+      <h2 class="section-title" data-i18n="feat.title">Everything you need to advance your career</h2>
+      <p class="section-sub" data-i18n="feat.sub">One bot replaces a career consultant, HR specialist, and coach</p>
+    </div>
+    <div class="features-grid">
+
+      <div class="feature-card animate delay-1">
+        <span class="feature-emoji">📄</span>
+        <h3 data-i18n="feat.f1.title">Resume tailored to the job</h3>
+        <p data-i18n="feat.f1.desc">AI builds your resume specifically for each vacancy — with the right ATS keywords, no filler or buzzwords</p>
+      </div>
+
+      <div class="feature-card animate delay-2">
+        <span class="feature-emoji">✉️</span>
+        <h3 data-i18n="feat.f2.title">Cover letter</h3>
+        <p data-i18n="feat.f2.desc">A personalised letter that makes you stand out from hundreds of applicants. AI adapts it to the company's values</p>
+      </div>
+
+      <div class="feature-card animate delay-3">
+        <span class="feature-emoji">🎯</span>
+        <h3 data-i18n="feat.f3.title">Interview preparation</h3>
+        <p data-i18n="feat.f3.desc">Real interview simulation using the STAR method. Get a breakdown of your answers with specific improvement tips</p>
+      </div>
+
+      <div class="feature-card animate delay-1">
+        <span class="feature-emoji">🔍</span>
+        <h3 data-i18n="feat.f4.title">Job posting analysis</h3>
+        <p data-i18n="feat.f4.desc">Find out the real salary range, spot red flags, and understand hidden requirements before you apply</p>
+      </div>
+
+      <div class="feature-card animate delay-2">
+        <span class="feature-emoji">🧠</span>
+        <h3 data-i18n="feat.f5.title">Remembers your profile</h3>
+        <p data-i18n="feat.f5.desc">Save your experience and skills once — the next resume or letter is created in one click, no re-entry needed</p>
+      </div>
+
+      <div class="feature-card animate delay-3">
+        <span class="feature-emoji">📬</span>
+        <h3 data-i18n="feat.f6.title">Weekly career digest</h3>
+        <p data-i18n="feat.f6.desc">Every Monday receive personalised career growth tips relevant to your field and experience level</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══ PRICING ════════════════════════════════════════════════════════════ -->
+<section class="section" id="pricing">
+  <div class="container">
+    <div class="section-header animate">
+      <span class="badge" data-i18n="price.badge">Pricing</span>
+      <h2 class="section-title" data-i18n="price.title">Start free, grow further</h2>
+      <p class="section-sub" data-i18n="price.sub">No hidden fees. Cancel anytime</p>
+    </div>
+    <div class="pricing-grid">
+
+      <!-- Free -->
+      <div class="price-card animate delay-1">
+        <div class="plan-name" data-i18n="price.p1.name">Free</div>
+        <div class="plan-price">
+          <span class="amount free">$0</span>
+        </div>
+        <div class="plan-desc" data-i18n="price.p1.desc">Try all features, no card needed</div>
+        <ul class="plan-features">
+          <li><span class="check">✓</span> <span data-i18n="price.p1.li1">1 tailored resume</span></li>
+          <li><span class="check">✓</span> <span data-i18n="price.p1.li2">1 cover letter</span></li>
+          <li><span class="check">✓</span> <span data-i18n="price.p1.li3">3 AI messages</span></li>
+          <li><span class="check">✓</span> <span data-i18n="price.p1.li4">Profile saving</span></li>
+          <li><span class="cross">✕</span> <span data-i18n="price.p1.li5">Unlimited resumes</span></li>
+          <li><span class="cross">✕</span> <span data-i18n="price.p1.li6">Weekly digest</span></li>
+        </ul>
+        <a href="https://t.me/topbestworkerbot" target="_blank"
+           class="btn btn-outline" data-i18n="price.p1.btn">Start for free</a>
+      </div>
+
+      <!-- Pro — Featured -->
+      <div class="price-card featured animate delay-2">
+        <span class="popular-badge" data-i18n="price.popular">🔥 Most popular</span>
+        <div class="plan-name" data-i18n="price.p2.name">Pro</div>
+        <div class="plan-price">
+          <span class="amount">$9</span>
+          <span class="period" data-i18n="price.mo"> / mo</span>
+        </div>
+        <div class="plan-desc" data-i18n="price.p2.desc">For serious job seekers</div>
+        <ul class="plan-features">
+          <li><span class="check">✓</span> <span data-i18n="price.p2.li1">Unlimited resumes</span></li>
+          <li><span class="check">✓</span> <span data-i18n="price.p2.li2">Unlimited cover letters</span></li>
+          <li><span class="check">✓</span> <span data-i18n="price.p2.li3">Unlimited AI messages</span></li>
+          <li><span class="check">✓</span> <span data-i18n="price.p2.li4">Interview preparation</span></li>
+          <li><span class="check">✓</span> <span data-i18n="price.p2.li5">Job analysis</span></li>
+          <li><span class="check">✓</span> <span data-i18n="price.p2.li6">Weekly career digest</span></li>
+        </ul>
+        <a href="https://t.me/topbestworkerbot" target="_blank"
+           class="btn btn-primary" data-i18n="price.p2.btn">Choose Pro</a>
+      </div>
+
+      <!-- Premium -->
+      <div class="price-card animate delay-3">
+        <div class="plan-name" data-i18n="price.p3.name">Premium</div>
+        <div class="plan-price">
+          <span class="amount">$19</span>
+          <span class="period" data-i18n="price.mo"> / mo</span>
+        </div>
+        <div class="plan-desc" data-i18n="price.p3.desc">All of Pro + expert review</div>
+        <ul class="plan-features">
+          <li><span class="check">✓</span> <span data-i18n="price.p3.li1">Everything in Pro</span></li>
+          <li><span class="check">✓</span> <span data-i18n="price.p3.li2">HR expert resume review</span></li>
+          <li><span class="check">✓</span> <span data-i18n="price.p3.li3">Priority support</span></li>
+          <li><span class="check">✓</span> <span data-i18n="price.p3.li4">Personal career advice</span></li>
+          <li><span class="check">✓</span> <span data-i18n="price.p3.li5">Referral bonuses</span></li>
+          <li><span class="check">✓</span> <span data-i18n="price.p3.li6">Early access to new features</span></li>
+        </ul>
+        <a href="https://t.me/topbestworkerbot" target="_blank"
+           class="btn btn-outline" data-i18n="price.p3.btn">Choose Premium</a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══ REFERRAL ═══════════════════════════════════════════════════════════ -->
+<section class="section-sm" id="referral">
+  <div class="container">
+    <div class="referral-card animate">
+      <h2 data-i18n="ref.title">Invite friends — get free resumes 🎁</h2>
+      <p data-i18n="ref.sub">
+        Share your referral link with friends who are job hunting.
+        For every person you invite you earn a free resume — unlimited.
+      </p>
+      <div class="referral-steps">
+        <div class="ref-step">
+          <span class="ref-icon">🔗</span>
+          <h4 data-i18n="ref.s1.title">Share your link</h4>
+          <p data-i18n="ref.s1.desc">Get your personal referral link inside the bot</p>
+        </div>
+        <div class="ref-step">
+          <span class="ref-icon">👥</span>
+          <h4 data-i18n="ref.s2.title">Friend signs up</h4>
+          <p data-i18n="ref.s2.desc">Your friend starts using ResumeAI</p>
+        </div>
+        <div class="ref-step">
+          <span class="ref-icon">🎁</span>
+          <h4 data-i18n="ref.s3.title">You earn a bonus</h4>
+          <p data-i18n="ref.s3.desc">A free resume is credited to your account</p>
+        </div>
+      </div>
+      <a href="https://t.me/topbestworkerbot" target="_blank"
+         class="btn btn-primary btn-lg" data-i18n="ref.cta">
+        Get your referral link →
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ══ TESTIMONIALS ════════════════════════════════════════════════════════ -->
+<section class="section features-bg" id="testimonials">
+  <div class="container">
+    <div class="section-header animate">
+      <span class="badge" data-i18n="test.badge">Reviews</span>
+      <h2 class="section-title" data-i18n="test.title">What users say</h2>
+      <p class="section-sub" data-i18n="test.sub">Thousands of people have already landed jobs with ResumeAI</p>
+    </div>
+    <div class="testimonials-grid">
+
+      <div class="testimonial-card animate delay-1">
+        <div class="stars">★★★★★</div>
+        <p class="testimonial-text" data-i18n="test.t1.text">
+          "Sent 40 resumes in a month and got only 2 callbacks. After ResumeAI — 5 callbacks out of 12 sent. A massive difference! My resume became concrete and focused. Already started a new job."
+        </p>
+        <div class="testimonial-author">
+          <div class="author-avatar" style="background: linear-gradient(135deg,#7c3aed,#2563eb)">A</div>
+          <div>
+            <div class="author-name" data-i18n="test.t1.name">Anna K.</div>
+            <div class="author-role" data-i18n="test.t1.role">Marketing Manager, Moscow</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testimonial-card animate delay-2">
+        <div class="stars">★★★★★</div>
+        <p class="testimonial-text" data-i18n="test.t2.text">
+          "Was switching from accounting to IT. Had no idea how to reframe my experience. The bot helped me translate my skills into tech language — and 3 weeks later I had an offer from a startup. The STAR interview prep was genuinely useful."
+        </p>
+        <div class="testimonial-author">
+          <div class="author-avatar" style="background: linear-gradient(135deg,#2563eb,#0ea5e9)">D</div>
+          <div>
+            <div class="author-name" data-i18n="test.t2.name">Dmitry S.</div>
+            <div class="author-role" data-i18n="test.t2.role">Junior Data Analyst, Kazan</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testimonial-card animate delay-3">
+        <div class="stars">★★★★★</div>
+        <p class="testimonial-text" data-i18n="test.t3.text">
+          "As a fresh grad with no experience I thought I had no chance. The bot helped me present my academic projects and internships properly. The job analysis feature is brilliant — you can instantly spot red flags. Recommend to every student!"
+        </p>
+        <div class="testimonial-author">
+          <div class="author-avatar" style="background: linear-gradient(135deg,#7c3aed,#ec4899)">M</div>
+          <div>
+            <div class="author-name" data-i18n="test.t3.name">Maria L.</div>
+            <div class="author-role" data-i18n="test.t3.role">Junior Frontend Dev, Almaty</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══ FAQ ════════════════════════════════════════════════════════════════ -->
+<section class="section faq-bg" id="faq">
+  <div class="container">
+    <div class="section-header animate">
+      <span class="badge">FAQ</span>
+      <h2 class="section-title" data-i18n="faq.title">Frequently asked questions</h2>
+    </div>
+    <div class="faq-list">
+
+      <div class="faq-item animate delay-1">
+        <button class="faq-question">
+          <span data-i18n="faq.q1.q">How does the free plan work? Is there a time limit?</span>
+          <span class="faq-arrow">▼</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner" data-i18n="faq.q1.a">
+            The free plan is free forever — no trial period. You get 1 resume, 1 cover letter and 3 AI messages, available immediately after starting the bot. For unlimited usage you'll need a paid plan.
+          </div>
+        </div>
+      </div>
+
+      <div class="faq-item animate delay-2">
+        <button class="faq-question">
+          <span data-i18n="faq.q2.q">How good are the AI-generated resumes? Will they look generic?</span>
+          <span class="faq-arrow">▼</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner" data-i18n="faq.q2.a">
+            Every resume is created for a specific vacancy based on your own data. The AI analyses the job requirements, extracts ATS keywords, and adapts the tone to match the company culture. No "responsible and communicative" filler — just concrete, relevant content.
+          </div>
+        </div>
+      </div>
+
+      <div class="faq-item animate delay-3">
+        <button class="faq-question">
+          <span data-i18n="faq.q3.q">Is my data safe? Who can see my resumes?</span>
+          <span class="faq-arrow">▼</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner" data-i18n="faq.q3.a">
+            Your data is stored securely and never shared with third parties. We use it solely to generate your materials. You can delete your profile at any time from the bot settings.
+          </div>
+        </div>
+      </div>
+
+      <div class="faq-item animate delay-4">
+        <button class="faq-question">
+          <span data-i18n="faq.q4.q">Does the bot work for jobs posted in Russian as well?</span>
+          <span class="faq-arrow">▼</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner" data-i18n="faq.q4.a">
+            Yes! The bot supports both Russian and English job postings. You can paste a vacancy in either language and request a resume in whichever language you prefer. Just specify your preferred language in the prompt.
+          </div>
+        </div>
+      </div>
+
+      <div class="faq-item animate delay-5">
+        <button class="faq-question">
+          <span data-i18n="faq.q5.q">How does the referral programme work? How many resumes can I earn?</span>
+          <span class="faq-arrow">▼</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner" data-i18n="faq.q5.a">
+            For every friend who signs up through your link and starts using the bot, you earn 1 free resume. There's no limit on referrals — the more friends you invite, the more free resumes you accumulate. Find your referral link in the bot menu.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══ CTA BANNER ══════════════════════════════════════════════════════════ -->
+<section class="section cta-banner" id="cta">
+  <div class="container">
+    <div class="animate">
+      <h2 data-i18n-html="cta.title">Ready to land your<br><span class="gradient-text">dream job?</span></h2>
+      <p data-i18n="cta.sub">Start now — first resume is free, no card required</p>
+      <div class="cta-buttons">
+        <a href="https://t.me/topbestworkerbot" target="_blank"
+           class="btn btn-primary btn-lg" data-i18n="cta.btn1">
+          🚀 Open ResumeAI in Telegram
+        </a>
+        <a href="#features" class="btn btn-secondary btn-lg" data-i18n="cta.btn2">Learn more</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ FOOTER ═════════════════════════════════════════════════════════════ -->
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <h3>ResumeAI</h3>
+        <p data-i18n="footer.brand">AI career consultant in Telegram. Helping people find jobs faster and smarter — from the very first application.</p>
+      </div>
+      <div class="footer-col">
+        <h4 data-i18n="footer.col1.title">Bot</h4>
+        <a href="https://t.me/topbestworkerbot" target="_blank">@topbestworkerbot</a>
+        <a href="#features" data-i18n="nav.features">Features</a>
+        <a href="#pricing"  data-i18n="nav.pricing">Pricing</a>
+        <a href="#referral" data-i18n="footer.col1.ref">Referral programme</a>
+      </div>
+      <div class="footer-col">
+        <h4 data-i18n="footer.col2.title">Company</h4>
+        <a href="#" data-i18n="footer.col2.privacy">Privacy policy</a>
+        <a href="#" data-i18n="footer.col2.terms">Terms of service</a>
+        <a href="#" data-i18n="footer.col2.contact">Contact</a>
+        <a href="https://t.me/topbestworkerbot" target="_blank" data-i18n="footer.col2.support">Support</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span data-i18n="footer.copy">© 2025 ResumeAI. All rights reserved.</span>
+      <span data-i18n="footer.made">Made with ❤️ for job seekers worldwide</span>
+    </div>
+  </div>
+</footer>
+
+<!-- ══ JAVASCRIPT ═══════════════════════════════════════════════════════════ -->
+<script>
+// ── Translations ────────────────────────────────────────────────────────
+const T = {
+  en: {
+    'nav.how': 'How it works',
+    'nav.features': 'Features',
+    'nav.pricing': 'Pricing',
+    'nav.faq': 'FAQ',
+    'nav.cta': 'Start for free →',
+    'hero.badge': '⚡ AI career consultant in Telegram',
+    'hero.h1': 'Resume tailored to any job<br><span class="gradient-text">in 30 seconds.</span><br>No clichés. Just AI.',
+    'hero.sub': 'Your personal AI career consultant in Telegram. Land more interviews with every application.',
+    'hero.cta1': '🚀 Try for free',
+    'hero.cta2': 'See how it works ↓',
+    'hero.trust1': '10 000+ users',
+    'hero.trust2': '30 sec per resume',
+    'hero.trust3': '24/7 support',
+    'chat.status': '● online',
+    'chat.user': 'Here\'s a Python dev job at Google',
+    'chat.bot1': '📄 Analysing vacancy...<br>✅ ATS keywords found<br>✅ Adapting to company<br>✅ Removing clichés',
+    'chat.bot2': '🎉 Resume ready! Optimised<br>for <b>Google</b>, ATS-score: 94%',
+    'how.badge': 'How it works',
+    'how.title': 'Three steps to a perfect resume',
+    'how.sub': 'No sign-ups or complex forms — everything right inside Telegram',
+    'how.s1.title': 'Paste the job posting',
+    'how.s1.desc': 'Copy any job listing from LinkedIn, Indeed, Glassdoor or any other site',
+    'how.s2.title': 'AI analyses it',
+    'how.s2.desc': 'The model reads requirements, extracts ATS keywords, and adapts to company culture',
+    'how.s3.title': 'Get your resume',
+    'how.s3.desc': 'In 30 seconds you receive a polished resume — no clichés, no filler, just results',
+    'feat.badge': 'Features',
+    'feat.title': 'Everything you need to advance your career',
+    'feat.sub': 'One bot replaces a career consultant, HR specialist, and coach',
+    'feat.f1.title': 'Resume tailored to the job',
+    'feat.f1.desc': 'AI builds your resume specifically for each vacancy — with the right ATS keywords, no filler or buzzwords',
+    'feat.f2.title': 'Cover letter',
+    'feat.f2.desc': 'A personalised letter that makes you stand out from hundreds of applicants. AI adapts it to the company\'s values',
+    'feat.f3.title': 'Interview preparation',
+    'feat.f3.desc': 'Real interview simulation using the STAR method. Get a breakdown of your answers with specific improvement tips',
+    'feat.f4.title': 'Job posting analysis',
+    'feat.f4.desc': 'Find out the real salary range, spot red flags, and understand hidden requirements before you apply',
+    'feat.f5.title': 'Remembers your profile',
+    'feat.f5.desc': 'Save your experience and skills once — the next resume or letter is created in one click, no re-entry needed',
+    'feat.f6.title': 'Weekly career digest',
+    'feat.f6.desc': 'Every Monday receive personalised career growth tips relevant to your field and experience level',
+    'price.badge': 'Pricing',
+    'price.title': 'Start free, grow further',
+    'price.sub': 'No hidden fees. Cancel anytime',
+    'price.popular': '🔥 Most popular',
+    'price.mo': ' / mo',
+    'price.p1.name': 'Free',
+    'price.p1.desc': 'Try all features, no card needed',
+    'price.p1.li1': '1 tailored resume',
+    'price.p1.li2': '1 cover letter',
+    'price.p1.li3': '3 AI messages',
+    'price.p1.li4': 'Profile saving',
+    'price.p1.li5': 'Unlimited resumes',
+    'price.p1.li6': 'Weekly digest',
+    'price.p1.btn': 'Start for free',
+    'price.p2.name': 'Pro',
+    'price.p2.desc': 'For serious job seekers',
+    'price.p2.li1': 'Unlimited resumes',
+    'price.p2.li2': 'Unlimited cover letters',
+    'price.p2.li3': 'Unlimited AI messages',
+    'price.p2.li4': 'Interview preparation',
+    'price.p2.li5': 'Job analysis',
+    'price.p2.li6': 'Weekly career digest',
+    'price.p2.btn': 'Choose Pro',
+    'price.p3.name': 'Premium',
+    'price.p3.desc': 'All of Pro + expert review',
+    'price.p3.li1': 'Everything in Pro',
+    'price.p3.li2': 'HR expert resume review',
+    'price.p3.li3': 'Priority support',
+    'price.p3.li4': 'Personal career advice',
+    'price.p3.li5': 'Referral bonuses',
+    'price.p3.li6': 'Early access to new features',
+    'price.p3.btn': 'Choose Premium',
+    'ref.title': 'Invite friends — get free resumes 🎁',
+    'ref.sub': 'Share your referral link with friends who are job hunting. For every person you invite you earn a free resume — unlimited.',
+    'ref.s1.title': 'Share your link',
+    'ref.s1.desc': 'Get your personal referral link inside the bot',
+    'ref.s2.title': 'Friend signs up',
+    'ref.s2.desc': 'Your friend starts using ResumeAI',
+    'ref.s3.title': 'You earn a bonus',
+    'ref.s3.desc': 'A free resume is credited to your account',
+    'ref.cta': 'Get your referral link →',
+    'test.badge': 'Reviews',
+    'test.title': 'What users say',
+    'test.sub': 'Thousands of people have already landed jobs with ResumeAI',
+    'test.t1.text': '"Sent 40 resumes in a month and got only 2 callbacks. After ResumeAI — 5 callbacks out of 12 sent. A massive difference! My resume became concrete and focused. Already started a new job."',
+    'test.t1.name': 'Anna K.',
+    'test.t1.role': 'Marketing Manager, Moscow',
+    'test.t2.text': '"Was switching from accounting to IT. Had no idea how to reframe my experience. The bot helped me translate my skills into tech language — and 3 weeks later I had an offer from a startup. The STAR interview prep was genuinely useful."',
+    'test.t2.name': 'Dmitry S.',
+    'test.t2.role': 'Junior Data Analyst, Kazan',
+    'test.t3.text': '"As a fresh grad with no experience I thought I had no chance. The bot helped me present my academic projects and internships properly. The job analysis feature is brilliant — you can instantly spot red flags. Recommend to every student!"',
+    'test.t3.name': 'Maria L.',
+    'test.t3.role': 'Junior Frontend Dev, Almaty',
+    'faq.title': 'Frequently asked questions',
+    'faq.q1.q': 'How does the free plan work? Is there a time limit?',
+    'faq.q1.a': 'The free plan is free forever — no trial period. You get 1 resume, 1 cover letter and 3 AI messages, available immediately after starting the bot. For unlimited usage you\'ll need a paid plan.',
+    'faq.q2.q': 'How good are the AI-generated resumes? Will they look generic?',
+    'faq.q2.a': 'Every resume is created for a specific vacancy based on your own data. The AI analyses the job requirements, extracts ATS keywords, and adapts the tone to match the company culture. No buzzword filler — just concrete, relevant content.',
+    'faq.q3.q': 'Is my data safe? Who can see my resumes?',
+    'faq.q3.a': 'Your data is stored securely and never shared with third parties. We use it solely to generate your materials. You can delete your profile at any time from the bot settings.',
+    'faq.q4.q': 'Does the bot work for jobs posted in Russian as well?',
+    'faq.q4.a': 'Yes! The bot supports both Russian and English job postings. You can paste a vacancy in either language and request a resume in whichever language you prefer. Just specify your preferred language in the prompt.',
+    'faq.q5.q': 'How does the referral programme work? How many resumes can I earn?',
+    'faq.q5.a': 'For every friend who signs up through your link and starts using the bot, you earn 1 free resume. There\'s no limit on referrals — the more friends you invite, the more free resumes you accumulate. Find your referral link in the bot menu.',
+    'cta.title': 'Ready to land your<br><span class="gradient-text">dream job?</span>',
+    'cta.sub': 'Start now — first resume is free, no card required',
+    'cta.btn1': '🚀 Open ResumeAI in Telegram',
+    'cta.btn2': 'Learn more',
+    'footer.brand': 'AI career consultant in Telegram. Helping people find jobs faster and smarter — from the very first application.',
+    'footer.col1.title': 'Bot',
+    'footer.col1.ref': 'Referral programme',
+    'footer.col2.title': 'Company',
+    'footer.col2.privacy': 'Privacy policy',
+    'footer.col2.terms': 'Terms of service',
+    'footer.col2.contact': 'Contact',
+    'footer.col2.support': 'Support',
+    'footer.copy': '© 2025 ResumeAI. All rights reserved.',
+    'footer.made': 'Made with ❤️ for job seekers worldwide',
+  },
+  ru: {
+    'nav.how': 'Как работает',
+    'nav.features': 'Функции',
+    'nav.pricing': 'Цены',
+    'nav.faq': 'FAQ',
+    'nav.cta': 'Начать бесплатно →',
+    'hero.badge': '⚡ AI-карьерный консультант в Telegram',
+    'hero.h1': 'Резюме под вакансию<br><span class="gradient-text">за 30 секунд.</span><br>Без клише. С AI.',
+    'hero.sub': 'Твой личный AI-карьерный консультант в Telegram. Шансы найти работу — выше с каждым резюме.',
+    'hero.cta1': '🚀 Попробовать бесплатно',
+    'hero.cta2': 'Смотреть как работает ↓',
+    'hero.trust1': '10 000+ пользователей',
+    'hero.trust2': '30 сек на резюме',
+    'hero.trust3': '24/7 поддержка',
+    'chat.status': '● онлайн',
+    'chat.user': 'Вот вакансия Python-разработчика в Яндекс',
+    'chat.bot1': '📄 Анализирую вакансию...<br>✅ ATS-ключи найдены<br>✅ Адаптирую под компанию<br>✅ Убираю клише',
+    'chat.bot2': '🎉 Резюме готово! Оптимизировано<br>под <b>Яндекс</b>, ATS-score: 94%',
+    'how.badge': 'Как это работает',
+    'how.title': 'Три шага до идеального резюме',
+    'how.sub': 'Никаких регистраций и сложных форм — всё прямо в Telegram',
+    'how.s1.title': 'Вставь вакансию',
+    'how.s1.desc': 'Скопируй текст любой вакансии — с HeadHunter, LinkedIn, SuperJob или других сайтов',
+    'how.s2.title': 'AI анализирует',
+    'how.s2.desc': 'Модель изучает требования, выделяет ATS-ключи, адаптирует под культуру компании',
+    'how.s3.title': 'Получи резюме',
+    'how.s3.desc': 'За 30 секунд получаешь готовое резюме — без клише и воды',
+    'feat.badge': 'Возможности',
+    'feat.title': 'Всё что нужно для карьерного роста',
+    'feat.sub': 'Один бот заменяет карьерного консультанта, HR-специалиста и коуча',
+    'feat.f1.title': 'Резюме под вакансию',
+    'feat.f1.desc': 'AI создаёт резюме специально под конкретную вакансию — с нужными ключевыми словами для ATS-систем, без штампов и воды',
+    'feat.f2.title': 'Сопроводительное письмо',
+    'feat.f2.desc': 'Персонализированное письмо, которое выделяет тебя среди сотен кандидатов. AI адаптирует его под ценности компании',
+    'feat.f3.title': 'Подготовка к собеседованию',
+    'feat.f3.desc': 'Симуляция реального интервью по методу STAR. Получи разбор своих ответов и конкретные рекомендации',
+    'feat.f4.title': 'Анализ вакансии',
+    'feat.f4.desc': 'Узнай реальную зарплатную вилку, выяви красные флаги работодателя и пойми скрытые требования до отклика',
+    'feat.f5.title': 'Запоминает твой профиль',
+    'feat.f5.desc': 'Сохрани опыт и навыки один раз — следующее резюме или письмо создаётся в один клик',
+    'feat.f6.title': 'Карьерный дайджест',
+    'feat.f6.desc': 'Каждый понедельник получай персонализированные советы по развитию карьеры для твоей специальности',
+    'price.badge': 'Тарифы',
+    'price.title': 'Начни бесплатно, расти дальше',
+    'price.sub': 'Никаких скрытых платежей. Отмена в любой момент',
+    'price.popular': '🔥 Популярный',
+    'price.mo': ' / мес',
+    'price.p1.name': 'Бесплатно',
+    'price.p1.desc': 'Попробуй все функции без карты',
+    'price.p1.li1': '1 резюме под вакансию',
+    'price.p1.li2': '1 сопроводительное письмо',
+    'price.p1.li3': '3 AI-сообщения',
+    'price.p1.li4': 'Сохранение профиля',
+    'price.p1.li5': 'Безлимитные резюме',
+    'price.p1.li6': 'Еженедельный дайджест',
+    'price.p1.btn': 'Начать бесплатно',
+    'price.p2.name': 'Про',
+    'price.p2.desc': 'Для серьёзного поиска работы',
+    'price.p2.li1': 'Безлимитные резюме',
+    'price.p2.li2': 'Безлимитные письма',
+    'price.p2.li3': 'Безлимитные AI-сообщения',
+    'price.p2.li4': 'Подготовка к собеседованиям',
+    'price.p2.li5': 'Анализ вакансий',
+    'price.p2.li6': 'Еженедельный дайджест',
+    'price.p2.btn': 'Выбрать Про',
+    'price.p3.name': 'Премиум',
+    'price.p3.desc': 'Всё из Про + экспертный разбор',
+    'price.p3.li1': 'Всё из тарифа Про',
+    'price.p3.li2': 'Разбор резюме HR-экспертом',
+    'price.p3.li3': 'Приоритетная поддержка',
+    'price.p3.li4': 'Персональные карьерные советы',
+    'price.p3.li5': 'Реферальные бонусы',
+    'price.p3.li6': 'Ранний доступ к новым функциям',
+    'price.p3.btn': 'Выбрать Премиум',
+    'ref.title': 'Приглашай друзей — получай бесплатные резюме 🎁',
+    'ref.sub': 'Поделись своей реферальной ссылкой с друзьями, которые ищут работу. За каждого приглашённого ты получаешь бесплатное резюме — без ограничений.',
+    'ref.s1.title': 'Поделись ссылкой',
+    'ref.s1.desc': 'Получи персональную реферальную ссылку в боте',
+    'ref.s2.title': 'Друг регистрируется',
+    'ref.s2.desc': 'Твой друг начинает использовать РезюмеАИ',
+    'ref.s3.title': 'Ты получаешь бонус',
+    'ref.s3.desc': 'На твой счёт начисляется бесплатное резюме',
+    'ref.cta': 'Получить реферальную ссылку →',
+    'test.badge': 'Отзывы',
+    'test.title': 'Что говорят пользователи',
+    'test.sub': 'Тысячи людей уже нашли работу с РезюмеАИ',
+    'test.t1.text': '«Отправила 40 резюме за месяц и получила только 2 отклика. После РезюмеАИ — 5 откликов из 12 отправленных. Разница огромная! Резюме стало конкретным, без воды. Уже вышла на новое место.»',
+    'test.t1.name': 'Анна К.',
+    'test.t1.role': 'Маркетолог, Москва',
+    'test.t2.text': '«Менял сферу с бухгалтерии в IT. Не знал как переписать опыт. Бот помог перевести мои навыки в IT-язык — и уже через 3 недели получил оффер от стартапа. Ещё и к собеседованию готовил по методу STAR — реально помогло.»',
+    'test.t2.name': 'Дмитрий С.',
+    'test.t2.role': 'Junior Data Analyst, Казань',
+    'test.t3.text': '«Как выпускник без опыта думала, что шансов нет. Бот помог правильно подать учебные проекты и стажировки. Функция анализа вакансий — огонь, сразу видно кто нормальный работодатель. Рекомендую всем студентам!»',
+    'test.t3.name': 'Мария Л.',
+    'test.t3.role': 'Junior Frontend, Алматы',
+    'faq.title': 'Часто задаваемые вопросы',
+    'faq.q1.q': 'Как работает бесплатный тариф? Есть ли ограничения по времени?',
+    'faq.q1.a': 'Бесплатный тариф — навсегда бесплатный, без пробного периода. Ты получаешь 1 резюме, 1 сопроводительное письмо и 3 AI-сообщения сразу после первого запуска бота. Для неограниченного использования нужен платный тариф.',
+    'faq.q2.q': 'Насколько качественные резюме создаёт AI? Не будет ли оно шаблонным?',
+    'faq.q2.a': 'Каждое резюме создаётся под конкретную вакансию на основе твоих данных. AI анализирует требования, выделяет ключевые слова для ATS-систем и адаптирует текст под культуру компании. Никаких «ответственный» и «коммуникабельный» — только конкретика.',
+    'faq.q3.q': 'Мои данные в безопасности? Кто видит мои резюме?',
+    'faq.q3.a': 'Твои данные хранятся в зашифрованном виде и не передаются третьим лицам. Мы используем их исключительно для генерации твоих материалов. Ты можешь удалить свой профиль в любой момент через настройки бота.',
+    'faq.q4.q': 'Работает ли бот для вакансий на английском языке?',
+    'faq.q4.a': 'Да! Бот поддерживает русские и английские вакансии. Можно вставить вакансию на английском и получить резюме на нужном тебе языке — как на русском, так и на английском. Просто укажи предпочтительный язык в запросе.',
+    'faq.q5.q': 'Как работает реферальная программа? Сколько резюме можно получить?',
+    'faq.q5.a': 'За каждого друга, который зарегистрировался по твоей ссылке и начал использовать бот, ты получаешь 1 бесплатное резюме. Количество рефералов не ограничено. Реферальную ссылку можно найти в меню бота.',
+    'cta.title': 'Готов получить работу<br><span class="gradient-text">своей мечты?</span>',
+    'cta.sub': 'Начни прямо сейчас — первое резюме бесплатно, без карты',
+    'cta.btn1': '🚀 Открыть РезюмеАИ в Telegram',
+    'cta.btn2': 'Узнать больше',
+    'footer.brand': 'AI-карьерный консультант в Telegram. Помогаем находить работу быстрее и умнее — с первого отклика.',
+    'footer.col1.title': 'Бот',
+    'footer.col1.ref': 'Реферальная программа',
+    'footer.col2.title': 'Компания',
+    'footer.col2.privacy': 'Политика конфиденциальности',
+    'footer.col2.terms': 'Пользовательское соглашение',
+    'footer.col2.contact': 'Контакт',
+    'footer.col2.support': 'Поддержка',
+    'footer.copy': '© 2025 РезюмеАИ. Все права защищены.',
+    'footer.made': 'Сделано с ❤️ для русскоязычных соискателей',
+  }
+};
+
+// ── Apply language ──────────────────────────────────────────────────────
+function setLang(lang) {
+  const dict = T[lang];
+  if (!dict) return;
+
+  // Plain text nodes
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (dict[key] !== undefined) el.textContent = dict[key];
+  });
+
+  // HTML nodes (contain <br>, <b>, <span class="gradient-text"> etc.)
+  document.querySelectorAll('[data-i18n-html]').forEach(el => {
+    const key = el.getAttribute('data-i18n-html');
+    if (dict[key] !== undefined) el.innerHTML = dict[key];
+  });
+
+  // HTML root lang attribute
+  document.getElementById('html-root').setAttribute('lang', lang);
+
+  // Toggle buttons
+  document.getElementById('btn-ru').classList.toggle('active', lang === 'ru');
+  document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+
+  // Persist
+  try { localStorage.setItem('rai_lang', lang); } catch(e) {}
+}
+
+// ── Auto-detect language on load ───────────────────────────────────────
+(function init() {
+  let lang = 'en';
+  try { lang = localStorage.getItem('rai_lang') || lang; } catch(e) {}
+  // Browser locale fallback: if saved nothing yet, prefer Russian for ru/uk/be
+  if (!localStorage.getItem('rai_lang')) {
+    const nav = (navigator.language || navigator.userLanguage || '').toLowerCase();
+    if (nav.startsWith('ru') || nav.startsWith('uk') || nav.startsWith('be')) lang = 'ru';
+  }
+  setLang(lang);
+})();
+
+// ── Navbar scroll effect ────────────────────────────────────────────────
+const navbar = document.getElementById('navbar');
+window.addEventListener('scroll', () => {
+  navbar.classList.toggle('scrolled', window.scrollY > 40);
+}, { passive: true });
+
+// ── Hamburger menu ──────────────────────────────────────────────────────
+const hamburger = document.getElementById('hamburger');
+const navMenu   = document.getElementById('nav-menu');
+hamburger.addEventListener('click', () => {
+  hamburger.classList.toggle('active');
+  navMenu.classList.toggle('open');
+});
+navMenu.querySelectorAll('a').forEach(link => {
+  link.addEventListener('click', () => {
+    hamburger.classList.remove('active');
+    navMenu.classList.remove('open');
+  });
+});
+
+// ── Scroll animations (Intersection Observer) ───────────────────────────
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+      observer.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+document.querySelectorAll('.animate').forEach(el => observer.observe(el));
+
+// ── FAQ accordion ───────────────────────────────────────────────────────
+document.querySelectorAll('.faq-question').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const item   = btn.parentElement;
+    const isOpen = item.classList.contains('open');
+    document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+    if (!isOpen) item.classList.add('open');
+  });
+});
+
+// ── Smooth scroll for anchor links ─────────────────────────────────────
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+  anchor.addEventListener('click', e => {
+    const target = document.querySelector(anchor.getAttribute('href'));
+    if (!target) return;
+    e.preventDefault();
+    const top = target.getBoundingClientRect().top + window.pageYOffset - 80;
+    window.scrollTo({ top, behavior: 'smooth' });
+  });
+});
+</script>
+
+</body>
+</html>
