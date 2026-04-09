@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "landing",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "5555", "--bind", "0.0.0.0", "--directory", "landing"],
+      "port": 5555
+    }
+  ]
+}

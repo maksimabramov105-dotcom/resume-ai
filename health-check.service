@@ -1,0 +1,11 @@
+[Unit]
+Description=AutoApply Health Check
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/opt/resumeaibot
+EnvironmentFile=-/opt/resumeaibot/.env
+ExecStart=/opt/resumeaibot/.venv/bin/python3 /opt/resumeaibot/health_check.py
+StandardOutput=append:/opt/resumeaibot/logs/health.log
+StandardError=append:/opt/resumeaibot/logs/health.log

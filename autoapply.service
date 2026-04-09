@@ -1,0 +1,16 @@
+[Unit]
+Description=АвтоОтклик Web Service (AutoApply)
+After=network.target resumeaibot.service
+
+[Service]
+User=root
+WorkingDirectory=/opt/resumeaibot
+EnvironmentFile=-/opt/resumeaibot/.env
+ExecStart=/opt/resumeaibot/.venv/bin/python3 -m uvicorn autoapply.autoapply_main:app --host 0.0.0.0 --port 8080 --workers 2
+Restart=always
+RestartSec=5
+StandardOutput=append:/opt/resumeaibot/logs/autoapply.log
+StandardError=append:/opt/resumeaibot/logs/autoapply.log
+
+[Install]
+WantedBy=multi-user.target

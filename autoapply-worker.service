@@ -1,0 +1,16 @@
+[Unit]
+Description=АвтоОтклик Background Worker
+After=network.target autoapply.service
+
+[Service]
+User=root
+WorkingDirectory=/opt/resumeaibot
+EnvironmentFile=-/opt/resumeaibot/.env
+ExecStart=/opt/resumeaibot/.venv/bin/python3 -m autoapply.worker
+Restart=always
+RestartSec=10
+StandardOutput=append:/opt/resumeaibot/logs/worker.log
+StandardError=append:/opt/resumeaibot/logs/worker.log
+
+[Install]
+WantedBy=multi-user.target
