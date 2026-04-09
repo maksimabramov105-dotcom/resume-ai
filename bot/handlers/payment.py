@@ -123,6 +123,16 @@ async def check_crypto(callback: CallbackQuery):
             pkg = PRICING[package_key]
             await apply_package_credits(callback.from_user.id, package_key)
             await update_payment_status(invoice_id, "succeeded")
+            # Track crypto payment for analytics (never raises)
+            try:
+                import sys, os as _os
+                _ROOT = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+                if _ROOT not in sys.path:
+                    sys.path.insert(0, _ROOT)
+                from analytics_tracker import track_payment, DB_PATH as _ADB
+                await track_payment(callback.from_user.id, pkg["price_rub"], "crypto", _ADB)
+            except Exception:
+                pass
             await callback.message.edit_text(
                 PAYMENT_SUCCESS.format(name=pkg["name"]),
                 reply_markup=main_menu_kb(),
@@ -270,6 +280,17 @@ async def got_receipt(message: Message, state: FSMContext, bot: Bot):
             from services.payment_service import apply_package_credits
             await apply_package_credits(message.from_user.id, package_key)
             await update_payment_status_by_id(payment_db_id, "succeeded")
+            # Track manual payment for analytics (never raises)
+            try:
+                import sys, os as _os
+                _ROOT = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+                if _ROOT not in sys.path:
+                    sys.path.insert(0, _ROOT)
+                from analytics_tracker import track_payment, DB_PATH as _ADB
+                _method = "revolut" if payment_method == "revolut" else "card"
+                await track_payment(message.from_user.id, pkg.get("price_rub", 0), _method, _ADB)
+            except Exception:
+                pass
 
             await checking_msg.delete()
             await message.answer(
@@ -362,6 +383,17 @@ async def admin_approve(callback: CallbackQuery, bot: Bot):
         from services.payment_service import apply_package_credits
         await apply_package_credits(telegram_id, package_key)
         await update_payment_status_by_id(payment_db_id, "succeeded")
+        # Track admin-approved payment for analytics (never raises)
+        try:
+            import sys, os as _os
+            _ROOT = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+            if _ROOT not in sys.path:
+                sys.path.insert(0, _ROOT)
+            from analytics_tracker import track_payment, DB_PATH as _ADB
+            _pkg_info = PRICING.get(package_key, {"price_rub": 0})
+            await track_payment(telegram_id, _pkg_info.get("price_rub", 0), "card", _ADB)
+        except Exception:
+            pass
 
         pkg = PRICING.get(package_key, {"name": package_key})
 

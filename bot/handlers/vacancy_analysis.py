@@ -30,6 +30,17 @@ async def got_vacancy(message: Message, state: FSMContext):
 
     analysis_text, tokens = await analyze_vacancy(vacancy)
 
+    # Track feature usage for analytics (never raises)
+    try:
+        import sys, os as _os
+        _ROOT = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+        if _ROOT not in sys.path:
+            sys.path.insert(0, _ROOT)
+        from analytics_tracker import track_feature, DB_PATH as _ADB
+        await track_feature(message.from_user.id, "vacancy_analysis", _ADB)
+    except Exception:
+        pass
+
     await log_generation(message.from_user.id, "analysis", vacancy, analysis_text, tokens)
 
     text_preview = analysis_text[:3800] if len(analysis_text) > 3800 else analysis_text

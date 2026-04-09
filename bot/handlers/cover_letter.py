@@ -49,6 +49,17 @@ async def got_vacancy(message: Message, state: FSMContext):
 
     letter_text, tokens = await generate_cover_letter(vacancy, candidate_summary)
 
+    # Track feature usage for analytics (never raises)
+    try:
+        import sys, os as _os
+        _ROOT = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+        if _ROOT not in sys.path:
+            sys.path.insert(0, _ROOT)
+        from analytics_tracker import track_feature, DB_PATH as _ADB
+        await track_feature(message.from_user.id, "cover_letter", _ADB)
+    except Exception:
+        pass
+
     user.credits_cover_letter -= 1
     await save_user(user)
 

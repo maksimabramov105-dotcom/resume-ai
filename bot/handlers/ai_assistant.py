@@ -65,6 +65,17 @@ async def handle_assistant_message(message: Message, state: FSMContext):
         max_tokens=800,
     )
 
+    # Track feature usage for analytics (never raises)
+    try:
+        import sys, os as _os
+        _ROOT = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+        if _ROOT not in sys.path:
+            sys.path.insert(0, _ROOT)
+        from analytics_tracker import track_feature, DB_PATH as _ADB
+        await track_feature(message.from_user.id, "ai_message", _ADB)
+    except Exception:
+        pass
+
     # Save to conversation history
     await save_conversation(message.from_user.id, "user", message.text, 0)
     await save_conversation(message.from_user.id, "assistant", response, tokens)

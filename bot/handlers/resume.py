@@ -104,6 +104,17 @@ async def _generate_and_send(message: Message, state: FSMContext, user):
         skills=data.get("skills", ""),
     )
 
+    # Track feature usage for analytics (never raises)
+    try:
+        import sys, os as _os
+        _ROOT = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+        if _ROOT not in sys.path:
+            sys.path.insert(0, _ROOT)
+        from analytics_tracker import track_feature, DB_PATH as _ADB
+        await track_feature(message.from_user.id, "resume", _ADB)
+    except Exception:
+        pass
+
     # Deduct credit
     user.credits_resume -= 1
     user.total_resumes_generated += 1

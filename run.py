@@ -30,6 +30,11 @@ from database.db import init_db
 from handlers import start, resume, cover_letter, interview, vacancy_analysis, ai_assistant, payment, profile, support
 from utils.texts import BOT_DESCRIPTION, BOT_SHORT_DESCRIPTION
 
+# Analytics system — project root is already in sys.path
+from analytics_startup import startup_analytics
+from daily_reporter import send_daily_report, send_weekly_summary, ADMIN_CHAT_ID
+from analytics_db import DB_PATH
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -45,6 +50,9 @@ async def run_bot() -> None:
         token=BOT_TOKEN,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
+
+    # Initialise analytics tables (safe no-op if they already exist)
+    await startup_analytics(bot=bot, admin_chat_id=ADMIN_CHAT_ID)
 
     # Set description visible before /start and in "About" section
     try:
@@ -76,6 +84,20 @@ async def run_bot() -> None:
         CronTrigger(day_of_week='mon', hour=7, minute=0),
         args=[bot],
         id='weekly_digest',
+        replace_existing=True,
+    )
+    # Daily analytics report — every day at 08:00 Moscow (05:00 UTC)
+    scheduler.add_job(
+        lambda: asyncio.create_task(send_daily_report(bot, ADMIN_CHAT_ID, DB_PATH)),
+        CronTrigger(hour=5, minute=0),
+        id='daily_report',
+        replace_existing=True,
+    )
+    # Weekly analytics summary — Monday 07:05 UTC (right after existing digest at 07:00)
+    scheduler.add_job(
+        lambda: asyncio.create_task(send_weekly_summary(bot, ADMIN_CHAT_ID, DB_PATH)),
+        CronTrigger(day_of_week='mon', hour=7, minute=5),
+        id='weekly_summary',
         replace_existing=True,
     )
     scheduler.start()

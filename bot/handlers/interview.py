@@ -101,6 +101,18 @@ async def finish_interview_handler(callback: CallbackQuery, state: FSMContext):
 
     try:
         final_text, tokens = await finish_interview(vacancy, candidate_summary, history)
+
+        # Track feature usage for analytics (never raises)
+        try:
+            import sys, os as _os
+            _ROOT = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+            if _ROOT not in sys.path:
+                sys.path.insert(0, _ROOT)
+            from analytics_tracker import track_feature, DB_PATH as _ADB
+            await track_feature(callback.from_user.id, "interview", _ADB)
+        except Exception:
+            pass
+
     except Exception as e:
         await state.clear()
         await callback.message.answer(

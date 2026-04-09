@@ -7,6 +7,14 @@ from services.user_service import add_referral_bonus
 from utils.keyboards import main_menu_kb
 from utils.texts import START_MESSAGE
 
+# Analytics tracker — imported here to avoid circular imports at module level
+# track_start is wrapped in try/except inside analytics_tracker so it never crashes
+import sys, os as _os
+_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))  # project root
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+from analytics_tracker import track_start, DB_PATH as _ANALYTICS_DB_PATH
+
 router = Router()
 
 
@@ -35,6 +43,9 @@ async def cmd_start(message: Message):
                 user.referred_by = referrer.telegram_id
                 await save_user(user)
                 await add_referral_bonus(referrer)
+
+    # Track join source for analytics (never raises)
+    await track_start(user.telegram_id, args, _ANALYTICS_DB_PATH)
 
     await message.answer(START_MESSAGE, reply_markup=main_menu_kb())
 
