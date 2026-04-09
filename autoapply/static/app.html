@@ -988,26 +988,36 @@
 
   // ===== DASHBOARD =====
   async function loadDashboard() {
-    const data = await api('/dashboard');
-    if (!data) return;
+    // /api/dashboard returns stats only; campaigns and applications are separate endpoints
+    const [stats, campaignsData, appsData] = await Promise.all([
+      api('/dashboard'),
+      api('/campaigns'),
+      api('/applications?page=1&per_page=10'),
+    ]);
 
-    // Stats
-    document.getElementById('stat-today').textContent = data.applications_today ?? 0;
-    document.getElementById('stat-total').textContent = data.applications_total ?? 0;
-    document.getElementById('stat-responses').textContent = data.responses_received ?? 0;
-    document.getElementById('stat-interviews').textContent = data.interviews_scheduled ?? 0;
+    if (stats) {
+      document.getElementById('stat-today').textContent = stats.applications_today ?? 0;
+      document.getElementById('stat-total').textContent = stats.applications_total ?? 0;
+      document.getElementById('stat-responses').textContent = stats.responses_received ?? 0;
+      // Count interviews from by_status if available
+      const interviews = stats.by_status?.interview ?? stats.interviews_scheduled ?? 0;
+      document.getElementById('stat-interviews').textContent = interviews;
 
-    // Update plan badge
-    if (data.plan) {
-      currentPlan = data.plan;
-      updatePlanBadge(data.plan);
+      if (stats.plan) {
+        currentPlan = stats.plan;
+        updatePlanBadge(stats.plan);
+      }
     }
 
-    // Campaigns
-    renderCampaigns(data.campaigns || []);
+    // Campaigns (API returns array directly or {campaigns: [...]})
+    const campaigns = Array.isArray(campaignsData) ? campaignsData
+      : (campaignsData?.campaigns || []);
+    appData.campaigns = campaigns;
+    renderCampaigns(campaigns);
 
     // Recent applications
-    renderRecentApps(data.recent_applications || []);
+    const apps = appsData?.items || appsData?.applications || [];
+    renderRecentApps(apps);
   }
 
   function updatePlanBadge(plan) {
@@ -1060,22 +1070,25 @@
     }
     tbody.innerHTML = apps.slice(0, 10).map(a => `
       <tr>
-        <td>${esc(a.company || '—')}</td>
-        <td>${esc(a.job_title || '—')}</td>
+        <td>${esc(a.company_name || a.company || '—')}</td>
+        <td>${esc(a.vacancy_title || a.job_title || '—')}</td>
         <td>${platformIcon(a.platform)}</td>
         <td>${statusBadge(a.status)}</td>
-        <td style="color:var(--text-muted);font-size:0.82rem;">${formatDate(a.date)}</td>
+        <td style="color:var(--text-muted);font-size:0.82rem;">${formatDate(a.sent_at || a.date)}</td>
       </tr>`).join('');
   }
 
   async function toggleCampaign(id, currentStatus) {
-    const newStatus = currentStatus === 'active' ? 'paused' : 'active';
-    const data = await api(`/campaign/${id}/toggle`, 'POST', { status: newStatus });
-    if (data && data.success) {
-      showToast(newStatus === 'active' ? 'Кампания возобновлена' : 'Кампания приостановлена', 'success');
+    // API has separate pause/resume_campaign endpoints (no generic /toggle)
+    const endpoint = currentStatus === 'active'
+      ? `/campaign/${id}/pause`
+      : `/campaign/${id}/resume_campaign`;
+    const data = await api(endpoint, 'POST');
+    if (data && (data.status || data.campaign_id)) {
+      showToast(currentStatus === 'active' ? 'Кампания приостановлена' : 'Кампания возобновлена', 'success');
       loadDashboard();
     } else {
-      showToast('Ошибка обновления кампании', 'error');
+      showToast(data?.detail || 'Ошибка обновления кампании', 'error');
     }
   }
 
@@ -1117,23 +1130,25 @@
     const title = document.getElementById('camp-title').value.trim();
     const city = document.getElementById('camp-city').value.trim();
     if (!title) { showToast('Введите название должности', 'error'); return; }
+    // Build platforms as array (API expects List[str])
+    const platformsArr = [];
+    if (document.getElementById('plat-hh').checked) platformsArr.push('hh');
+    if (document.getElementById('plat-sj').checked) platformsArr.push('superjob');
+    if (document.getElementById('plat-li').checked) platformsArr.push('linkedin');
+    if (!platformsArr.length) platformsArr.push('hh');  // always need at least one
     const body = {
       job_title: title,
       location: city,
-      salary_min: document.getElementById('camp-salary').value || null,
+      salary_min: parseInt(document.getElementById('camp-salary').value) || 0,
       experience: document.getElementById('camp-exp').value,
-      platforms: {
-        hh: document.getElementById('plat-hh').checked,
-        superjob: document.getElementById('plat-sj').checked,
-        linkedin: document.getElementById('plat-li').checked,
-      }
+      platforms: platformsArr,
     };
     const data = await api('/campaign/create', 'POST', body);
-    if (data && (data.success || data.id)) {
+    if (data && (data.success || data.campaign_id)) {
       showToast('Кампания запущена! 🚀', 'success');
       navigate('#dashboard');
     } else {
-      showToast(data?.error || 'Ошибка создания кампании', 'error');
+      showToast(data?.detail || data?.error || 'Ошибка создания кампании', 'error');
     }
   }
 
@@ -1202,12 +1217,12 @@
     tbody.innerHTML = apps.map((a, i) => `
       <tr>
         <td style="color:var(--text-muted);">${(currentPage - 1) * 20 + i + 1}</td>
-        <td style="font-weight:500;">${esc(a.company || '—')}</td>
-        <td>${esc(a.job_title || '—')}</td>
+        <td style="font-weight:500;">${esc(a.company_name || a.company || '—')}</td>
+        <td>${esc(a.vacancy_title || a.job_title || '—')}</td>
         <td>${platformIcon(a.platform)}</td>
         <td>${statusBadge(a.status)}</td>
-        <td style="color:var(--text-muted);font-size:0.82rem;white-space:nowrap;">${formatDate(a.date)}</td>
-        <td>${a.url ? `<a href="${esc(a.url)}" target="_blank" class="table-link">Открыть ↗</a>` : '—'}</td>
+        <td style="color:var(--text-muted);font-size:0.82rem;white-space:nowrap;">${formatDate(a.sent_at || a.date)}</td>
+        <td>${(a.vacancy_url || a.url) ? `<a href="${esc(a.vacancy_url || a.url)}" target="_blank" class="table-link">Открыть ↗</a>` : '—'}</td>
       </tr>`).join('');
   }
 
@@ -1253,12 +1268,27 @@
   }
 
   async function syncResume() {
-    const data = await api('/resume/connect', 'POST');
+    // Get telegram_id from dashboard data or prompt user
+    const tgIdEl = document.getElementById('tg-status-text');
+    let telegram_id = appData.connections && appData.connections.telegram_id;
+    if (!telegram_id && tgIdEl && tgIdEl.textContent.startsWith('ID:')) {
+      telegram_id = parseInt(tgIdEl.textContent.replace('ID:', '').trim());
+    }
+    if (!telegram_id) {
+      // Try to read from profile
+      const profile = await api('/user/profile');
+      telegram_id = profile && profile.telegram_id;
+    }
+    if (!telegram_id) {
+      showToast('Укажите Telegram ID при регистрации или в настройках', 'info');
+      return;
+    }
+    const data = await api('/resume/connect', 'POST', { telegram_id });
     if (data && data.success) {
       showToast('Профиль синхронизирован', 'success');
-      if (data.resume_text) document.getElementById('resume-textarea').value = data.resume_text;
+      if (data.preview) document.getElementById('resume-textarea').value = data.preview;
     } else {
-      showToast(data?.error || 'Подключите Telegram бот для синхронизации', 'info');
+      showToast(data?.detail || data?.error || 'Ошибка синхронизации. Создайте резюме в боте @topbestworkerbot', 'info');
     }
   }
 
@@ -1292,11 +1322,13 @@
   // ===== PRICING =====
   async function createPayment(plan) {
     const data = await api('/payment/create-invoice', 'POST', { plan });
-    if (data && data.payment_url) {
-      window.open(data.payment_url, '_blank');
+    // API returns invoice_url (not payment_url)
+    const url = data && (data.invoice_url || data.payment_url);
+    if (url) {
+      window.open(url, '_blank');
       showToast('Открываем страницу оплаты...', 'info');
     } else {
-      showToast(data?.error || 'Ошибка создания счёта', 'error');
+      showToast(data?.detail || data?.error || 'Ошибка создания счёта', 'error');
     }
   }
 

@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Optional
 
+import bcrypt as _bcrypt_lib
 import aiosqlite
 import uvicorn
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
@@ -18,8 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from jose import JWTError, jwt
-from passlib.context import CryptContext
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 # ── Path setup ────────────────────────────────────────────────────────────────
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -67,8 +67,22 @@ logging.basicConfig(
 )
 logger = logging.getLogger("autoapply_main")
 
-# ── Password hashing ──────────────────────────────────────────────────────────
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# ── Password hashing (direct bcrypt — compatible with bcrypt 4.x and 5.x) ────
+def _hash_password(password: str) -> str:
+    """Hash a password with bcrypt. Works with bcrypt 4.x and 5.x."""
+    return _bcrypt_lib.hashpw(
+        password.encode("utf-8"), _bcrypt_lib.gensalt()
+    ).decode("utf-8")
+
+
+def _verify_password(password: str, hashed: str) -> bool:
+    """Verify a password against a bcrypt hash."""
+    try:
+        return _bcrypt_lib.checkpw(
+            password.encode("utf-8"), hashed.encode("utf-8")
+        )
+    except Exception:
+        return False
 
 # ── FastAPI app ───────────────────────────────────────────────────────────────
 app = FastAPI(
@@ -162,7 +176,7 @@ async def register(body: RegisterRequest):
     if existing:
         raise HTTPException(status_code=409, detail="Email already registered")
 
-    password_hash = pwd_context.hash(body.password)
+    password_hash = _hash_password(body.password)
     try:
         user_id = await create_user(
             email=body.email,
@@ -184,7 +198,7 @@ async def login(body: LoginRequest):
     logger.info("[api/login] attempt for email=%s", body.email)
 
     user = await get_user_by_email(body.email, AUTOAPPLY_DB)
-    if not user or not pwd_context.verify(body.password, user["password_hash"]):
+    if not user or not _verify_password(body.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     token = _create_token(user["id"])
@@ -234,6 +248,40 @@ async def campaign_create(
 
     logger.info("[api/campaign/create] user=%s campaign_id=%s", user_id, campaign_id)
     return {"campaign_id": campaign_id, "daily_limit": requested_limit}
+
+
+@app.get("/api/campaigns", summary="List all campaigns for current user")
+async def campaigns_list(current_user: dict = Depends(get_current_user)):
+    campaigns = await get_campaigns_for_user(current_user["id"], AUTOAPPLY_DB)
+    return campaigns
+
+
+@app.get("/api/user/profile", summary="Get current user profile (plan, connections, resume)")
+async def user_profile(current_user: dict = Depends(get_current_user)):
+    """Returns user profile with plan, connections status, and resume_text."""
+    return {
+        "user_id": current_user["id"],
+        "email": current_user.get("email"),
+        "plan": current_user.get("plan", "free"),
+        "daily_limit": current_user.get("daily_limit", 3),
+        "telegram_id": current_user.get("telegram_id"),
+        "resume_text": current_user.get("resume_text") or "",
+        "connections": {
+            "hh": bool(current_user.get("hh_token")),
+            "linkedin": bool(current_user.get("linkedin_email")),
+            "telegram_id": current_user.get("telegram_id"),
+        },
+    }
+
+
+@app.get("/api/user/connections", summary="Get user connection status")
+async def user_connections(current_user: dict = Depends(get_current_user)):
+    """Returns which external accounts are connected."""
+    return {
+        "hh": bool(current_user.get("hh_token")),
+        "linkedin": bool(current_user.get("linkedin_email")),
+        "telegram_id": current_user.get("telegram_id"),
+    }
 
 
 @app.get("/api/campaign/{campaign_id}/status", summary="Get campaign status and last applications")

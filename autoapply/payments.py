@@ -216,16 +216,16 @@ async def process_payment(payload: dict, db_path: str = AUTOAPPLY_DB) -> bool:
 
     daily_limit = plan_info["daily_limit"]
 
-    # Update user plan in DB
+    # Update user plan in DB (autoapply_users has no updated_at column)
     try:
         async with aiosqlite.connect(db_path) as db:
             await db.execute(
                 """
                 UPDATE autoapply_users
-                SET plan = ?, daily_limit = ?, updated_at = ?
+                SET plan = ?, daily_limit = ?
                 WHERE id = ?
                 """,
-                (plan, daily_limit, datetime.utcnow().isoformat(), user_id),
+                (plan, daily_limit, user_id),
             )
             rows_affected = db.total_changes
             await db.commit()
