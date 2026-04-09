@@ -361,3 +361,56 @@ async def send_weekly_summary(
 #   )
 #
 # ══════════════════════════════════════════════════════════════════════════════
+
+
+# ── Standalone runner (no bot instance needed) ─────────────────────────────
+async def _send_standalone() -> None:
+    """Run the daily report without an aiogram bot instance — uses raw HTTP."""
+    import aiohttp
+
+    # Load .env if running standalone
+    env_path = os.path.join(os.path.dirname(__file__), ".env")
+    if os.path.exists(env_path):
+        with open(env_path) as f:
+            for line in f:
+                line = line.strip()
+                if "=" in line and not line.startswith("#"):
+                    k, _, v = line.partition("=")
+                    k = k.strip()
+                    if k.replace("_", "").isalnum():
+                        os.environ.setdefault(k, v.strip())
+
+    token     = os.getenv("BOT_TOKEN", "")
+    admin_id  = int(os.getenv("ADMIN_ID", str(ADMIN_CHAT_ID)))
+
+    if not token:
+        print("ERROR: BOT_TOKEN not set")
+        return
+
+    # Build a fake bot-like object that sends via HTTP
+    class _HttpBot:
+        def __init__(self, tok):
+            self._tok = tok
+            self._url = f"https://api.telegram.org/bot{tok}/sendMessage"
+
+        async def send_message(self, chat_id, text, parse_mode="HTML", **kw):
+            async with aiohttp.ClientSession() as s:
+                r = await s.post(self._url, json={
+                    "chat_id": chat_id, "text": text,
+                    "parse_mode": parse_mode,
+                    "disable_web_page_preview": True,
+                })
+                data = await r.json()
+                if not data.get("ok"):
+                    print(f"Telegram error: {data}")
+                else:
+                    print(f"✅ Report sent to {chat_id}")
+                return data
+
+    bot = _HttpBot(token)
+    await send_daily_report(bot, admin_id)
+
+
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(_send_standalone())
