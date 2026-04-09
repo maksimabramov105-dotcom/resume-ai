@@ -1,6 +1,10 @@
 """
 daily_reporter.py — Sends daily and weekly analytics reports to the admin.
 
+Covers BOTH products:
+  - Telegram bot (@topbestworkerbot) stats from analytics_db / bot.db
+  - AutoApply web service stats from autoapply.db
+
 Does NOT create a new APScheduler instance.
 Exports two async functions to be added as jobs to the EXISTING scheduler
 in run.py. See INTEGRATION INSTRUCTIONS at the bottom of this file.
@@ -8,10 +12,14 @@ in run.py. See INTEGRATION INSTRUCTIONS at the bottom of this file.
 
 import asyncio
 import logging
+import os
+import sqlite3
 from datetime import date, timedelta
 
 # analytics_db is in the same directory (project root), added to sys.path by run.py
 from analytics_db import get_full_summary, get_top_referrers, get_daily_stats_range, DB_PATH
+
+AUTOAPPLY_DB = os.getenv("AUTOAPPLY_DB", "/opt/resumeaibot/autoapply.db")
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +33,65 @@ _WEEKDAYS_RU = [
 
 
 # ── Formatting helpers ────────────────────────────────────────────────────────
+
+def _get_autoapply_stats() -> dict:
+    """
+    Reads today's AutoApply web service stats from autoapply.db.
+    Uses sync sqlite3 (safe to call from async context — read-only, instant).
+    Returns empty dict on any error so the daily report never crashes.
+    """
+    try:
+        if not os.path.exists(AUTOAPPLY_DB):
+            return {}
+        con = sqlite3.connect(AUTOAPPLY_DB)
+        con.row_factory = sqlite3.Row
+        today = date.today().isoformat()
+
+        # Total registered web users
+        total_web = con.execute("SELECT COUNT(*) FROM autoapply_users").fetchone()[0]
+        # New web users today (registered today)
+        new_web_today = con.execute(
+            "SELECT COUNT(*) FROM autoapply_users WHERE date(created_at) = ?", (today,)
+        ).fetchone()[0]
+        # Applications sent today across all users
+        apps_today = con.execute(
+            "SELECT COUNT(*) FROM applications WHERE date(sent_at) = ?", (today,)
+        ).fetchone()[0]
+        # Total applications ever
+        apps_total = con.execute("SELECT COUNT(*) FROM applications").fetchone()[0]
+        # Responses/interviews received today
+        responses_today = con.execute(
+            "SELECT COUNT(*) FROM applications WHERE status IN ('response','interview') AND date(response_at) = ?",
+            (today,)
+        ).fetchone()[0]
+        # Active campaigns
+        active_campaigns = con.execute(
+            "SELECT COUNT(*) FROM campaigns WHERE status = 'active'"
+        ).fetchone()[0]
+        # Revenue from paid plan upgrades (users with paid plans)
+        paid_web_users = con.execute(
+            "SELECT COUNT(*) FROM autoapply_users WHERE plan != 'free'"
+        ).fetchone()[0]
+        # Bot→web transitions: users who have both telegram_id set and are web users
+        bot_to_web = con.execute(
+            "SELECT COUNT(*) FROM autoapply_users WHERE telegram_id IS NOT NULL"
+        ).fetchone()[0]
+        # Transitions from landing page (approximated by new registrations today)
+        con.close()
+        return {
+            "total_web_users":   total_web,
+            "new_web_today":     new_web_today,
+            "apps_today":        apps_today,
+            "apps_total":        apps_total,
+            "responses_today":   responses_today,
+            "active_campaigns":  active_campaigns,
+            "paid_web_users":    paid_web_users,
+            "bot_to_web":        bot_to_web,
+        }
+    except Exception as e:
+        logging.getLogger(__name__).warning("_get_autoapply_stats error: %s", e)
+        return {}
+
 
 def _progress_bar(current: int, goal: int = 1000, width: int = 20) -> str:
     """
@@ -66,6 +133,7 @@ async def send_daily_report(
     try:
         summary  = await get_full_summary(db_path)
         top_refs = await get_top_referrers(n=1, db_path=db_path)
+        web_stats = _get_autoapply_stats()
     except Exception as e:
         logger.error("Daily report: failed to fetch analytics: %s", e)
         try:
@@ -137,7 +205,23 @@ async def send_daily_report(
 
         f"📣 <b>АУТРИЧ</b>\n"
         f"└ Конверсий сегодня: {summary.get('outreach_conversions_today', 0)}\n\n"
+    )
 
+    # ── AutoApply web service section (if DB available) ───────────────────────
+    if web_stats:
+        text += (
+            f"🌐 <b>АВТОООТКЛИК (веб-сервис)</b>\n"
+            f"┌ Новых пользователей сайта: +{web_stats.get('new_web_today', 0)}\n"
+            f"├ Всего на сайте: {web_stats.get('total_web_users', 0)} "
+            f"(платных: {web_stats.get('paid_web_users', 0)})\n"
+            f"├ Заявок отправлено сегодня: {web_stats.get('apps_today', 0)}\n"
+            f"├ Всего заявок: {web_stats.get('apps_total', 0)}\n"
+            f"├ Ответов/собеседований сегодня: {web_stats.get('responses_today', 0)}\n"
+            f"├ Активных кампаний: {web_stats.get('active_campaigns', 0)}\n"
+            f"└ Переходов бот→сайт: {web_stats.get('bot_to_web', 0)}\n\n"
+        )
+
+    text += (
         f"🎯 <b>ЦЕЛЬ: 1000 платных</b>\n"
         f"{bar} {pct:.1f}%\n"
         f"{paid_total} / {goal} — осталось {remaining}\n"

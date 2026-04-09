@@ -425,6 +425,64 @@ async def health():
     }
 
 
+# ── Chrome Extension API ──────────────────────────────────────────────────────
+@app.get("/api/extension/pending/{user_id}", summary="Get pending LinkedIn jobs for extension")
+async def extension_pending(
+    user_id: int,
+    authorization: str = Header(...),
+):
+    """Returns up to 5 pending LinkedIn vacancy URLs for the Chrome extension."""
+    try:
+        token_user = await get_current_user(authorization)
+        if token_user["id"] != user_id:
+            raise HTTPException(status_code=403, detail="Forbidden")
+
+        async with aiosqlite.connect(AUTOAPPLY_DB) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                """SELECT a.id, a.vacancy_url, a.vacancy_id, u.resume_text as user_profile
+                   FROM applications a
+                   JOIN autoapply_users u ON u.id = a.user_id
+                   WHERE a.user_id = ? AND a.platform = 'linkedin' AND a.status = 'pending'
+                   LIMIT 5""",
+                (user_id,)
+            ) as cur:
+                rows = await cur.fetchall()
+                pending = [dict(r) for r in rows]
+        return {"pending": pending, "count": len(pending)}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("[extension/pending] error: %s", exc)
+        return {"pending": [], "count": 0}
+
+
+class ExtensionReportRequest(BaseModel):
+    vacancy_url: str
+    vacancy_id: str
+    status: str  # sent / failed
+    error: Optional[str] = None
+
+
+@app.post("/api/extension/report", summary="Report application result from Chrome extension")
+async def extension_report(
+    body: ExtensionReportRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """Receives application result from Chrome extension."""
+    try:
+        async with aiosqlite.connect(AUTOAPPLY_DB) as db:
+            await db.execute(
+                "UPDATE applications SET status = ? WHERE vacancy_id = ? AND user_id = ?",
+                (body.status, body.vacancy_id, current_user["id"])
+            )
+            await db.commit()
+        return {"ok": True}
+    except Exception as exc:
+        logger.exception("[extension/report] error: %s", exc)
+        return {"ok": False, "error": str(exc)}
+
+
 # ── SPA fallback ──────────────────────────────────────────────────────────────
 @app.get("/app", include_in_schema=False)
 @app.get("/app/{path:path}", include_in_schema=False)

@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "АвтоОтклик — Auto Apply Jobs",
+  "version": "1.0.0",
+  "description": "Automatically applies to LinkedIn Easy Apply jobs from your AutoApply campaign",
+  "permissions": ["activeTab", "storage", "alarms", "notifications"],
+  "host_permissions": [
+    "https://www.linkedin.com/*",
+    "http://72.56.250.53/*",
+    "https://resumeai.bot/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.linkedin.com/jobs/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

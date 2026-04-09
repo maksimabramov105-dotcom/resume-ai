@@ -33,8 +33,10 @@ HH_REDIRECT_URI   = os.getenv("HH_REDIRECT_URI", "https://resumeai.bot/app/oauth
 SUPERJOB_API_KEY  = os.getenv("SUPERJOB_API_KEY", "")
 
 # ── CryptoBot payments ───────────────────────────────────────────────────
-CRYPTOBOT_TOKEN           = os.getenv("CRYPTOBOT_TOKEN", "")
-CRYPTOBOT_WEBHOOK_SECRET  = os.getenv("CRYPTOBOT_WEBHOOK_SECRET", "")
+CRYPTOBOT_TOKEN                = os.getenv("CRYPTOBOT_TOKEN", "")
+CRYPTOBOT_WEBHOOK_SECRET       = os.getenv("CRYPTOBOT_WEBHOOK_SECRET", "")
+# AutoApply-specific CryptoBot token (separate app from the main bot)
+CRYPTOBOT_AUTOAPPLY_TOKEN      = os.getenv("CRYPTOBOT_AUTOAPPLY_TOKEN", "")
 
 # ── Server ───────────────────────────────────────────────────────────────
 AUTOAPPLY_PORT = int(os.getenv("AUTOAPPLY_PORT", "8080"))

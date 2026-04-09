@@ -6,3 +6,7 @@ bot.db
 *.pdf
 bot.log
 webapp/node_modules/
+credentials.json
+autoapply/autoapply.db
+*.db
+seo/manual_submissions/
