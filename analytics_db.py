@@ -232,23 +232,20 @@ async def get_full_summary(db_path: str = DB_PATH) -> dict:
         ) as cur:
             result["total_revenue_rub"] = (await cur.fetchone())[0]
 
-        # Today's revenue by method (tracked in real-time by analytics_tracker)
+        # Today's revenue — read directly from payments table (source of truth).
+        # CryptoBot payments have a payment_id; card/revolut do not.
         async with db.execute(
-            """SELECT COALESCE(revenue_crypto,0),
-                      COALESCE(revenue_card,0),
-                      COALESCE(revenue_revolut,0)
-               FROM daily_stats WHERE date = ?""",
+            """SELECT
+                COALESCE(SUM(CASE WHEN payment_id IS NOT NULL THEN amount_rub ELSE 0 END), 0),
+                COALESCE(SUM(CASE WHEN payment_id IS NULL     THEN amount_rub ELSE 0 END), 0)
+               FROM payments
+               WHERE status = 'succeeded' AND DATE(created_at) = ?""",
             (today,)
         ) as cur:
-            row = await cur.fetchone()
-        if row:
-            result["revenue_crypto_today"]  = row[0]
-            result["revenue_card_today"]    = row[1]
-            result["revenue_revolut_today"] = row[2]
-        else:
-            result["revenue_crypto_today"]  = 0
-            result["revenue_card_today"]    = 0
-            result["revenue_revolut_today"] = 0
+            rev_row = await cur.fetchone()
+        result["revenue_crypto_today"]  = rev_row[0] if rev_row else 0
+        result["revenue_card_today"]    = rev_row[1] if rev_row else 0
+        result["revenue_revolut_today"] = 0  # Revolut tracked separately via track_payment
         result["revenue_today_rub"] = (
             result["revenue_crypto_today"]
             + result["revenue_card_today"]
