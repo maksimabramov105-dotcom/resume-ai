@@ -413,6 +413,11 @@
       <button class="tab-btn" onclick="switchTab('register')">Зарегистрироваться</button>
     </div>
 
+    <!-- Email verified banner -->
+    <div id="verified-banner" style="display:none;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);border-radius:8px;padding:12px 16px;margin-bottom:16px;color:#10b981;font-size:0.88rem;text-align:center;">
+      ✓ Email подтверждён! Теперь вы можете войти.
+    </div>
+
     <!-- Login tab -->
     <div class="tab-pane active" id="tab-login">
       <div class="form-group">
@@ -420,7 +425,10 @@
         <input type="email" class="input" id="login-email" placeholder="you@example.com" />
       </div>
       <div class="form-group">
-        <label>Пароль</label>
+        <label style="display:flex;justify-content:space-between;align-items:center;">
+          Пароль
+          <a href="#" onclick="switchTab('forgot');return false;" style="font-size:0.8rem;color:var(--accent1);font-weight:400;">Забыли пароль?</a>
+        </label>
         <input type="password" class="input" id="login-password" placeholder="••••••••" />
       </div>
       <div class="error-msg" id="login-error"></div>
@@ -429,13 +437,14 @@
 
     <!-- Register tab -->
     <div class="tab-pane" id="tab-register">
+      <div id="reg-success" style="display:none;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);border-radius:8px;padding:12px 16px;margin-bottom:16px;color:#10b981;font-size:0.88rem;text-align:center;"></div>
       <div class="form-group">
         <label>Email</label>
         <input type="email" class="input" id="reg-email" placeholder="you@example.com" />
       </div>
       <div class="form-group">
         <label>Пароль</label>
-        <input type="password" class="input" id="reg-password" placeholder="Минимум 8 символов" />
+        <input type="password" class="input" id="reg-password" placeholder="Минимум 6 символов" />
       </div>
       <div class="form-group">
         <label>Telegram ID <span style="color:var(--text-muted);font-weight:400;">(необязательно)</span></label>
@@ -446,8 +455,39 @@
       <button class="btn-primary" style="width:100%; justify-content:center; margin-top:4px;" onclick="doRegister()">Зарегистрироваться</button>
     </div>
 
-    <div class="divider">или</div>
-    <a href="https://t.me/topbestworkerbot?start=connect" target="_blank" class="btn-tg">
+    <!-- Forgot password tab -->
+    <div class="tab-pane" id="tab-forgot">
+      <p style="color:var(--text-muted);font-size:0.88rem;margin:0 0 16px;">Введите ваш email — отправим ссылку для сброса пароля.</p>
+      <div id="forgot-success" style="display:none;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);border-radius:8px;padding:12px 16px;margin-bottom:16px;color:#10b981;font-size:0.88rem;text-align:center;"></div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" class="input" id="forgot-email" placeholder="you@example.com" />
+      </div>
+      <div class="error-msg" id="forgot-error"></div>
+      <button class="btn-primary" style="width:100%; justify-content:center; margin-top:4px;" onclick="doForgotPassword()">Отправить ссылку</button>
+      <div style="text-align:center;margin-top:14px;">
+        <a href="#" onclick="switchTab('login');return false;" style="font-size:0.85rem;color:var(--accent1);">← Вернуться к входу</a>
+      </div>
+    </div>
+
+    <!-- Reset password tab (shown via ?token=...) -->
+    <div class="tab-pane" id="tab-reset">
+      <p style="color:var(--text-muted);font-size:0.88rem;margin:0 0 16px;">Введите новый пароль.</p>
+      <div id="reset-success" style="display:none;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);border-radius:8px;padding:12px 16px;margin-bottom:16px;color:#10b981;font-size:0.88rem;text-align:center;"></div>
+      <div class="form-group">
+        <label>Новый пароль</label>
+        <input type="password" class="input" id="reset-password" placeholder="Минимум 6 символов" />
+      </div>
+      <div class="form-group">
+        <label>Повторите пароль</label>
+        <input type="password" class="input" id="reset-password2" placeholder="Повторите пароль" />
+      </div>
+      <div class="error-msg" id="reset-error"></div>
+      <button class="btn-primary" style="width:100%; justify-content:center; margin-top:4px;" onclick="doResetPassword()">Установить пароль</button>
+    </div>
+
+    <div class="divider" id="login-divider">или</div>
+    <a href="https://t.me/topbestworkerbot?start=connect" target="_blank" class="btn-tg" id="login-tg-btn">
       🤖 Войти через Telegram бот
     </a>
   </div>
@@ -933,49 +973,127 @@
 
   // ===== AUTH =====
   function switchTab(tab) {
+    const tabs = ['login', 'register', 'forgot', 'reset'];
     document.querySelectorAll('.tab-btn').forEach((b, i) => {
       b.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'register'));
     });
-    document.getElementById('tab-login').classList.toggle('active', tab === 'login');
-    document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+    tabs.forEach(t => {
+      const el = document.getElementById('tab-' + t);
+      if (el) el.classList.toggle('active', t === tab);
+    });
+    // Hide/show divider and TG button for forgot/reset tabs
+    const hideDivider = tab === 'forgot' || tab === 'reset';
+    const divider = document.getElementById('login-divider');
+    const tgBtn   = document.getElementById('login-tg-btn');
+    if (divider) divider.style.display = hideDivider ? 'none' : '';
+    if (tgBtn)   tgBtn.style.display   = hideDivider ? 'none' : '';
+  }
+
+  // Check URL params on login page load
+  function checkLoginUrlParams() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('verified') === '1') {
+      document.getElementById('verified-banner').style.display = 'block';
+    }
+    const resetToken = params.get('token');
+    if (resetToken) {
+      window._resetToken = resetToken;
+      switchTab('reset');
+    }
   }
 
   async function doLogin() {
-    const email = document.getElementById('login-email').value.trim();
+    const email    = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-password').value;
-    const errEl = document.getElementById('login-error');
+    const errEl    = document.getElementById('login-error');
     errEl.classList.remove('show');
     if (!email || !password) { errEl.textContent = 'Заполните все поля'; errEl.classList.add('show'); return; }
     const data = await api('/login', 'POST', { email, password });
-    if (!data) { errEl.textContent = 'Ошибка соединения'; errEl.classList.add('show'); return; }
+    if (!data) { errEl.textContent = 'Ошибка соединения с сервером'; errEl.classList.add('show'); return; }
     if (data.token) {
       localStorage.setItem('aa_token', data.token);
       if (data.plan) currentPlan = data.plan;
       navigate('#dashboard');
     } else {
-      errEl.textContent = data.error || data.message || 'Неверный email или пароль';
+      errEl.textContent = data.detail || data.error || data.message || 'Неверный email или пароль';
       errEl.classList.add('show');
     }
   }
 
   async function doRegister() {
-    const email = document.getElementById('reg-email').value.trim();
+    const email    = document.getElementById('reg-email').value.trim();
     const password = document.getElementById('reg-password').value;
-    const tgid = document.getElementById('reg-tgid').value.trim();
-    const errEl = document.getElementById('reg-error');
+    const tgid     = document.getElementById('reg-tgid').value.trim();
+    const errEl    = document.getElementById('reg-error');
+    const succEl   = document.getElementById('reg-success');
     errEl.classList.remove('show');
+    succEl.style.display = 'none';
     if (!email || !password) { errEl.textContent = 'Заполните обязательные поля'; errEl.classList.add('show'); return; }
+    if (password.length < 6) { errEl.textContent = 'Пароль должен быть не менее 6 символов'; errEl.classList.add('show'); return; }
     const body = { email, password };
-    if (tgid) body.telegram_id = tgid;
+    if (tgid) body.telegram_id = parseInt(tgid) || undefined;
     const data = await api('/register', 'POST', body);
-    if (!data) { errEl.textContent = 'Ошибка соединения'; errEl.classList.add('show'); return; }
+    if (!data) { errEl.textContent = 'Ошибка соединения с сервером'; errEl.classList.add('show'); return; }
     if (data.token) {
       localStorage.setItem('aa_token', data.token);
       if (data.plan) currentPlan = data.plan;
-      showToast('Аккаунт создан!', 'success');
-      navigate('#dashboard');
+      succEl.textContent = '✓ Аккаунт создан! Проверьте email — отправили письмо с подтверждением.';
+      succEl.style.display = 'block';
+      setTimeout(() => navigate('#dashboard'), 1500);
     } else {
-      errEl.textContent = data.error || data.message || 'Ошибка регистрации';
+      errEl.textContent = data.detail || data.error || data.message || 'Ошибка регистрации';
+      errEl.classList.add('show');
+    }
+  }
+
+  async function doForgotPassword() {
+    const email  = document.getElementById('forgot-email').value.trim();
+    const errEl  = document.getElementById('forgot-error');
+    const succEl = document.getElementById('forgot-success');
+    errEl.classList.remove('show');
+    succEl.style.display = 'none';
+    if (!email) { errEl.textContent = 'Введите email'; errEl.classList.add('show'); return; }
+    const btn = event.target;
+    btn.disabled = true;
+    btn.textContent = 'Отправляем...';
+    const data = await api('/forgot-password', 'POST', { email });
+    btn.disabled = false;
+    btn.textContent = 'Отправить ссылку';
+    if (data) {
+      succEl.textContent = '✓ Если email зарегистрирован — письмо отправлено. Проверьте папку «Спам».';
+      succEl.style.display = 'block';
+      document.getElementById('forgot-email').value = '';
+    } else {
+      errEl.textContent = 'Ошибка соединения. Попробуйте позже.';
+      errEl.classList.add('show');
+    }
+  }
+
+  async function doResetPassword() {
+    const password  = document.getElementById('reset-password').value;
+    const password2 = document.getElementById('reset-password2').value;
+    const errEl     = document.getElementById('reset-error');
+    const succEl    = document.getElementById('reset-success');
+    errEl.classList.remove('show');
+    succEl.style.display = 'none';
+    if (!password || !password2) { errEl.textContent = 'Заполните оба поля'; errEl.classList.add('show'); return; }
+    if (password.length < 6)     { errEl.textContent = 'Пароль должен быть не менее 6 символов'; errEl.classList.add('show'); return; }
+    if (password !== password2)  { errEl.textContent = 'Пароли не совпадают'; errEl.classList.add('show'); return; }
+    const token = window._resetToken;
+    if (!token) { errEl.textContent = 'Ссылка недействительна. Запросите новую.'; errEl.classList.add('show'); return; }
+    const btn = event.target;
+    btn.disabled = true;
+    btn.textContent = 'Сохраняем...';
+    const data = await api('/reset-password', 'POST', { token, password });
+    btn.disabled = false;
+    btn.textContent = 'Установить пароль';
+    if (data && data.ok) {
+      succEl.textContent = '✓ Пароль изменён! Теперь войдите с новым паролем.';
+      succEl.style.display = 'block';
+      window._resetToken = null;
+      setTimeout(() => switchTab('login'), 2000);
+    } else {
+      errEl.textContent = data?.detail || 'Ссылка недействительна или истекла. Запросите новую.';
       errEl.classList.add('show');
     }
   }
@@ -1407,6 +1525,7 @@
       navigate(hash && hash !== '#login' ? hash : '#dashboard');
     } else {
       navigate('#login');
+      checkLoginUrlParams();
     }
   });
 </script>

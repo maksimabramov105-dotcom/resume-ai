@@ -27,7 +27,9 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from autoapply.autoapply_db import (
+    consume_email_token,
     create_campaign,
+    create_email_token,
     create_user,
     get_active_campaigns,
     get_applications_for_user,
@@ -36,9 +38,16 @@ from autoapply.autoapply_db import (
     get_user_by_email,
     get_user_by_id,
     init_db,
+    mark_user_verified,
     update_campaign_status,
     update_user_last_active,
+    update_user_password,
     update_user_plan,
+)
+from autoapply.email_sender import (
+    send_password_reset_email,
+    send_verification_email,
+    send_welcome_email,
 )
 from autoapply.config import (
     AUTOAPPLY_DB,
@@ -140,6 +149,15 @@ class ResumeConnectRequest(BaseModel):
     telegram_id: int
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    password: str
+
+
 # ── JWT helpers ───────────────────────────────────────────────────────────────
 def _create_token(user_id: int) -> str:
     expire = datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRE_HOURS)
@@ -172,9 +190,12 @@ async def get_current_user(
 async def register(body: RegisterRequest):
     logger.info("[api/register] attempt for email=%s", body.email)
 
+    if len(body.password) < 6:
+        raise HTTPException(status_code=400, detail="Пароль должен быть не менее 6 символов")
+
     existing = await get_user_by_email(body.email, AUTOAPPLY_DB)
     if existing:
-        raise HTTPException(status_code=409, detail="Email already registered")
+        raise HTTPException(status_code=409, detail="Email уже зарегистрирован")
 
     password_hash = _hash_password(body.password)
     try:
@@ -186,11 +207,72 @@ async def register(body: RegisterRequest):
         )
     except Exception as exc:
         logger.error("[api/register] DB error: %s", exc)
-        raise HTTPException(status_code=500, detail="Registration failed")
+        raise HTTPException(status_code=500, detail="Ошибка регистрации")
+
+    # Send verification email (non-blocking — don't fail registration if SMTP is not set up)
+    try:
+        verify_token = await create_email_token(user_id, kind="verify", ttl_hours=24)
+        sent = send_verification_email(body.email, verify_token)
+        if sent:
+            logger.info("[api/register] verification email sent to %s", body.email)
+        else:
+            logger.warning("[api/register] SMTP not configured — skipping verification email")
+    except Exception as exc:
+        logger.error("[api/register] email error (non-fatal): %s", exc)
 
     token = _create_token(user_id)
     logger.info("[api/register] success user_id=%s", user_id)
-    return {"token": token, "user_id": user_id}
+    return {"token": token, "user_id": user_id, "email_sent": True}
+
+
+@app.get("/api/verify-email", summary="Verify email with token from link")
+async def verify_email(token: str):
+    user_id = await consume_email_token(token, kind="verify")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="Ссылка недействительна или истекла")
+
+    await mark_user_verified(user_id)
+
+    user = await get_user_by_id(user_id, AUTOAPPLY_DB)
+    if user:
+        try:
+            send_welcome_email(user["email"])
+        except Exception:
+            pass
+
+    logger.info("[api/verify-email] user_id=%s verified", user_id)
+    # Redirect to app with success flag
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/app?verified=1", status_code=302)
+
+
+@app.post("/api/forgot-password", summary="Request password reset email")
+async def forgot_password(body: ForgotPasswordRequest):
+    # Always return 200 to avoid email enumeration
+    user = await get_user_by_email(body.email, AUTOAPPLY_DB)
+    if user:
+        try:
+            reset_token = await create_email_token(user["id"], kind="reset", ttl_hours=1)
+            send_password_reset_email(body.email, reset_token)
+            logger.info("[api/forgot-password] reset email sent to %s", body.email)
+        except Exception as exc:
+            logger.error("[api/forgot-password] email error: %s", exc)
+    return {"ok": True, "message": "Если email зарегистрирован — письмо отправлено"}
+
+
+@app.post("/api/reset-password", summary="Set new password using reset token")
+async def reset_password(body: ResetPasswordRequest):
+    if len(body.password) < 6:
+        raise HTTPException(status_code=400, detail="Пароль должен быть не менее 6 символов")
+
+    user_id = await consume_email_token(body.token, kind="reset")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="Ссылка недействительна или истекла")
+
+    password_hash = _hash_password(body.password)
+    await update_user_password(user_id, password_hash)
+    logger.info("[api/reset-password] password updated for user_id=%s", user_id)
+    return {"ok": True, "message": "Пароль успешно изменён"}
 
 
 @app.post("/api/login", summary="Login and get JWT token")
@@ -199,7 +281,7 @@ async def login(body: LoginRequest):
 
     user = await get_user_by_email(body.email, AUTOAPPLY_DB)
     if not user or not _verify_password(body.password, user["password_hash"]):
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+        raise HTTPException(status_code=401, detail="Неверный email или пароль")
 
     token = _create_token(user["id"])
     logger.info("[api/login] success user_id=%s", user["id"])

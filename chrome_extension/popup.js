@@ -2,6 +2,7 @@
 // Extracted from inline script to comply with Manifest V3 CSP (no inline scripts allowed)
 
 const API_BASE = 'https://resumeai-bot.ru';
+const TIMEOUT_MS = 10000;
 
 const loadingSection   = document.getElementById('loadingSection');
 const loginSection     = document.getElementById('loginSection');
@@ -34,17 +35,51 @@ function setStatus(active, label) {
   text.textContent = label;
 }
 
+// Fetch with timeout — avoids hanging indefinitely
+async function fetchWithTimeout(url, options = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const resp = await fetch(url, { ...options, signal: controller.signal });
+    return resp;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Safe JSON parse — returns null instead of throwing
+async function safeJson(resp) {
+  try {
+    return await resp.json();
+  } catch {
+    return null;
+  }
+}
+
 async function loadDashboard(token) {
   try {
-    const resp = await fetch(`${API_BASE}/api/dashboard`, {
+    const resp = await fetchWithTimeout(`${API_BASE}/api/dashboard`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
-    if (!resp.ok) throw new Error('auth_failed');
-    const data = await resp.json();
 
-    document.getElementById('userEmail').textContent    = data.email || '—';
-    document.getElementById('statToday').textContent    = data.applications_today ?? 0;
-    document.getElementById('statTotal').textContent    = data.applications_total ?? 0;
+    if (resp.status === 401) {
+      await chrome.storage.local.remove(['aa_token', 'aa_user_id']);
+      showSection('login');
+      return;
+    }
+
+    if (!resp.ok) {
+      const data = await safeJson(resp);
+      console.error('[АвтоОтклик] dashboard error', resp.status, data);
+      setStatus(false, `Ошибка сервера ${resp.status}`);
+      showSection('dashboard');
+      return;
+    }
+
+    const data = await resp.json();
+    document.getElementById('userEmail').textContent     = data.email || '—';
+    document.getElementById('statToday').textContent     = data.applications_today ?? 0;
+    document.getElementById('statTotal').textContent     = data.applications_total ?? 0;
     document.getElementById('statCampaigns').textContent = data.active_campaigns ?? 0;
     setPlanBadge(data.plan);
 
@@ -54,22 +89,17 @@ async function loadDashboard(token) {
       setStatus(false, 'Нет активных кампаний');
     }
 
-    // Cache for offline use
-    await chrome.storage.local.set({ aa_plan: data.plan });
-
+    await chrome.storage.local.set({ aa_plan: data.plan, aa_email: data.email });
     showSection('dashboard');
+
   } catch (e) {
-    if (e.message === 'auth_failed') {
-      await chrome.storage.local.remove(['aa_token', 'aa_user_id']);
-      showSection('login');
-    } else {
-      // Network error — show cached info
-      const stored = await chrome.storage.local.get(['aa_plan', 'aa_email']);
-      document.getElementById('userEmail').textContent = stored.aa_email || '—';
-      setPlanBadge(stored.aa_plan || 'free');
-      setStatus(false, 'Нет соединения с сервером');
-      showSection('dashboard');
-    }
+    console.error('[АвтоОтклик] loadDashboard exception:', e);
+    // Show cached data when offline
+    const stored = await chrome.storage.local.get(['aa_plan', 'aa_email']);
+    document.getElementById('userEmail').textContent = stored.aa_email || '—';
+    setPlanBadge(stored.aa_plan || 'free');
+    setStatus(false, e.name === 'AbortError' ? 'Сервер не отвечает (таймаут)' : 'Нет соединения');
+    showSection('dashboard');
   }
 }
 
@@ -86,35 +116,52 @@ async function init() {
 loginBtn.addEventListener('click', async () => {
   const email    = emailInput.value.trim();
   const password = passwordInput.value;
+
   if (!email || !password) {
-    loginError.textContent    = 'Введите email и пароль';
-    loginError.style.display  = 'block';
+    loginError.textContent   = 'Введите email и пароль';
+    loginError.style.display = 'block';
     return;
   }
+
   loginBtn.disabled    = true;
   loginBtn.textContent = 'Входим...';
   loginError.style.display = 'none';
 
   try {
-    const resp = await fetch(`${API_BASE}/api/login`, {
-      method: 'POST',
+    const resp = await fetchWithTimeout(`${API_BASE}/api/login`, {
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
+      body:    JSON.stringify({ email, password })
     });
-    const data = await resp.json();
+
+    const data = await safeJson(resp);
+
     if (!resp.ok) {
-      loginError.textContent   = data.detail || 'Неверный email или пароль';
+      const msg = data?.detail || (resp.status === 401 ? 'Неверный email или пароль' : `Ошибка сервера (${resp.status})`);
+      loginError.textContent   = msg;
       loginError.style.display = 'block';
       return;
     }
+
+    if (!data?.token) {
+      loginError.textContent   = 'Неверный ответ сервера';
+      loginError.style.display = 'block';
+      return;
+    }
+
     await chrome.storage.local.set({
       aa_token:   data.token,
       aa_user_id: data.user_id,
       aa_email:   email
     });
     await loadDashboard(data.token);
+
   } catch (e) {
-    loginError.textContent   = 'Ошибка соединения. Проверьте интернет.';
+    console.error('[АвтоОтклик] login exception:', e);
+    const msg = e.name === 'AbortError'
+      ? 'Сервер не отвечает. Попробуйте позже.'
+      : 'Не удалось подключиться к серверу.';
+    loginError.textContent   = msg;
     loginError.style.display = 'block';
   } finally {
     loginBtn.disabled    = false;
@@ -129,7 +176,7 @@ passwordInput.addEventListener('keydown', (e) => {
 logoutBtn.addEventListener('click', async () => {
   await chrome.storage.local.remove(['aa_token', 'aa_user_id', 'aa_email', 'aa_plan']);
   showSection('login');
-  emailInput.value  = '';
+  emailInput.value    = '';
   passwordInput.value = '';
 });
 

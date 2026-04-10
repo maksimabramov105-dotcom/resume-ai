@@ -54,3 +54,11 @@ PLANS = {
 MIN_APPLY_DELAY = int(os.getenv("MIN_APPLY_DELAY", "30"))
 MAX_APPLY_DELAY = int(os.getenv("MAX_APPLY_DELAY", "90"))
 WORKER_INTERVAL = int(os.getenv("WORKER_INTERVAL", "300"))  # 5 minutes
+
+# ── SMTP (email verification + password reset) ────────────────────────────
+SMTP_HOST     = os.getenv("SMTP_HOST", "")
+SMTP_PORT     = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER     = os.getenv("SMTP_USER", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+SMTP_FROM     = os.getenv("SMTP_FROM", SMTP_USER)
+SMTP_USE_SSL  = os.getenv("SMTP_USE_SSL", "").strip() in ("1", "true", "yes")

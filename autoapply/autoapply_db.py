@@ -87,6 +87,21 @@ CREATE TABLE IF NOT EXISTS vacancies_cache (
 )
 """
 
+_CREATE_EMAIL_TOKENS = """
+CREATE TABLE IF NOT EXISTS email_tokens (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER NOT NULL REFERENCES autoapply_users(id),
+    token      TEXT UNIQUE NOT NULL,
+    kind       TEXT NOT NULL,  -- 'verify' or 'reset'
+    expires_at TEXT NOT NULL,
+    used       INTEGER DEFAULT 0
+)
+"""
+
+_MIGRATE_IS_VERIFIED = """
+ALTER TABLE autoapply_users ADD COLUMN is_verified INTEGER DEFAULT 0
+"""
+
 # ── Init ─────────────────────────────────────────────────────────────────────
 
 async def init_db(db_path: str = AUTOAPPLY_DB) -> None:
@@ -97,6 +112,12 @@ async def init_db(db_path: str = AUTOAPPLY_DB) -> None:
             await db.execute(_CREATE_CAMPAIGNS)
             await db.execute(_CREATE_APPLICATIONS)
             await db.execute(_CREATE_VACANCIES_CACHE)
+            await db.execute(_CREATE_EMAIL_TOKENS)
+            # Migration: add is_verified if column doesn't exist yet
+            try:
+                await db.execute(_MIGRATE_IS_VERIFIED)
+            except Exception:
+                pass  # column already exists
             await db.commit()
         logger.info("[autoapply_db] init_db: all tables ready at %s", db_path)
     except Exception as exc:
@@ -601,6 +622,78 @@ async def get_cached_vacancies(
     except Exception as exc:
         logger.exception("[autoapply_db] get_cached_vacancies error: %s", exc)
         return []
+
+
+# ── Email token functions ─────────────────────────────────────────────────────
+
+import secrets as _secrets
+
+async def create_email_token(user_id: int, kind: str, ttl_hours: int = 24, db_path: str = AUTOAPPLY_DB) -> str:
+    """Create a one-time token for email verification or password reset. Returns token string."""
+    token = _secrets.token_urlsafe(32)
+    expires_at = (datetime.utcnow() + timedelta(hours=ttl_hours)).isoformat()
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            # Invalidate previous unused tokens of same kind for this user
+            await db.execute(
+                "UPDATE email_tokens SET used = 1 WHERE user_id = ? AND kind = ? AND used = 0",
+                (user_id, kind),
+            )
+            await db.execute(
+                "INSERT INTO email_tokens (user_id, token, kind, expires_at, used) VALUES (?, ?, ?, ?, 0)",
+                (user_id, token, kind, expires_at),
+            )
+            await db.commit()
+    except Exception as exc:
+        logger.exception("[autoapply_db] create_email_token error: %s", exc)
+        raise
+    return token
+
+
+async def consume_email_token(token: str, kind: str, db_path: str = AUTOAPPLY_DB) -> Optional[int]:
+    """Validate and consume a token. Returns user_id if valid, None otherwise."""
+    try:
+        now = datetime.utcnow().isoformat()
+        async with aiosqlite.connect(db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                "SELECT * FROM email_tokens WHERE token = ? AND kind = ? AND used = 0 AND expires_at > ?",
+                (token, kind, now),
+            ) as cur:
+                row = await cur.fetchone()
+            if not row:
+                return None
+            user_id = row["user_id"]
+            await db.execute("UPDATE email_tokens SET used = 1 WHERE token = ?", (token,))
+            await db.commit()
+            return user_id
+    except Exception as exc:
+        logger.exception("[autoapply_db] consume_email_token error: %s", exc)
+        return None
+
+
+async def mark_user_verified(user_id: int, db_path: str = AUTOAPPLY_DB) -> None:
+    """Set is_verified = 1 for a user."""
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            await db.execute("UPDATE autoapply_users SET is_verified = 1 WHERE id = ?", (user_id,))
+            await db.commit()
+    except Exception as exc:
+        logger.exception("[autoapply_db] mark_user_verified error: %s", exc)
+
+
+async def update_user_password(user_id: int, password_hash: str, db_path: str = AUTOAPPLY_DB) -> None:
+    """Update password hash for a user."""
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            await db.execute(
+                "UPDATE autoapply_users SET password_hash = ? WHERE id = ?",
+                (password_hash, user_id),
+            )
+            await db.commit()
+    except Exception as exc:
+        logger.exception("[autoapply_db] update_user_password error: %s", exc)
+        raise
 
 
 # ── Daily reset ───────────────────────────────────────────────────────────────
