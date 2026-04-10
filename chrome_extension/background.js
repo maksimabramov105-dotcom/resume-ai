@@ -1,7 +1,7 @@
 // background.js — Service worker for АвтоОтклик extension
 // Polls the API for pending LinkedIn jobs every 10 minutes when on LinkedIn
 
-const API_BASE = 'http://72.56.250.53'; // Will be updated to https://resumeai.bot
+const API_BASE = 'https://resumeai-bot.ru';
 
 // On install: set up alarm
 chrome.runtime.onInstalled.addListener(() => {

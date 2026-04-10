@@ -1,7 +1,7 @@
 // popup.js — АвтоОтклик Chrome Extension popup logic
 // Extracted from inline script to comply with Manifest V3 CSP (no inline scripts allowed)
 
-const API_BASE = 'http://72.56.250.53';
+const API_BASE = 'https://resumeai-bot.ru';
 
 const loadingSection   = document.getElementById('loadingSection');
 const loginSection     = document.getElementById('loginSection');

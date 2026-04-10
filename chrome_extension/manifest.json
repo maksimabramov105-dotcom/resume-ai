@@ -1,13 +1,14 @@
 {
   "manifest_version": 3,
   "name": "АвтоОтклик — Auto Apply Jobs",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Automatically applies to LinkedIn Easy Apply jobs from your AutoApply campaign",
   "permissions": ["activeTab", "storage", "alarms", "notifications"],
   "host_permissions": [
     "https://www.linkedin.com/*",
-    "http://72.56.250.53/*",
-    "https://resumeai.bot/*"
+    "https://resumeai.bot/*",
+    "http://resumeai-bot.ru/*",
+    "https://resumeai-bot.ru/*"
   ],
   "background": {
     "service_worker": "background.js"
