@@ -1,0 +1,12 @@
+[Unit]
+Description=ResumeAI Daily Report
+After=network.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/resumeaibot
+EnvironmentFile=/opt/resumeaibot/.env
+ExecStart=/usr/bin/python3 /opt/resumeaibot/daily_reporter.py
+User=root
+StandardOutput=append:/opt/resumeaibot/logs/daily_report.log
+StandardError=append:/opt/resumeaibot/logs/daily_report.log
