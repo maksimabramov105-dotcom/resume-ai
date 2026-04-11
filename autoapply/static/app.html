@@ -919,10 +919,58 @@
         navigate('#login');
         return null;
       }
+      if (r.status === 403) {
+        const data = await r.json().catch(() => ({}));
+        if (data.detail === 'email_not_verified') {
+          showEmailVerificationWall();
+          return null;
+        }
+      }
       return await r.json();
     } catch (e) {
       console.error('API error:', e);
       return null;
+    }
+  }
+
+  function showEmailVerificationWall() {
+    // Replace dashboard content with verification prompt
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const el = document.getElementById('page-dashboard');
+    if (el) {
+      el.innerHTML = `
+        <div class="container" style="display:flex;align-items:center;justify-content:center;min-height:80vh;">
+          <div style="text-align:center;max-width:420px;padding:40px 24px;">
+            <div style="font-size:48px;margin-bottom:16px;">✉️</div>
+            <h2 style="font-size:22px;font-weight:700;margin:0 0 12px;">Подтвердите email</h2>
+            <p style="color:var(--text-muted);line-height:1.6;margin:0 0 24px;">
+              Мы отправили письмо на ваш email. Нажмите на ссылку в письме — и вы сразу попадёте в систему.
+            </p>
+            <p style="color:var(--text-muted);font-size:0.85rem;margin:0 0 24px;">Не нашли письмо? Проверьте папку «Спам».</p>
+            <button class="btn-primary" onclick="resendVerification()" style="margin-bottom:12px;width:100%;justify-content:center;">
+              Отправить письмо повторно
+            </button>
+            <button onclick="logout()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.88rem;">
+              Выйти из аккаунта
+            </button>
+          </div>
+        </div>`;
+      el.classList.add('active');
+      document.getElementById('navbar').style.display = 'none';
+    }
+  }
+
+  async function resendVerification() {
+    const token = localStorage.getItem('aa_token');
+    if (!token) { navigate('#login'); return; }
+    const r = await fetch('/api/resend-verification', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (r.ok) {
+      showToast('Письмо отправлено! Проверьте inbox.', 'success');
+    } else {
+      showToast('Ошибка отправки. Попробуйте позже.', 'error');
     }
   }
 
@@ -989,15 +1037,45 @@
     if (tgBtn)   tgBtn.style.display   = hideDivider ? 'none' : '';
   }
 
-  // Check URL params on login page load
+  // Check URL params on page load — handles email verification and password reset
   function checkLoginUrlParams() {
     const params = new URLSearchParams(window.location.search);
+
+    // Auto-login after email verification: /app?verified=1&auth=JWT
+    const authToken = params.get('auth');
+    if (authToken && params.get('verified') === '1') {
+      localStorage.setItem('aa_token', authToken);
+      // Clean URL then go to dashboard
+      window.history.replaceState({}, '', '/app');
+      navigate('#dashboard');
+      showToast('Email подтверждён! Добро пожаловать.', 'success');
+      return;
+    }
+
+    // Verification error
+    if (params.get('verify_error') === '1') {
+      window.history.replaceState({}, '', '/app');
+      navigate('#login');
+      const errBanner = document.getElementById('verified-banner');
+      errBanner.style.background = 'rgba(239,68,68,0.12)';
+      errBanner.style.borderColor = 'rgba(239,68,68,0.3)';
+      errBanner.style.color = '#ef4444';
+      errBanner.textContent = '✗ Ссылка устарела. Зарегистрируйтесь снова или войдите.';
+      errBanner.style.display = 'block';
+      return;
+    }
+
+    // Email verified banner (no auto-login — user needs to sign in)
     if (params.get('verified') === '1') {
+      window.history.replaceState({}, '', '/app');
       document.getElementById('verified-banner').style.display = 'block';
     }
-    const resetToken = params.get('token');
+
+    // Password reset token — only show reset form for ?reset_token= param
+    const resetToken = params.get('reset_token');
     if (resetToken) {
       window._resetToken = resetToken;
+      window.history.replaceState({}, '', '/app');
       switchTab('reset');
     }
   }

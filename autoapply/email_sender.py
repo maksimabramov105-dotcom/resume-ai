@@ -63,7 +63,7 @@ def _send(to: str, subject: str, html: str, text: str) -> bool:
 
 def send_verification_email(to: str, token: str) -> bool:
     """Send email verification link."""
-    link = f"{WEBAPP_URL}/app/verify-email?token={token}"
+    link = f"{WEBAPP_URL}/api/verify-email?token={token}"
     subject = "Подтвердите email — АвтоОтклик"
 
     html = f"""<!DOCTYPE html>
@@ -158,7 +158,7 @@ def send_welcome_email(to: str) -> bool:
 
 def send_password_reset_email(to: str, token: str) -> bool:
     """Send password reset link."""
-    link = f"{WEBAPP_URL}/app/reset-password?token={token}"
+    link = f"{WEBAPP_URL}/app?reset_token={token}"
     subject = "Сброс пароля — АвтоОтклик"
 
     html = f"""<!DOCTYPE html>

@@ -227,9 +227,11 @@ async def register(body: RegisterRequest):
 
 @app.get("/api/verify-email", summary="Verify email with token from link")
 async def verify_email(token: str):
+    from fastapi.responses import RedirectResponse
     user_id = await consume_email_token(token, kind="verify")
     if not user_id:
-        raise HTTPException(status_code=400, detail="Ссылка недействительна или истекла")
+        # Redirect to app with error — do NOT show reset-password form
+        return RedirectResponse(url="/app?verify_error=1", status_code=302)
 
     await mark_user_verified(user_id)
 
@@ -240,10 +242,24 @@ async def verify_email(token: str):
         except Exception:
             pass
 
-    logger.info("[api/verify-email] user_id=%s verified", user_id)
-    # Redirect to app with success flag
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse(url="/app?verified=1", status_code=302)
+    # Issue JWT so user is auto-logged in after clicking the link
+    jwt_token = _create_token(user_id)
+    logger.info("[api/verify-email] user_id=%s verified, issuing auto-login token", user_id)
+    return RedirectResponse(url=f"/app?verified=1&auth={jwt_token}", status_code=302)
+
+
+@app.post("/api/resend-verification", summary="Resend email verification link")
+async def resend_verification(current_user: dict = Depends(get_current_user)):
+    if current_user.get("is_verified"):
+        return {"ok": True, "message": "Уже подтверждён"}
+    try:
+        verify_token = await create_email_token(current_user["id"], kind="verify", ttl_hours=24)
+        send_verification_email(current_user["email"], verify_token)
+        logger.info("[api/resend-verification] sent to user_id=%s", current_user["id"])
+    except Exception as exc:
+        logger.error("[api/resend-verification] error: %s", exc)
+        raise HTTPException(status_code=500, detail="Ошибка отправки")
+    return {"ok": True}
 
 
 @app.post("/api/forgot-password", summary="Request password reset email")
@@ -291,6 +307,8 @@ async def login(body: LoginRequest):
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 @app.get("/api/dashboard", summary="Get dashboard stats")
 async def dashboard(current_user: dict = Depends(get_current_user)):
+    if not current_user.get("is_verified"):
+        raise HTTPException(status_code=403, detail="email_not_verified")
     stats = await get_dashboard_stats(current_user["id"], AUTOAPPLY_DB)
     if not stats:
         raise HTTPException(status_code=500, detail="Failed to fetch stats")
