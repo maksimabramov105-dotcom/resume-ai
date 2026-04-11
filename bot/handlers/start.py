@@ -15,6 +15,7 @@ if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 from analytics_tracker import track_start, DB_PATH as _ANALYTICS_DB_PATH
 from maintenance import is_maintenance, broadcast_maintenance_start, broadcast_maintenance_end
+from daily_reporter import send_daily_report, ADMIN_CHAT_ID as _REPORTER_ADMIN_ID
 
 router = Router()
 
@@ -77,3 +78,15 @@ async def cmd_maintenance_off(message: Message):
         return
     await message.answer("✅ Sending recovery notification to all users…")
     await broadcast_maintenance_end(message.bot)
+
+
+@router.message(Command("report"))
+async def cmd_report(message: Message):
+    """Admin only: trigger daily report immediately."""
+    if message.from_user.id != ADMIN_ID:
+        return
+    await message.answer("📊 Генерирую отчёт…")
+    try:
+        await send_daily_report(message.bot, ADMIN_ID, _ANALYTICS_DB_PATH)
+    except Exception as exc:
+        await message.answer(f"❌ Ошибка отчёта: {exc}")

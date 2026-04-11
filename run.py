@@ -183,23 +183,45 @@ async def run_bot() -> None:
         replace_existing=True,
     )
     # Daily analytics report — every day at 08:00 Moscow (05:00 UTC)
+    async def _daily_report_job():
+        try:
+            await send_daily_report(bot, ADMIN_CHAT_ID, DB_PATH)
+        except Exception as exc:
+            logger.error("[scheduler] daily_report crashed: %s", exc, exc_info=True)
+            try:
+                await bot.send_message(ADMIN_CHAT_ID, f"⚠️ Дневной отчёт упал: {exc}")
+            except Exception:
+                pass
+
+    async def _weekly_summary_job():
+        try:
+            await send_weekly_summary(bot, ADMIN_CHAT_ID, DB_PATH)
+        except Exception as exc:
+            logger.error("[scheduler] weekly_summary crashed: %s", exc, exc_info=True)
+
+    from backup import run_backup
+    async def _backup_job():
+        try:
+            await run_backup()
+        except Exception as exc:
+            logger.error("[scheduler] backup crashed: %s", exc, exc_info=True)
+
     scheduler.add_job(
-        lambda: asyncio.create_task(send_daily_report(bot, ADMIN_CHAT_ID, DB_PATH)),
+        _daily_report_job,
         CronTrigger(hour=5, minute=0),
         id='daily_report',
         replace_existing=True,
     )
     # Weekly analytics summary — Monday 07:05 UTC (right after existing digest at 07:00)
     scheduler.add_job(
-        lambda: asyncio.create_task(send_weekly_summary(bot, ADMIN_CHAT_ID, DB_PATH)),
+        _weekly_summary_job,
         CronTrigger(day_of_week='mon', hour=7, minute=5),
         id='weekly_summary',
         replace_existing=True,
     )
     # Daily DB backup — every day at 03:00 UTC
-    from backup import run_backup
     scheduler.add_job(
-        lambda: asyncio.create_task(run_backup()),
+        _backup_job,
         CronTrigger(hour=3, minute=0),
         id='daily_backup',
         replace_existing=True,
