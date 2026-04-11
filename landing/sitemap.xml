@@ -1,27 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:xhtml="http://www.w3.org/1999/xhtml">
-
-  <!-- Main landing page — RU (default) -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://resumeai.bot/</loc>
-    <xhtml:link rel="alternate" hreflang="ru" href="https://resumeai.bot/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://resumeai.bot/en/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://resumeai.bot/"/>
-    <lastmod>2025-04-09</lastmod>
+    <loc>https://resumeai-bot.ru/</loc>
+    <lastmod>2026-04-11</lastmod>
     <changefreq>monthly</changefreq>
     <priority>1.0</priority>
   </url>
-
-  <!-- EN version -->
   <url>
-    <loc>https://resumeai.bot/en/</loc>
-    <xhtml:link rel="alternate" hreflang="ru" href="https://resumeai.bot/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://resumeai.bot/en/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://resumeai.bot/"/>
-    <lastmod>2025-04-09</lastmod>
+    <loc>https://resumeai-bot.ru/app</loc>
+    <lastmod>2026-04-11</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
-
 </urlset>

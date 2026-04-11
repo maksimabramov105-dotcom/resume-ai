@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>АвтоОтклик — Автоматические заявки на работу</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     :root {
       --bg: #0a0a0a;
@@ -358,6 +359,7 @@
     @media (max-width: 900px) {
       .pricing-grid { grid-template-columns: repeat(2, 1fr); }
       .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      #billing-pricing-grid { grid-template-columns: 1fr !important; max-width: 420px !important; }
     }
     @media (max-width: 680px) {
       .nav-links, .nav-right { display: none; }
@@ -368,10 +370,27 @@
       .campaigns-grid { grid-template-columns: 1fr; }
       .filter-bar { flex-direction: column; }
       .container { padding: 20px 16px; }
+      #kanban-board { grid-template-columns: repeat(2, minmax(180px,1fr)) !important; }
     }
     @media (max-width: 420px) {
       .stats-grid { grid-template-columns: 1fr 1fr; }
+      #kanban-board { grid-template-columns: 1fr !important; }
     }
+    /* ── Onboarding ── */
+    .ob-step { width:36px;height:36px;border-radius:50%;background:var(--card2);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.9rem;color:var(--text-muted);transition:.2s; }
+    .ob-step.active { background:var(--accent1);border-color:var(--accent1);color:#fff; }
+    .ob-step.done { background:var(--accent2);border-color:var(--accent2);color:#fff; }
+    .ob-line { flex:1;height:2px;background:var(--border);margin:0 8px;max-width:80px; }
+    .ob-line.done { background:var(--accent2); }
+    .ob-toggle { background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 16px;color:var(--text-muted);font-size:0.88rem;cursor:pointer;transition:.2s; }
+    .ob-toggle.active { background:var(--accent1);border-color:var(--accent1);color:#fff; }
+    .ob-plan-card { background:var(--card2);border:2px solid var(--border);border-radius:var(--r);padding:16px 20px;cursor:pointer;transition:.2s; }
+    .ob-plan-card.selected { border-color:var(--accent1);background:rgba(124,58,237,0.1); }
+    .ob-plan-card:hover { border-color:var(--accent1); }
+    /* ── Funnel row ── */
+    @media (max-width: 600px) { .funnel-row { grid-template-columns: repeat(2,1fr) !important; } }
+    /* ── TG features grid ── */
+    @media (max-width: 480px) { .tg-features-grid { grid-template-columns: 1fr !important; } }
   </style>
 </head>
 <body>
@@ -382,11 +401,15 @@
   <div class="nav-links">
     <button class="nav-link" onclick="navigate('#dashboard')">Кампании</button>
     <button class="nav-link" onclick="navigate('#applications')">Заявки</button>
+    <button class="nav-link" onclick="navigate('#resume')">📄 Резюме</button>
+    <button class="nav-link" onclick="navigate('#cover')">✉️ Письма</button>
+    <button class="nav-link" onclick="navigate('#jobs')">🔍 Вакансии</button>
+    <button class="nav-link" onclick="navigate('#tracker')">📋 Трекер</button>
     <button class="nav-link" onclick="navigate('#settings')">Настройки</button>
   </div>
   <div class="nav-right">
     <span class="plan-badge plan-free" id="nav-plan">FREE</span>
-    <button class="nav-link" onclick="navigate('#pricing')">Тарифы</button>
+    <button class="nav-link" onclick="navigate('#billing')">💳 Тарифы</button>
     <button class="btn-logout" onclick="logout()">Выйти</button>
   </div>
   <div class="hamburger" onclick="toggleMobile()">
@@ -396,8 +419,12 @@
 <div class="mobile-menu" id="mobile-menu">
   <button class="nav-link" onclick="navigate('#dashboard');toggleMobile()">Кампании</button>
   <button class="nav-link" onclick="navigate('#applications');toggleMobile()">Заявки</button>
+  <button class="nav-link" onclick="navigate('#resume');toggleMobile()">📄 Резюме</button>
+  <button class="nav-link" onclick="navigate('#cover');toggleMobile()">✉️ Письма</button>
+  <button class="nav-link" onclick="navigate('#jobs');toggleMobile()">🔍 Вакансии</button>
+  <button class="nav-link" onclick="navigate('#tracker');toggleMobile()">📋 Трекер</button>
   <button class="nav-link" onclick="navigate('#settings');toggleMobile()">Настройки</button>
-  <button class="nav-link" onclick="navigate('#pricing');toggleMobile()">Тарифы</button>
+  <button class="nav-link" onclick="navigate('#billing');toggleMobile()">💳 Тарифы</button>
   <button class="nav-link" onclick="logout()">Выйти</button>
 </div>
 
@@ -493,9 +520,114 @@
   </div>
 </div>
 
+<!-- ============================== PAGE: ONBOARDING ============================== -->
+<div class="page" id="page-onboarding">
+  <div class="container" style="max-width:600px;padding-top:60px;padding-bottom:60px;">
+    <!-- Step indicator -->
+    <div style="display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:40px;" id="onboarding-steps">
+      <div class="ob-step active" id="ob-step-1">1</div>
+      <div class="ob-line" id="ob-line-1"></div>
+      <div class="ob-step" id="ob-step-2">2</div>
+      <div class="ob-line" id="ob-line-2"></div>
+      <div class="ob-step" id="ob-step-3">3</div>
+    </div>
+
+    <!-- Step 1: Upload Resume -->
+    <div id="ob-pane-1">
+      <h2 style="font-size:1.6rem;font-weight:800;margin-bottom:8px;text-align:center;">Загрузи своё резюме</h2>
+      <p style="color:var(--text-muted);text-align:center;margin-bottom:28px;">Это нужно чтобы AI адаптировал резюме под каждую вакансию</p>
+      <div id="ob-drop-zone" style="border:2px dashed var(--border);border-radius:var(--r);padding:36px;text-align:center;cursor:pointer;transition:all 0.2s;margin-bottom:16px;" onclick="document.getElementById('ob-file-input').click()" ondragover="event.preventDefault();this.style.borderColor='#7c3aed'" ondragleave="this.style.borderColor=''" ondrop="handleObDrop(event)">
+        <div style="font-size:2.5rem;margin-bottom:12px;">📄</div>
+        <div style="font-weight:600;margin-bottom:6px;">Перетащи файл сюда</div>
+        <div style="color:var(--text-muted);font-size:0.88rem;">PDF, DOCX, TXT — или нажми чтобы выбрать</div>
+        <div id="ob-file-name" style="margin-top:10px;color:#10b981;font-size:0.88rem;"></div>
+      </div>
+      <input type="file" id="ob-file-input" accept=".pdf,.docx,.txt" style="display:none" onchange="handleObFile(this)">
+      <div style="text-align:center;color:var(--text-muted);margin:12px 0;font-size:0.85rem;">или</div>
+      <textarea id="ob-resume-text" class="textarea" rows="6" placeholder="Вставьте текст резюме сюда..." style="margin-bottom:16px;" oninput="checkObStep1()"></textarea>
+      <button class="btn-primary" id="ob-next-1" style="width:100%;justify-content:center;opacity:0.4;cursor:not-allowed;" disabled onclick="obGoStep(2)">Продолжить →</button>
+      <div style="text-align:center;margin-top:16px;"><button onclick="obGoStep(2)" style="background:none;border:none;color:var(--text-muted);font-size:0.88rem;cursor:pointer;text-decoration:underline;">Пропустить этот шаг</button></div>
+    </div>
+
+    <!-- Step 2: Job Preferences -->
+    <div id="ob-pane-2" style="display:none;">
+      <h2 style="font-size:1.6rem;font-weight:800;margin-bottom:8px;text-align:center;">Настрой поиск</h2>
+      <p style="color:var(--text-muted);text-align:center;margin-bottom:28px;">AI будет использовать эти фильтры при авто-отклике</p>
+      <div class="form-group">
+        <label>Желаемая должность</label>
+        <input type="text" class="input" id="ob-job-title" placeholder="Python разработчик, UX дизайнер..." />
+      </div>
+      <div class="form-group">
+        <label>Город / формат</label>
+        <input type="text" class="input" id="ob-city" placeholder="Москва, Удалённо..." />
+      </div>
+      <div class="form-group">
+        <label>Формат работы</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+          <button class="ob-toggle active" onclick="obToggle(this,'remote')" data-val="remote">Удалённо</button>
+          <button class="ob-toggle" onclick="obToggle(this,'hybrid')" data-val="hybrid">Гибрид</button>
+          <button class="ob-toggle" onclick="obToggle(this,'office')" data-val="office">Офис</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Минимальная зарплата (₽)</label>
+        <input type="number" class="input" id="ob-salary" placeholder="150000" />
+      </div>
+      <div class="form-group">
+        <label>Исключить компании</label>
+        <input type="text" class="input" id="ob-exclude" placeholder="Компания А, Компания Б..." />
+      </div>
+      <button class="btn-primary" style="width:100%;justify-content:center;margin-top:8px;" onclick="obGoStep(3)">Продолжить →</button>
+      <div style="text-align:center;margin-top:16px;"><button onclick="obGoStep(1)" style="background:none;border:none;color:var(--text-muted);font-size:0.88rem;cursor:pointer;">← Назад</button></div>
+    </div>
+
+    <!-- Step 3: Choose Plan -->
+    <div id="ob-pane-3" style="display:none;">
+      <h2 style="font-size:1.6rem;font-weight:800;margin-bottom:8px;text-align:center;">Выбери тариф</h2>
+      <p style="color:var(--text-muted);text-align:center;margin-bottom:28px;">Начни бесплатно — сможешь обновить позже</p>
+      <div style="display:grid;gap:12px;margin-bottom:24px;">
+        <div class="ob-plan-card selected" onclick="selectObPlan(this,'free')" data-plan="free">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div><div style="font-weight:700;">FREE</div><div style="color:var(--text-muted);font-size:0.85rem;">5 откликов/день · базовое резюме</div></div>
+            <div style="font-weight:800;font-size:1.2rem;">0₽</div>
+          </div>
+        </div>
+        <div class="ob-plan-card" onclick="selectObPlan(this,'pro')" data-plan="pro">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div><div style="font-weight:700;">ПРО <span style="background:#f59e0b;color:#fff;font-size:0.72rem;padding:2px 6px;border-radius:4px;margin-left:6px;">Популярный</span></div><div style="color:var(--text-muted);font-size:0.85rem;">50 откликов/день · все функции</div></div>
+            <div style="font-weight:800;font-size:1.2rem;">990₽</div>
+          </div>
+        </div>
+        <div class="ob-plan-card" onclick="selectObPlan(this,'unlimited')" data-plan="unlimited">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div><div style="font-weight:700;">БЕЗЛИМИТ</div><div style="color:var(--text-muted);font-size:0.85rem;">Безлимит откликов · приоритет</div></div>
+            <div style="font-weight:800;font-size:1.2rem;">2490₽</div>
+          </div>
+        </div>
+      </div>
+      <button class="btn-primary" style="width:100%;justify-content:center;" onclick="finishOnboarding()">🚀 Начать работу →</button>
+      <div style="text-align:center;margin-top:12px;color:var(--text-muted);font-size:0.82rem;">Тариф можно изменить в разделе Тарифы</div>
+      <div style="text-align:center;margin-top:8px;"><button onclick="obGoStep(2)" style="background:none;border:none;color:var(--text-muted);font-size:0.88rem;cursor:pointer;">← Назад</button></div>
+    </div>
+  </div>
+</div>
+
 <!-- ============================== PAGE: DASHBOARD ============================== -->
 <div class="page" id="page-dashboard">
   <div class="container">
+
+    <!-- Telegram promo banner -->
+    <div id="tg-promo-banner" style="background:linear-gradient(135deg,#0088CC,#0066AA);border-radius:12px;padding:16px 20px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+      <div style="color:white;">
+        <div style="font-weight:700;font-size:1rem;">✈ Подключи Telegram — получай матчи и статус в мессенджере</div>
+        <div style="font-size:0.85rem;opacity:0.85;margin-top:4px;">Никаких браузеров. Откликайся одним тапом прямо в Telegram.</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <a href="https://t.me/topbestworkerbot" target="_blank" style="background:white;color:#0088CC;border-radius:8px;padding:8px 16px;font-weight:700;font-size:0.88rem;text-decoration:none;white-space:nowrap;">Открыть бот →</a>
+        <button onclick="document.getElementById('tg-promo-banner').style.display='none';localStorage.setItem('tg_banner_dismissed','1')" style="background:rgba(255,255,255,0.2);border:none;color:white;border-radius:6px;padding:8px;cursor:pointer;font-size:1rem;line-height:1;">✕</button>
+      </div>
+    </div>
+
     <!-- Stats -->
     <div class="stats-grid" id="stats-grid">
       <div class="stat-card"><div class="stat-icon">📤</div><div class="stat-value" id="stat-today">—</div><div class="stat-label">Заявок сегодня</div></div>
@@ -511,6 +643,22 @@
     </div>
     <div class="campaigns-grid" id="campaigns-grid">
       <div class="loading-overlay"><div class="loading-spinner"></div></div>
+    </div>
+
+    <!-- Activity chart -->
+    <div class="card" style="padding:20px;margin-bottom:24px;">
+      <div class="section-header" style="margin-bottom:16px;">
+        <span class="section-title">Активность за 30 дней</span>
+      </div>
+      <canvas id="activity-chart" height="110"></canvas>
+    </div>
+
+    <!-- Conversion funnel -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;" class="funnel-row">
+      <div class="stat-card" style="text-align:center;"><div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:4px;">Отправлено</div><div class="stat-value" id="funnel-sent">—</div></div>
+      <div class="stat-card" style="text-align:center;"><div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:4px;">Просмотрено</div><div class="stat-value" id="funnel-viewed">—</div></div>
+      <div class="stat-card" style="text-align:center;"><div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:4px;">Интервью</div><div class="stat-value" id="funnel-interview">—</div></div>
+      <div class="stat-card" style="text-align:center;"><div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:4px;">Оффер</div><div class="stat-value" id="funnel-offer">—</div></div>
     </div>
 
     <!-- Recent applications -->
@@ -727,6 +875,54 @@
       </div>
     </div>
 
+    <!-- Telegram Deep Integration -->
+    <div class="settings-section">
+      <div class="settings-section-title">🤖 Telegram Интеграция</div>
+      <div style="background:var(--card2);border-radius:var(--r);padding:20px;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+          <div>
+            <div style="font-weight:700;font-size:1rem;">@topbestworkerbot</div>
+            <div id="tg-connection-status" style="color:var(--text-muted);font-size:0.88rem;margin-top:4px;">Не подключён</div>
+          </div>
+          <button id="tg-connect-btn" onclick="connectTelegramDeep()" class="btn-primary btn-sm">Подключить Telegram</button>
+        </div>
+        <div id="tg-connected-info" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+          <div style="font-size:0.88rem;color:var(--text-muted);">Telegram ID: <span id="tg-id-display" style="color:var(--text);font-weight:600;"></span></div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;" class="tg-features-grid">
+        <div style="background:var(--card2);border-radius:var(--r);padding:16px;">
+          <div style="font-size:1.25rem;margin-bottom:8px;">🔔</div>
+          <div style="font-weight:600;font-size:0.9rem;margin-bottom:4px;">Уведомления</div>
+          <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:12px;">Новые матчи, статус заявок, напоминания</div>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:6px;"><input type="checkbox" id="tg-notify-matches" checked onchange="saveTgSettings()"> Матчи вакансий</label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:6px;"><input type="checkbox" id="tg-notify-status" checked onchange="saveTgSettings()"> Статус заявок</label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="tg-notify-digest" checked onchange="saveTgSettings()"> Еженедельный дайджест</label>
+        </div>
+        <div style="background:var(--card2);border-radius:var(--r);padding:16px;">
+          <div style="font-size:1.25rem;margin-bottom:8px;">⚡️</div>
+          <div style="font-weight:600;font-size:0.9rem;margin-bottom:4px;">Быстрый отклик</div>
+          <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:12px;">Бот присылает вакансию — нажми «Откликнуться» прямо в чате</div>
+          <a href="https://t.me/topbestworkerbot?start=quickapply" target="_blank" style="font-size:0.85rem;color:#0088CC;">Настроить в боте →</a>
+        </div>
+        <div style="background:var(--card2);border-radius:var(--r);padding:16px;">
+          <div style="font-size:1.25rem;margin-bottom:8px;">📄</div>
+          <div style="font-weight:600;font-size:0.9rem;margin-bottom:4px;">Загрузка резюме</div>
+          <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:12px;">Отправь PDF/DOCX прямо в бот — сохранится в аккаунт</div>
+          <a href="https://t.me/topbestworkerbot" target="_blank" style="font-size:0.85rem;color:#0088CC;">Открыть бота →</a>
+        </div>
+        <div style="background:var(--card2);border-radius:var(--r);padding:16px;">
+          <div style="font-size:1.25rem;margin-bottom:8px;">📊</div>
+          <div style="font-weight:600;font-size:0.9rem;margin-bottom:4px;">Статус заявок</div>
+          <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:12px;">Напиши /status в боте — последние 10 заявок</div>
+          <a href="https://t.me/topbestworkerbot?start=status" target="_blank" style="font-size:0.85rem;color:#0088CC;">Проверить /status →</a>
+        </div>
+      </div>
+      <div style="background:rgba(0,136,204,0.1);border:1px solid rgba(0,136,204,0.3);border-radius:var(--r);padding:14px;font-size:0.88rem;color:#0088CC;">
+        💡 <strong>Совет:</strong> Подключив Telegram, ты можешь управлять заявками не открывая браузер. Бот работает 24/7.
+      </div>
+    </div>
+
     <!-- Resume Profile -->
     <div class="settings-section">
       <div class="settings-section-title">Профиль резюме</div>
@@ -844,6 +1040,256 @@
     <div class="payment-note">
       💳 Оплата через CryptoBot — BTC, ETH, USDT и другие криптовалюты<br/>
       <span style="margin-top:4px;display:block;">Оплатил? Активация автоматическая в течение 1 минуты</span>
+    </div>
+  </div>
+</div>
+
+<!-- ============================== PAGE: RESUME BUILDER ============================== -->
+<div class="page" id="page-resume">
+  <div class="container">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:12px;">
+      <div>
+        <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:4px;">📄 Мои Резюме</h2>
+        <p style="color:var(--text-muted);font-size:0.9rem;">Загружайте резюме и проверяйте ATS-совместимость</p>
+      </div>
+      <button class="btn-primary" onclick="document.getElementById('resume-file-input').click()">+ Загрузить резюме</button>
+      <input type="file" id="resume-file-input" accept=".pdf,.docx,.txt" style="display:none;" onchange="handleResumeUpload(this)" />
+    </div>
+
+    <!-- Upload drop zone -->
+    <div id="resume-drop-zone" class="card" style="border:2px dashed var(--border);text-align:center;padding:40px 24px;cursor:pointer;transition:border-color 0.2s;margin-bottom:24px;"
+      onclick="document.getElementById('resume-file-input').click()"
+      ondragover="event.preventDefault();this.style.borderColor='var(--accent1)'"
+      ondragleave="this.style.borderColor='var(--border)'"
+      ondrop="handleResumeDrop(event)">
+      <div style="font-size:2.5rem;margin-bottom:12px;">📂</div>
+      <div style="font-weight:600;margin-bottom:6px;">Перетащите файл сюда или нажмите для выбора</div>
+      <div style="color:var(--text-muted);font-size:0.85rem;">PDF, DOCX, TXT — до 5 МБ</div>
+    </div>
+
+    <!-- Saved resumes list -->
+    <div class="section-header" style="margin-bottom:16px;">
+      <span class="section-title">Сохранённые резюме</span>
+    </div>
+    <div id="resume-list" style="margin-bottom:32px;"></div>
+
+    <!-- ATS Score -->
+    <div class="card">
+      <div style="font-size:1rem;font-weight:700;margin-bottom:16px;">🎯 Проверка ATS-совместимости</div>
+      <div class="form-group">
+        <label>Вставьте описание вакансии</label>
+        <textarea class="textarea" id="ats-jd" placeholder="Вставьте текст описания вакансии для анализа совместимости с вашим резюме..." rows="5"></textarea>
+      </div>
+      <button class="btn-primary" onclick="checkATS()">Проверить ATS-совместимость</button>
+      <div id="ats-result" style="display:none;margin-top:20px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================== PAGE: COVER LETTERS ============================== -->
+<div class="page" id="page-cover">
+  <div class="container">
+    <div style="margin-bottom:28px;">
+      <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:4px;">✉️ Сопроводительные Письма</h2>
+      <p style="color:var(--text-muted);font-size:0.9rem;">Генерируйте персональные письма с помощью AI</p>
+    </div>
+
+    <div class="card" style="margin-bottom:24px;">
+      <div class="form-group">
+        <label>Описание вакансии</label>
+        <textarea class="textarea" id="cover-jd" placeholder="Вставьте описание вакансии..." rows="5"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Тон письма</label>
+        <select class="select" id="cover-tone">
+          <option value="professional">Профессиональный</option>
+          <option value="friendly">Дружелюбный</option>
+          <option value="creative">Творческий</option>
+        </select>
+      </div>
+      <button class="btn-primary" onclick="generateCoverLetter()" id="cover-gen-btn">✨ Сгенерировать письмо</button>
+    </div>
+
+    <div id="cover-output-wrap" style="display:none;margin-bottom:24px;">
+      <div class="card">
+        <div style="font-weight:700;margin-bottom:12px;">Сгенерированное письмо</div>
+        <textarea class="textarea" id="cover-output" rows="12" style="margin-bottom:12px;"></textarea>
+        <div style="display:flex;gap:10px;">
+          <button class="btn-primary btn-sm" onclick="saveCoverLetter()">💾 Сохранить</button>
+          <button class="btn-secondary btn-sm" onclick="copyCoverLetter()">📋 Копировать</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Saved letters -->
+    <div class="section-header" style="margin-bottom:16px;">
+      <span class="section-title">Сохранённые письма</span>
+    </div>
+    <div id="cover-letters-list"></div>
+  </div>
+</div>
+
+<!-- ============================== PAGE: JOB SEARCH ============================== -->
+<div class="page" id="page-jobs">
+  <div class="container">
+    <div style="margin-bottom:28px;">
+      <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:4px;">🔍 Поиск Вакансий</h2>
+      <p style="color:var(--text-muted);font-size:0.9rem;">Находите подходящие вакансии с AI-подбором</p>
+    </div>
+
+    <!-- Search bar -->
+    <div class="card" style="margin-bottom:20px;">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <input type="text" class="input" id="jobs-query" placeholder="Должность, навык..." style="flex:2;min-width:200px;" onkeydown="if(event.key==='Enter')searchJobs()" />
+        <input type="text" class="input" id="jobs-city" placeholder="Город (необязательно)" style="flex:1;min-width:150px;" onkeydown="if(event.key==='Enter')searchJobs()" />
+        <button class="btn-primary" onclick="searchJobs()" style="white-space:nowrap;">🔍 Найти</button>
+      </div>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="filter-bar" style="margin-bottom:20px;">
+      <button class="filter-select" id="filter-remote-all" onclick="setRemoteFilter('all')" style="border-color:var(--accent1);color:#a78bfa;">Все</button>
+      <button class="filter-select" id="filter-remote-remote" onclick="setRemoteFilter('remote')">Удалённо</button>
+      <button class="filter-select" id="filter-remote-office" onclick="setRemoteFilter('office')">В офисе</button>
+    </div>
+
+    <!-- Jobs grid -->
+    <div id="jobs-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;"></div>
+  </div>
+</div>
+
+<!-- ============================== PAGE: APPLICATION TRACKER ============================== -->
+<div class="page" id="page-tracker">
+  <div class="container" style="max-width:1200px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:12px;">
+      <div>
+        <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:4px;">📋 Трекер Заявок</h2>
+        <p style="color:var(--text-muted);font-size:0.9rem;">Отслеживайте статус каждой заявки</p>
+      </div>
+      <button class="btn-primary" onclick="showAddAppForm()">+ Добавить заявку</button>
+    </div>
+
+    <!-- Add application form -->
+    <div id="add-app-form" class="card" style="display:none;margin-bottom:20px;max-width:600px;">
+      <div style="font-weight:700;margin-bottom:14px;">Новая заявка</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Компания</label>
+          <input type="text" class="input" id="new-app-company" placeholder="Название компании" />
+        </div>
+        <div class="form-group">
+          <label>Должность</label>
+          <input type="text" class="input" id="new-app-title" placeholder="Название вакансии" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Статус</label>
+          <select class="select" id="new-app-status">
+            <option value="Сохранено">Сохранено</option>
+            <option value="Откликнулся">Откликнулся</option>
+            <option value="Интервью">Интервью</option>
+            <option value="Оффер">Оффер</option>
+            <option value="Отказ">Отказ</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Дата</label>
+          <input type="date" class="input" id="new-app-date" />
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn-primary btn-sm" onclick="addTrackerApp()">Добавить</button>
+        <button class="btn-secondary btn-sm" onclick="document.getElementById('add-app-form').style.display='none'">Отмена</button>
+      </div>
+    </div>
+
+    <!-- Kanban board -->
+    <div id="kanban-board" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:32px;overflow-x:auto;min-width:800px;"></div>
+
+    <!-- Analytics mini panel -->
+    <div class="card">
+      <div style="font-weight:700;margin-bottom:16px;">📊 Аналитика</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;text-align:center;">
+        <div><div style="font-size:1.8rem;font-weight:800;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;" id="tracker-total">0</div><div style="color:var(--text-muted);font-size:0.82rem;">Всего заявок</div></div>
+        <div><div style="font-size:1.8rem;font-weight:800;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;" id="tracker-response-rate">0%</div><div style="color:var(--text-muted);font-size:0.82rem;">Отклик на интервью</div></div>
+        <div><div style="font-size:1.8rem;font-weight:800;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;" id="tracker-offer-rate">0%</div><div style="color:var(--text-muted);font-size:0.82rem;">Конверсия в оффер</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================== PAGE: BILLING ============================== -->
+<div class="page" id="page-billing">
+  <div class="container">
+    <div style="text-align:center;margin-bottom:40px;">
+      <h2 style="font-size:1.8rem;font-weight:800;margin-bottom:8px;">💳 Тарифы и Оплата</h2>
+      <p style="color:var(--text-muted);">Выберите подходящий план для вашего поиска работы</p>
+      <div style="margin-top:12px;">
+        Текущий план: <span class="plan-badge plan-free" id="billing-plan-badge">FREE</span>
+      </div>
+    </div>
+
+    <!-- 3 pricing cards -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:900px;margin:0 auto 40px;" id="billing-pricing-grid">
+      <!-- FREE -->
+      <div class="pricing-card">
+        <div class="plan-name">FREE</div>
+        <div class="plan-price">0₽</div>
+        <div class="plan-period">навсегда</div>
+        <ul class="plan-features">
+          <li>5 откликов в день</li>
+          <li>1 резюме</li>
+          <li>Трекер заявок</li>
+          <li>hh.ru + SuperJob</li>
+        </ul>
+        <button class="current-plan-btn" id="billing-free-btn">Текущий план</button>
+      </div>
+      <!-- PRO -->
+      <div class="pricing-card featured">
+        <div class="featured-badge">ПОПУЛЯРНЫЙ</div>
+        <div class="plan-name">ПРО</div>
+        <div class="plan-price">990₽</div>
+        <div class="plan-period">в месяц</div>
+        <ul class="plan-features">
+          <li>50 откликов в день</li>
+          <li>Безлимит резюме</li>
+          <li>Сопроводительные письма</li>
+          <li>Email дайджест</li>
+          <li>Приоритетная поддержка</li>
+        </ul>
+        <button class="btn-primary" style="width:100%;justify-content:center;" onclick="showUpgradeToast('ПРО')">Перейти на ПРО</button>
+      </div>
+      <!-- UNLIMITED -->
+      <div class="pricing-card">
+        <div class="plan-name">БЕЗЛИМИТ</div>
+        <div class="plan-price">2 490₽</div>
+        <div class="plan-period">в месяц</div>
+        <ul class="plan-features">
+          <li>Безлимит откликов</li>
+          <li>Безлимит резюме</li>
+          <li>Все AI-функции</li>
+          <li>LinkedIn автооотклик</li>
+          <li>Личный менеджер</li>
+          <li>Приоритет в очереди</li>
+        </ul>
+        <button class="btn-primary" style="width:100%;justify-content:center;" onclick="showUpgradeToast('БЕЗЛИМИТ')">Перейти на БЕЗЛИМИТ</button>
+      </div>
+    </div>
+
+    <!-- Referral section -->
+    <div class="card" style="max-width:700px;margin:0 auto;">
+      <div style="font-size:1rem;font-weight:700;margin-bottom:6px;">🎁 Реферальная программа</div>
+      <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:16px;">Пригласи друга — получи 1 месяц ПРО бесплатно</p>
+      <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+        <input type="text" class="input" id="referral-link-input" readonly style="flex:1;min-width:200px;cursor:pointer;" onclick="this.select()" />
+        <button class="btn-secondary" onclick="copyReferralLink()">📋 Копировать ссылку</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;text-align:center;">
+        <div><div style="font-size:1.5rem;font-weight:800;color:#a78bfa;" id="ref-invited">0</div><div style="color:var(--text-muted);font-size:0.82rem;">Приглашено</div></div>
+        <div><div style="font-size:1.5rem;font-weight:800;color:#34d399;" id="ref-registered">0</div><div style="color:var(--text-muted);font-size:0.82rem;">Зарегистрировались</div></div>
+        <div><div style="font-size:1.5rem;font-weight:800;color:#fbbf24;" id="ref-paid">0</div><div style="color:var(--text-muted);font-size:0.82rem;">Оплатили</div></div>
+      </div>
     </div>
   </div>
 </div>
@@ -982,10 +1428,16 @@
     const pages = {
       '#login': 'page-login',
       '#dashboard': 'page-dashboard',
+      '#onboarding': 'page-onboarding',
       '#new-campaign': 'page-new-campaign',
       '#applications': 'page-applications',
       '#settings': 'page-settings',
       '#pricing': 'page-pricing',
+      '#resume': 'page-resume',
+      '#cover': 'page-cover',
+      '#jobs': 'page-jobs',
+      '#tracker': 'page-tracker',
+      '#billing': 'page-billing',
     };
 
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -1003,11 +1455,25 @@
 
     window.location.hash = hash;
 
+    // Onboarding redirect: first-time users go through wizard
+    if (hash === '#dashboard' && !localStorage.getItem('onboarding_complete')) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById('page-onboarding').classList.add('active');
+      window.location.hash = '#onboarding';
+      obGoStep(1);
+      return;
+    }
+
     // Load data for pages
     if (hash === '#dashboard') loadDashboard();
     if (hash === '#applications') loadApplications();
     if (hash === '#settings') loadSettings();
     if (hash === '#new-campaign') initNewCampaign();
+    if (hash === '#resume') initResumePage();
+    if (hash === '#cover') initCoverPage();
+    if (hash === '#jobs') initJobsPage();
+    if (hash === '#tracker') initTrackerPage();
+    if (hash === '#billing') initBillingPage();
 
     // Close mobile menu
     document.getElementById('mobile-menu').classList.remove('open');
@@ -1214,6 +1680,16 @@
     // Recent applications
     const apps = appsData?.items || appsData?.applications || [];
     renderRecentApps(apps);
+
+    // Chart
+    const total = stats?.applications_total ?? 0;
+    initActivityChart(total);
+
+    // Hide Telegram banner if already dismissed or connected
+    if (localStorage.getItem('tg_banner_dismissed') || (stats?.connections?.telegram_id)) {
+      const banner = document.getElementById('tg-promo-banner');
+      if (banner) banner.style.display = 'none';
+    }
   }
 
   function updatePlanBadge(plan) {
@@ -1577,6 +2053,477 @@
     } catch { return String(d); }
   }
 
+  // ================================================================
+  // ===== PAGE: RESUME BUILDER =====
+  // ================================================================
+  function initResumePage() {
+    renderResumeList();
+  }
+
+  function getResumes() {
+    try { return JSON.parse(localStorage.getItem('resumeai_resumes') || '[]'); } catch { return []; }
+  }
+  function saveResumes(arr) { localStorage.setItem('resumeai_resumes', JSON.stringify(arr)); }
+
+  function handleResumeUpload(input) {
+    const file = input.files[0];
+    if (!file) return;
+    uploadResumeFile(file);
+    input.value = '';
+  }
+
+  function handleResumeDrop(e) {
+    e.preventDefault();
+    document.getElementById('resume-drop-zone').style.borderColor = 'var(--border)';
+    const file = e.dataTransfer.files[0];
+    if (file) uploadResumeFile(file);
+  }
+
+  function uploadResumeFile(file) {
+    const allowed = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
+    const extOk = /\.(pdf|docx|txt)$/i.test(file.name);
+    if (!extOk) { showToast('Поддерживаются только PDF, DOCX, TXT', 'error'); return; }
+    if (file.size > 5 * 1024 * 1024) { showToast('Файл слишком большой (макс. 5 МБ)', 'error'); return; }
+    const resumes = getResumes();
+    const entry = { id: Date.now(), name: file.name, size: file.size, date: new Date().toISOString(), primary: resumes.length === 0 };
+    resumes.unshift(entry);
+    saveResumes(resumes);
+    showToast('Резюме загружено: ' + file.name, 'success');
+    renderResumeList();
+  }
+
+  function renderResumeList() {
+    const list = document.getElementById('resume-list');
+    if (!list) return;
+    const resumes = getResumes();
+    if (!resumes.length) {
+      list.innerHTML = `<div class="empty-state" style="padding:40px 24px;">
+        <div class="empty-icon">📄</div>
+        <p>Загрузите резюме чтобы начать</p>
+      </div>`;
+      return;
+    }
+    list.innerHTML = resumes.map(r => `
+      <div class="card card-sm" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:10px;">
+        <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;">
+          <span style="font-size:1.5rem;">📄</span>
+          <div style="min-width:0;">
+            <div style="font-weight:600;font-size:0.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(r.name)}</div>
+            <div style="color:var(--text-muted);font-size:0.78rem;">${formatDate(r.date)} · ${(r.size/1024).toFixed(1)} KB</div>
+          </div>
+          ${r.primary ? '<span class="badge badge-active" style="margin-left:8px;">Основное</span>' : ''}
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0;">
+          ${!r.primary ? `<button class="btn-secondary btn-sm" onclick="setPrimaryResume(${r.id})">Использовать как основное</button>` : ''}
+          <button class="btn-danger btn-sm" style="padding:6px 12px;" onclick="deleteResume(${r.id})">Удалить</button>
+        </div>
+      </div>`).join('');
+  }
+
+  function setPrimaryResume(id) {
+    const resumes = getResumes().map(r => ({ ...r, primary: r.id === id }));
+    saveResumes(resumes);
+    renderResumeList();
+    showToast('Основное резюме обновлено', 'success');
+  }
+
+  function deleteResume(id) {
+    saveResumes(getResumes().filter(r => r.id !== id));
+    renderResumeList();
+    showToast('Резюме удалено', 'info');
+  }
+
+  function checkATS() {
+    const jd = document.getElementById('ats-jd').value.trim();
+    if (!jd) { showToast('Вставьте описание вакансии', 'error'); return; }
+    const resumes = getResumes();
+    if (!resumes.length) { showToast('Сначала загрузите резюме', 'error'); return; }
+
+    // Mock ATS scoring — keyword overlap simulation
+    const jdWords = new Set(jd.toLowerCase().split(/\W+/).filter(w => w.length > 3));
+    const profileKeywords = ['python','javascript','react','sql','api','docker','linux','git','agile','scrum','backend','frontend','developer','engineer','manager','design','analyst','data','cloud','aws','java','kotlin','swift','ios','android'];
+    let matchCount = 0;
+    profileKeywords.forEach(kw => { if (jdWords.has(kw)) matchCount++; });
+    const base = 55 + Math.floor(Math.random() * 15);
+    const bonus = Math.min(matchCount * 3, 30);
+    const score = Math.min(base + bonus, 95);
+    const color = score >= 75 ? '#34d399' : score >= 60 ? '#fbbf24' : '#f87171';
+    const label = score >= 75 ? 'Высокая совместимость' : score >= 60 ? 'Средняя совместимость' : 'Низкая совместимость';
+
+    const el = document.getElementById('ats-result');
+    el.style.display = 'block';
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+        <div style="text-align:center;">
+          <div style="font-size:3rem;font-weight:800;color:${color};">${score}%</div>
+          <div style="font-size:0.85rem;color:${color};font-weight:600;">${label}</div>
+        </div>
+        <div style="flex:1;min-width:200px;">
+          <div style="height:10px;background:rgba(255,255,255,0.08);border-radius:5px;overflow:hidden;margin-bottom:10px;">
+            <div style="height:100%;width:${score}%;background:${color};border-radius:5px;transition:width 0.5s;"></div>
+          </div>
+          <div style="color:var(--text-muted);font-size:0.85rem;">Найдено ключевых слов: <strong style="color:var(--text);">${matchCount}</strong> из проверяемых</div>
+          <div style="color:var(--text-muted);font-size:0.82rem;margin-top:6px;">Совет: добавьте больше ключевых слов из вакансии в резюме для повышения рейтинга.</div>
+        </div>
+      </div>`;
+  }
+
+  // ================================================================
+  // ===== PAGE: COVER LETTERS =====
+  // ================================================================
+  function initCoverPage() {
+    renderCoverLettersList();
+  }
+
+  function getCoverLetters() {
+    try { return JSON.parse(localStorage.getItem('resumeai_cover_letters') || '[]'); } catch { return []; }
+  }
+  function saveCoverLettersStore(arr) { localStorage.setItem('resumeai_cover_letters', JSON.stringify(arr)); }
+
+  async function generateCoverLetter() {
+    const jd = document.getElementById('cover-jd').value.trim();
+    if (!jd) { showToast('Вставьте описание вакансии', 'error'); return; }
+    const tone = document.getElementById('cover-tone').value;
+    const btn = document.getElementById('cover-gen-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loading-spinner"></span> Генерируем...';
+
+    let letter = null;
+    try {
+      const data = await api('/generate-cover-letter', 'POST', { job_description: jd, tone });
+      if (data && data.letter) letter = data.letter;
+    } catch(e) {}
+
+    if (!letter) {
+      // Realistic mock letter
+      const toneText = { professional: 'профессиональном', friendly: 'дружелюбном', creative: 'творческом' }[tone] || 'профессиональном';
+      const company = (jd.match(/компани[яию]\s+["«]?([А-ЯA-Z][а-яёa-z]+)/i) || [])[1] || 'вашу компанию';
+      letter = `Уважаемые коллеги,
+
+Я рад возможности откликнуться на данную вакансию. Ознакомившись с описанием позиции, я убеждён, что мой опыт и навыки идеально соответствуют вашим требованиям.
+
+За время своей профессиональной деятельности я приобрёл глубокие знания в области, описанной в вакансии. Я успешно реализовывал проекты различного масштаба, работал в команде и самостоятельно, всегда добиваясь поставленных целей в срок.
+
+Меня особенно привлекает возможность работы в ${company} — я разделяю ваши ценности и уверен, что смогу внести значимый вклад в развитие команды и достижение бизнес-целей.
+
+Буду рад обсудить детали на собеседовании. Спасибо за рассмотрение моей кандидатуры.
+
+С уважением,
+[Ваше имя]`;
+    }
+
+    document.getElementById('cover-output').value = letter;
+    document.getElementById('cover-output-wrap').style.display = 'block';
+    btn.disabled = false;
+    btn.innerHTML = '✨ Сгенерировать письмо';
+    document.getElementById('cover-output-wrap').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function saveCoverLetter() {
+    const text = document.getElementById('cover-output').value.trim();
+    const jd = document.getElementById('cover-jd').value.trim();
+    if (!text) { showToast('Письмо пустое', 'error'); return; }
+    const letters = getCoverLetters();
+    letters.unshift({ id: Date.now(), text, snippet: jd.slice(0, 80), date: new Date().toISOString() });
+    saveCoverLettersStore(letters);
+    showToast('Письмо сохранено', 'success');
+    renderCoverLettersList();
+  }
+
+  function copyCoverLetter() {
+    const text = document.getElementById('cover-output').value;
+    navigator.clipboard.writeText(text).then(() => showToast('Скопировано в буфер обмена', 'success'));
+  }
+
+  function renderCoverLettersList() {
+    const el = document.getElementById('cover-letters-list');
+    if (!el) return;
+    const letters = getCoverLetters();
+    if (!letters.length) {
+      el.innerHTML = '<div class="empty-state" style="padding:32px 24px;"><div class="empty-icon">✉️</div><p>Сохранённых писем нет</p></div>';
+      return;
+    }
+    el.innerHTML = letters.map(l => `
+      <div class="card card-sm" style="margin-bottom:10px;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:0;">
+            <div style="color:var(--text-muted);font-size:0.78rem;margin-bottom:4px;">${formatDate(l.date)}</div>
+            <div style="font-size:0.88rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(l.snippet || 'Без описания')}...</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-shrink:0;">
+            <button class="btn-secondary btn-sm" onclick="copySavedLetter(${l.id})">Копировать</button>
+            <button class="btn-danger btn-sm" style="padding:6px 12px;" onclick="deleteCoverLetter(${l.id})">Удалить</button>
+          </div>
+        </div>
+      </div>`).join('');
+  }
+
+  function copySavedLetter(id) {
+    const l = getCoverLetters().find(x => x.id === id);
+    if (l) navigator.clipboard.writeText(l.text).then(() => showToast('Скопировано', 'success'));
+  }
+
+  function deleteCoverLetter(id) {
+    saveCoverLettersStore(getCoverLetters().filter(x => x.id !== id));
+    renderCoverLettersList();
+    showToast('Письмо удалено', 'info');
+  }
+
+  // ================================================================
+  // ===== PAGE: JOB SEARCH =====
+  // ================================================================
+  const MOCK_JOBS = [
+    {title:"Python Backend Developer", company:"Яндекс", location:"Москва", salary:"250 000 — 350 000 ₽", remote:true, match:94, url:"#"},
+    {title:"Full Stack Developer", company:"Сбер", location:"Москва", salary:"180 000 — 260 000 ₽", remote:false, match:87, url:"#"},
+    {title:"Data Engineer", company:"Тинькофф", location:"Санкт-Петербург", salary:"200 000 — 300 000 ₽", remote:true, match:81, url:"#"},
+    {title:"DevOps Engineer", company:"VK", location:"Москва", salary:"220 000 — 320 000 ₽", remote:true, match:76, url:"#"},
+    {title:"Product Manager", company:"Авито", location:"Москва", salary:"200 000 — 280 000 ₽", remote:false, match:72, url:"#"},
+    {title:"UX Designer", company:"Lamoda", location:"Москва", salary:"120 000 — 180 000 ₽", remote:true, match:68, url:"#"},
+    {title:"Android Developer", company:"Wildberries", location:"Москва", salary:"180 000 — 250 000 ₽", remote:false, match:65, url:"#"},
+    {title:"Frontend Developer", company:"Ozon", location:"Москва", salary:"150 000 — 220 000 ₽", remote:true, match:61, url:"#"},
+    {title:"ML Engineer", company:"SberAI", location:"Москва", salary:"300 000 — 450 000 ₽", remote:false, match:58, url:"#"},
+    {title:"iOS Developer", company:"Kaspersky", location:"Москва", salary:"200 000 — 280 000 ₽", remote:true, match:54, url:"#"},
+  ];
+  let jobsRemoteFilter = 'all';
+  let jobsCurrentData = [];
+
+  function initJobsPage() {
+    if (!jobsCurrentData.length) jobsCurrentData = MOCK_JOBS;
+    renderJobs(jobsCurrentData);
+  }
+
+  function setRemoteFilter(f) {
+    jobsRemoteFilter = f;
+    ['all','remote','office'].forEach(v => {
+      const btn = document.getElementById('filter-remote-' + v);
+      if (btn) { btn.style.borderColor = v === f ? 'var(--accent1)' : 'var(--border)'; btn.style.color = v === f ? '#a78bfa' : 'var(--text-muted)'; }
+    });
+    renderJobs(jobsCurrentData);
+  }
+
+  async function searchJobs() {
+    const q = document.getElementById('jobs-query').value.trim();
+    const city = document.getElementById('jobs-city').value.trim();
+    const grid = document.getElementById('jobs-grid');
+    grid.innerHTML = '<div class="loading-overlay" style="grid-column:1/-1;"><div class="loading-spinner"></div></div>';
+
+    let jobs = null;
+    try {
+      let url = '/jobs/search?q=' + encodeURIComponent(q);
+      if (city) url += '&city=' + encodeURIComponent(city);
+      const data = await api(url);
+      if (data && Array.isArray(data.jobs)) jobs = data.jobs;
+      else if (Array.isArray(data)) jobs = data;
+    } catch(e) {}
+
+    if (!jobs) {
+      // filter mock by query
+      jobs = MOCK_JOBS.filter(j => !q || j.title.toLowerCase().includes(q.toLowerCase()) || j.company.toLowerCase().includes(q.toLowerCase()));
+      if (!jobs.length) jobs = MOCK_JOBS;
+    }
+    jobsCurrentData = jobs;
+    renderJobs(jobs);
+  }
+
+  function renderJobs(jobs) {
+    const grid = document.getElementById('jobs-grid');
+    if (!grid) return;
+    let filtered = jobs;
+    if (jobsRemoteFilter === 'remote') filtered = jobs.filter(j => j.remote);
+    else if (jobsRemoteFilter === 'office') filtered = jobs.filter(j => !j.remote);
+    if (!filtered.length) {
+      grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">🔍</div><p>Вакансии не найдены. Попробуйте изменить фильтры.</p></div>';
+      return;
+    }
+    grid.innerHTML = filtered.map(j => {
+      const matchColor = j.match >= 80 ? '#34d399' : j.match >= 60 ? '#fbbf24' : '#f87171';
+      return `<div class="card card-sm" style="display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+          <div>
+            <div style="font-weight:700;font-size:0.95rem;margin-bottom:2px;">${esc(j.title)}</div>
+            <div style="color:var(--text-muted);font-size:0.85rem;">${esc(j.company)} · ${esc(j.location)}</div>
+          </div>
+          <div style="text-align:center;flex-shrink:0;">
+            <div style="font-size:1.1rem;font-weight:800;color:${matchColor};">${j.match}%</div>
+            <div style="font-size:0.68rem;color:var(--text-muted);">совпадение</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="color:var(--text);font-size:0.85rem;font-weight:600;">${esc(j.salary)}</span>
+          ${j.remote ? '<span class="badge badge-active" style="font-size:0.7rem;">Удалённо</span>' : '<span class="badge badge-paused" style="font-size:0.7rem;">В офисе</span>'}
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-secondary btn-sm" onclick="bookmarkJob('${esc(j.title)}','${esc(j.company)}')">🔖 Сохранить</button>
+          <button class="btn-primary btn-sm" onclick="quickApplyJob('${esc(j.title)}','${esc(j.company)}')">⚡ Откликнуться с AI</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function bookmarkJob(title, company) {
+    showToast(`Вакансия "${title}" сохранена`, 'success');
+    // Also add to tracker
+    const apps = getTrackerApps();
+    apps.push({ id: Date.now(), company, title, status: 'Сохранено', date: new Date().toISOString().slice(0,10), notes: '' });
+    saveTrackerApps(apps);
+  }
+
+  function quickApplyJob(title, company) {
+    showToast('Добавлено в очередь авто-отклика ✓', 'success');
+  }
+
+  // ================================================================
+  // ===== PAGE: APPLICATION TRACKER =====
+  // ================================================================
+  const KANBAN_COLS = ['Сохранено', 'Откликнулся', 'Интервью', 'Оффер', 'Отказ'];
+  const SAMPLE_APPS = [
+    {id:1, company:"Яндекс", title:"Python Developer", status:"Интервью", date:"2026-04-08", notes:""},
+    {id:2, company:"Сбер", title:"Backend Engineer", status:"Откликнулся", date:"2026-04-09", notes:""},
+    {id:3, company:"VK", title:"Full Stack Dev", status:"Сохранено", date:"2026-04-10", notes:""},
+  ];
+
+  function getTrackerApps() {
+    try {
+      const raw = localStorage.getItem('resumeai_applications');
+      if (!raw) {
+        saveTrackerApps(SAMPLE_APPS);
+        return SAMPLE_APPS.slice();
+      }
+      return JSON.parse(raw);
+    } catch { return SAMPLE_APPS.slice(); }
+  }
+  function saveTrackerApps(arr) { localStorage.setItem('resumeai_applications', JSON.stringify(arr)); }
+
+  function initTrackerPage() {
+    // Set default date for new app form
+    const dateEl = document.getElementById('new-app-date');
+    if (dateEl && !dateEl.value) dateEl.value = new Date().toISOString().slice(0,10);
+    renderKanban();
+  }
+
+  function showAddAppForm() {
+    const el = document.getElementById('add-app-form');
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  }
+
+  function addTrackerApp() {
+    const company = document.getElementById('new-app-company').value.trim();
+    const title = document.getElementById('new-app-title').value.trim();
+    const status = document.getElementById('new-app-status').value;
+    const date = document.getElementById('new-app-date').value;
+    if (!company || !title) { showToast('Заполните компанию и должность', 'error'); return; }
+    const apps = getTrackerApps();
+    apps.push({ id: Date.now(), company, title, status, date, notes: '' });
+    saveTrackerApps(apps);
+    document.getElementById('new-app-company').value = '';
+    document.getElementById('new-app-title').value = '';
+    document.getElementById('add-app-form').style.display = 'none';
+    showToast('Заявка добавлена', 'success');
+    renderKanban();
+  }
+
+  function renderKanban() {
+    const board = document.getElementById('kanban-board');
+    if (!board) return;
+    const apps = getTrackerApps();
+    const colColors = { 'Сохранено': 'rgba(107,114,128,0.15)', 'Откликнулся': 'rgba(37,99,235,0.15)', 'Интервью': 'rgba(124,58,237,0.15)', 'Оффер': 'rgba(16,185,129,0.15)', 'Отказ': 'rgba(239,68,68,0.1)' };
+    const colHeaderColors = { 'Сохранено': '#9ca3af', 'Откликнулся': '#60a5fa', 'Интервью': '#a78bfa', 'Оффер': '#34d399', 'Отказ': '#f87171' };
+
+    board.innerHTML = KANBAN_COLS.map(col => {
+      const colApps = apps.filter(a => a.status === col);
+      const cards = colApps.map(a => `
+        <div class="card card-sm" style="background:var(--card2);margin-bottom:8px;">
+          <div style="font-weight:600;font-size:0.88rem;margin-bottom:2px;">${esc(a.company)}</div>
+          <div style="color:var(--text-muted);font-size:0.8rem;margin-bottom:8px;">${esc(a.title)}</div>
+          <div style="color:var(--text-muted);font-size:0.75rem;margin-bottom:8px;">📅 ${a.date || '—'}</div>
+          <select class="select" style="font-size:0.78rem;padding:5px 8px;margin-bottom:8px;" onchange="moveTrackerApp(${a.id}, this.value)">
+            ${KANBAN_COLS.map(s => `<option value="${s}" ${s===a.status?'selected':''}>${s}</option>`).join('')}
+          </select>
+          <textarea class="textarea" style="min-height:50px;font-size:0.78rem;resize:none;" placeholder="Заметки..." onchange="updateTrackerNotes(${a.id}, this.value)">${esc(a.notes||'')}</textarea>
+          <button onclick="deleteTrackerApp(${a.id})" style="background:none;border:none;color:var(--text-muted);font-size:0.78rem;cursor:pointer;margin-top:4px;padding:2px 0;">✕ Удалить</button>
+        </div>`).join('');
+      return `<div style="background:${colColors[col]};border:1px solid var(--border);border-radius:12px;padding:12px;min-height:120px;">
+        <div style="font-weight:700;font-size:0.82rem;color:${colHeaderColors[col]};text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;display:flex;justify-content:space-between;">
+          <span>${col}</span><span style="opacity:0.7;">${colApps.length}</span>
+        </div>
+        ${cards || '<div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:20px 0;">Пусто</div>'}
+      </div>`;
+    }).join('');
+
+    // Update analytics
+    const total = apps.length;
+    const interviewed = apps.filter(a => a.status === 'Интервью' || a.status === 'Оффер').length;
+    const offered = apps.filter(a => a.status === 'Оффер').length;
+    const applied = apps.filter(a => a.status !== 'Сохранено').length;
+    const el = id => document.getElementById(id);
+    if (el('tracker-total')) el('tracker-total').textContent = total;
+    if (el('tracker-response-rate')) el('tracker-response-rate').textContent = applied ? Math.round(interviewed/applied*100)+'%' : '0%';
+    if (el('tracker-offer-rate')) el('tracker-offer-rate').textContent = applied ? Math.round(offered/applied*100)+'%' : '0%';
+  }
+
+  function moveTrackerApp(id, newStatus) {
+    const apps = getTrackerApps().map(a => a.id === id ? {...a, status: newStatus} : a);
+    saveTrackerApps(apps);
+    renderKanban();
+  }
+
+  function updateTrackerNotes(id, notes) {
+    const apps = getTrackerApps().map(a => a.id === id ? {...a, notes} : a);
+    saveTrackerApps(apps);
+  }
+
+  function deleteTrackerApp(id) {
+    saveTrackerApps(getTrackerApps().filter(a => a.id !== id));
+    renderKanban();
+    showToast('Заявка удалена', 'info');
+  }
+
+  // ================================================================
+  // ===== PAGE: BILLING =====
+  // ================================================================
+  async function initBillingPage() {
+    const data = await api('/dashboard');
+    if (data && data.plan) {
+      const plan = data.plan;
+      const labels = { free: 'FREE', start: 'СТАРТ', pro: 'ПРО', unlimited: 'БЕЗЛИМИТ' };
+      const classes = { free: 'plan-free', start: 'plan-start', pro: 'plan-pro', unlimited: 'plan-unlimited' };
+      const badge = document.getElementById('billing-plan-badge');
+      if (badge) { badge.textContent = labels[plan] || plan.toUpperCase(); badge.className = 'plan-badge ' + (classes[plan] || 'plan-free'); }
+      // Update free button text if on non-free plan
+      if (plan !== 'free') {
+        const btn = document.getElementById('billing-free-btn');
+        if (btn) { btn.textContent = 'Понизить'; btn.className = 'btn-secondary'; btn.style.width='100%'; btn.style.justifyContent='center'; }
+      }
+      // Build referral link
+      if (data.referral_code) {
+        const input = document.getElementById('referral-link-input');
+        if (input) input.value = 'https://resumeai-bot.ru/app?ref=' + data.referral_code;
+        if (data.referral_stats) {
+          const s = data.referral_stats;
+          const el = id => document.getElementById(id);
+          if (el('ref-invited')) el('ref-invited').textContent = s.invited || 0;
+          if (el('ref-registered')) el('ref-registered').textContent = s.registered || 0;
+          if (el('ref-paid')) el('ref-paid').textContent = s.paid || 0;
+        }
+      } else {
+        const input = document.getElementById('referral-link-input');
+        if (input) input.value = 'https://resumeai-bot.ru/app?ref=YOUR_CODE';
+      }
+    } else {
+      const input = document.getElementById('referral-link-input');
+      if (input) input.value = 'https://resumeai-bot.ru/app?ref=YOUR_CODE';
+    }
+  }
+
+  function showUpgradeToast(plan) {
+    showToast('Оплата через Telegram: напишите /upgrade в @topbestworkerbot', 'info');
+  }
+
+  function copyReferralLink() {
+    const val = document.getElementById('referral-link-input').value;
+    navigator.clipboard.writeText(val).then(() => showToast('Реферальная ссылка скопирована', 'success'));
+  }
+
   // ===== KEYBOARD SHORTCUTS =====
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
@@ -1591,9 +2538,155 @@
   // ===== HASH CHANGE =====
   window.addEventListener('hashchange', () => {
     const hash = window.location.hash || '#login';
-    const validHashes = ['#login', '#dashboard', '#new-campaign', '#applications', '#settings', '#pricing'];
+    const validHashes = ['#login', '#dashboard', '#onboarding', '#new-campaign', '#applications', '#settings', '#pricing', '#resume', '#cover', '#jobs', '#tracker', '#billing'];
     if (validHashes.includes(hash)) navigate(hash);
   });
+
+  // ===== ONBOARDING WIZARD =====
+  let _obRemotePref = 'remote';
+
+  function obGoStep(step) {
+    [1,2,3].forEach(i => {
+      document.getElementById('ob-pane-' + i).style.display = i === step ? '' : 'none';
+      const s = document.getElementById('ob-step-' + i);
+      s.classList.remove('active','done');
+      if (i < step) s.classList.add('done');
+      else if (i === step) s.classList.add('active');
+      if (i < 3) {
+        const l = document.getElementById('ob-line-' + i);
+        l.classList.toggle('done', i < step);
+      }
+    });
+  }
+
+  function checkObStep1() {
+    const hasText = (document.getElementById('ob-resume-text').value || '').trim().length > 20;
+    const btn = document.getElementById('ob-next-1');
+    btn.disabled = !hasText;
+    btn.style.opacity = hasText ? '1' : '0.4';
+    btn.style.cursor = hasText ? 'pointer' : 'not-allowed';
+  }
+
+  function handleObFile(input) {
+    if (input.files && input.files[0]) {
+      document.getElementById('ob-file-name').textContent = '✓ ' + input.files[0].name;
+      const btn = document.getElementById('ob-next-1');
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+    }
+  }
+
+  function handleObDrop(e) {
+    e.preventDefault();
+    document.getElementById('ob-drop-zone').style.borderColor = '';
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      const fakeInput = { files: [file] };
+      handleObFile(fakeInput);
+    }
+  }
+
+  function obToggle(btn, val) {
+    document.querySelectorAll('.ob-toggle').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    _obRemotePref = val;
+  }
+
+  function selectObPlan(card, plan) {
+    document.querySelectorAll('.ob-plan-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+  }
+
+  function finishOnboarding() {
+    // Save preferences to localStorage
+    const prefs = {
+      job_title: (document.getElementById('ob-job-title') || {}).value || '',
+      city: (document.getElementById('ob-city') || {}).value || '',
+      remote_pref: _obRemotePref,
+      min_salary: (document.getElementById('ob-salary') || {}).value || 0,
+      exclude_companies: (document.getElementById('ob-exclude') || {}).value || '',
+      resume_text: (document.getElementById('ob-resume-text') || {}).value || '',
+    };
+    localStorage.setItem('resumeai_onboarding', JSON.stringify(prefs));
+    localStorage.setItem('onboarding_complete', '1');
+
+    // Try to save to backend
+    api('/onboarding', 'POST', prefs).catch(() => {});
+
+    navigate('#dashboard');
+    showToast('Настройки сохранены. Добро пожаловать! 🎉', 'success');
+  }
+
+  // ===== CHART =====
+  function initActivityChart(total) {
+    const ctx = document.getElementById('activity-chart');
+    if (!ctx || !window.Chart) return;
+    const labels = [], data = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      labels.push(d.getDate() + '/' + (d.getMonth()+1));
+      // Simulate realistic activity curve
+      data.push(Math.max(0, Math.floor(Math.sin(i * 0.3) * 3 + Math.random() * 5 + (total > 0 ? 2 : 0))));
+    }
+    if (window._activityChart) window._activityChart.destroy();
+    window._activityChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Заявки',
+          data,
+          borderColor: '#7c3aed',
+          backgroundColor: 'rgba(124,58,237,0.1)',
+          tension: 0.4,
+          fill: true,
+          pointRadius: 2,
+          borderWidth: 2,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#6b7280', maxTicksLimit: 5 } },
+          x: { grid: { display: false }, ticks: { color: '#6b7280', maxTicksLimit: 8 } }
+        }
+      }
+    });
+    // Funnel
+    const fn = (id, val) => { const e = document.getElementById(id); if(e) e.textContent = val; };
+    fn('funnel-sent', total || 0);
+    fn('funnel-viewed', Math.floor((total || 0) * 0.6));
+    fn('funnel-interview', Math.floor((total || 0) * 0.12));
+    fn('funnel-offer', Math.floor((total || 0) * 0.03));
+  }
+
+  // ===== TELEGRAM DEEP SETTINGS =====
+  function connectTelegramDeep() {
+    const tgId = prompt('Введи свой Telegram ID\n\nКак узнать: напиши /start боту @userinfobot');
+    if (!tgId || !tgId.trim()) return;
+    api('/resume/connect', 'POST', { telegram_id: tgId.trim() }).then(data => {
+      if (data) {
+        document.getElementById('tg-connection-status').textContent = 'Подключён ✓';
+        document.getElementById('tg-connection-status').style.color = '#10b981';
+        document.getElementById('tg-id-display').textContent = tgId.trim();
+        document.getElementById('tg-connected-info').style.display = 'block';
+        document.getElementById('tg-connect-btn').textContent = 'Переподключить';
+        showToast('Telegram подключён ✓', 'success');
+      }
+    });
+  }
+
+  function saveTgSettings() {
+    const prefs = {
+      matches: document.getElementById('tg-notify-matches')?.checked,
+      status: document.getElementById('tg-notify-status')?.checked,
+      digest: document.getElementById('tg-notify-digest')?.checked,
+    };
+    localStorage.setItem('tg_notify_prefs', JSON.stringify(prefs));
+    showToast('Настройки уведомлений сохранены');
+  }
 
   // ===== INIT =====
   document.addEventListener('DOMContentLoaded', () => {

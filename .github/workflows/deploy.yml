@@ -1,0 +1,55 @@
+# GitHub Actions CI/CD — Deploy to VPS on push to main
+#
+# Required GitHub Secrets (Settings → Secrets → Actions):
+#   VPS_HOST     — your VPS IP, e.g. 72.56.250.53
+#   VPS_PASSWORD — root password
+
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies & lint
+        run: |
+          pip install -r requirements.txt
+          pip install flake8
+          flake8 autoapply/ bot/ --max-line-length=120 --ignore=E501,W503,E402 --exclude=__pycache__,migrations || true
+
+      - name: Copy files to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: root
+          password: ${{ secrets.VPS_PASSWORD }}
+          source: "autoapply/,bot/,landing/,run.py,daily_reporter.py,maintenance.py,analytics_tracker.py,requirements.txt"
+          target: /opt/resumeaibot/
+          overwrite: true
+
+      - name: Restart services & health check
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: root
+          password: ${{ secrets.VPS_PASSWORD }}
+          script: |
+            echo "=== Deploy at $(date) ==="
+            systemctl restart resumeaibot || true
+            systemctl restart autoapply   || true
+            sleep 5
+            curl -sf https://resumeai-bot.ru/api/health && echo "✅ API healthy" || echo "⚠️ Health check failed"
+            curl -sf https://resumeai-bot.ru/ -o /dev/null -w "Landing: %{http_code}\n" || true
+            echo "=== Done ==="

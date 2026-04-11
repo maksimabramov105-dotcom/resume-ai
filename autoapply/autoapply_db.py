@@ -102,6 +102,18 @@ _MIGRATE_IS_VERIFIED = """
 ALTER TABLE autoapply_users ADD COLUMN is_verified INTEGER DEFAULT 0
 """
 
+_CREATE_EMAIL_DRIP = """
+CREATE TABLE IF NOT EXISTS email_drip (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    step INTEGER NOT NULL DEFAULT 0,
+    next_send_at TIMESTAMP,
+    completed INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES autoapply_users(id)
+)
+"""
+
 # ── Init ─────────────────────────────────────────────────────────────────────
 
 async def init_db(db_path: str = AUTOAPPLY_DB) -> None:
@@ -113,6 +125,7 @@ async def init_db(db_path: str = AUTOAPPLY_DB) -> None:
             await db.execute(_CREATE_APPLICATIONS)
             await db.execute(_CREATE_VACANCIES_CACHE)
             await db.execute(_CREATE_EMAIL_TOKENS)
+            await db.execute(_CREATE_EMAIL_DRIP)
             # Migration: add is_verified if column doesn't exist yet
             try:
                 await db.execute(_MIGRATE_IS_VERIFIED)
@@ -709,3 +722,55 @@ async def reset_daily_counts(db_path: str = AUTOAPPLY_DB) -> None:
         logger.info("[autoapply_db] reset_daily_counts: all users reset")
     except Exception as exc:
         logger.exception("[autoapply_db] reset_daily_counts error: %s", exc)
+
+
+# ── Email drip functions ──────────────────────────────────────────────────────
+
+async def create_drip_sequence(user_id: int, db_path: str = AUTOAPPLY_DB) -> None:
+    """Start email drip for a new user."""
+    from datetime import timezone
+    next_send = datetime.now(timezone.utc)  # Send first email immediately
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            await db.execute(
+                "INSERT OR IGNORE INTO email_drip (user_id, step, next_send_at) VALUES (?, 0, ?)",
+                (user_id, next_send.isoformat())
+            )
+            await db.commit()
+    except Exception as exc:
+        logger.exception("[autoapply_db] create_drip_sequence error: %s", exc)
+
+
+async def get_pending_drip_users(db_path: str = AUTOAPPLY_DB) -> list:
+    """Get users whose next drip email is due."""
+    from datetime import timezone
+    now = datetime.now(timezone.utc).isoformat()
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute("""
+                SELECT d.id, d.user_id, d.step, u.email
+                FROM email_drip d
+                JOIN autoapply_users u ON u.id = d.user_id
+                WHERE d.completed = 0
+                  AND d.next_send_at <= ?
+                  AND u.is_verified = 1
+                LIMIT 50
+            """, (now,)) as cur:
+                return [dict(r) for r in await cur.fetchall()]
+    except Exception as exc:
+        logger.exception("[autoapply_db] get_pending_drip_users error: %s", exc)
+        return []
+
+
+async def advance_drip_step(drip_id: int, next_send_at, completed: bool = False, db_path: str = AUTOAPPLY_DB) -> None:
+    """Move to next drip step."""
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            await db.execute(
+                "UPDATE email_drip SET step = step + 1, next_send_at = ?, completed = ? WHERE id = ?",
+                (next_send_at.isoformat() if next_send_at else None, 1 if completed else 0, drip_id)
+            )
+            await db.commit()
+    except Exception as exc:
+        logger.exception("[autoapply_db] advance_drip_step error: %s", exc)

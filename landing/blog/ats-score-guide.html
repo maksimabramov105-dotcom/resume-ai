@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ru" id="html-root">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Почему ATS-скор важнее чем вы думаете — ResumeAI Блог</title>
+  <meta name="description" content="75% резюме не доходят до рекрутера из-за ATS. Объясняем как работают системы отбора и как повысить свой ATS-скор до 90%+." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://resumeai-bot.ru/blog/ats-score-guide.html" />
+  <meta property="og:title" content="Почему ATS-скор важнее чем вы думаете" />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://resumeai-bot.ru/blog/ats-score-guide.html" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root { --primary: #2563EB; --primary-dark: #1E40AF; --success: #10B981; --cta: #F59E0B; --cta-dark: #D97706; --bg: #F8FAFC; --bg-card: #FFFFFF; --bg-alt: #F1F5F9; --text: #334155; --heading: #0F172A; --border: #E2E8F0; --shadow: 0 1px 3px rgba(0,0,0,0.08); --radius: 12px; }
+    [data-theme="dark"] { --bg: #0F172A; --bg-card: #1E293B; --bg-alt: #1E293B; --text: #E2E8F0; --heading: #F8FAFC; --border: #334155; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; transition: background 0.3s, color 0.3s; }
+    a { color: var(--primary); text-decoration: none; } a:hover { text-decoration: underline; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; text-decoration: none; }
+    .btn-cta { background: var(--cta); color: #fff; } .btn-cta:hover { background: var(--cta-dark); transform: translateY(-1px); text-decoration: none; }
+    .btn-outline { background: transparent; color: var(--primary); border: 2px solid var(--primary); } .btn-outline:hover { background: var(--primary); color: #fff; text-decoration: none; }
+    .btn-sm { padding: 8px 16px; font-size: 14px; }
+    header { position: sticky; top: 0; z-index: 1000; background: var(--bg-card); border-bottom: 1px solid var(--border); box-shadow: 0 1px 8px rgba(0,0,0,0.06); }
+    .header-inner { display: flex; align-items: center; justify-content: space-between; height: 68px; gap: 24px; }
+    .logo { font-size: 22px; font-weight: 800; color: var(--primary); letter-spacing: -0.5px; text-decoration: none; }
+    nav { display: flex; align-items: center; gap: 32px; }
+    nav a { font-size: 15px; font-weight: 500; color: var(--text); transition: color 0.2s; text-decoration: none; } nav a:hover { color: var(--primary); }
+    .header-actions { display: flex; align-items: center; gap: 10px; }
+    .dark-toggle { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; cursor: pointer; font-size: 16px; color: var(--text); }
+    .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; background: none; border: none; padding: 4px; }
+    .hamburger span { display: block; width: 24px; height: 2px; background: var(--text); border-radius: 2px; }
+    .mobile-menu { display: none; background: var(--bg-card); border-top: 1px solid var(--border); padding: 16px 24px; flex-direction: column; gap: 16px; }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu a { font-size: 16px; font-weight: 500; color: var(--text); padding: 8px 0; border-bottom: 1px solid var(--border); text-decoration: none; }
+    .article-hero { background: linear-gradient(135deg, #10B981 0%, #2563EB 100%); color: #fff; padding: 64px 0; }
+    .article-hero-inner { max-width: 760px; margin: 0 auto; padding: 0 24px; }
+    .article-breadcrumb { font-size: 14px; opacity: 0.8; margin-bottom: 20px; }
+    .article-breadcrumb a { color: #fff; opacity: 0.8; text-decoration: none; } .article-breadcrumb a:hover { opacity: 1; }
+    .article-tag { display: inline-block; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); border-radius: 100px; padding: 4px 14px; font-size: 13px; font-weight: 600; margin-bottom: 16px; }
+    .article-hero h1 { font-size: clamp(28px, 4vw, 44px); font-weight: 900; letter-spacing: -0.8px; margin-bottom: 16px; line-height: 1.15; }
+    .article-meta { font-size: 14px; opacity: 0.8; display: flex; gap: 20px; flex-wrap: wrap; }
+    .article-body { max-width: 760px; margin: 0 auto; padding: 56px 24px; }
+    .article-body h2 { font-size: 26px; font-weight: 800; color: var(--heading); margin: 48px 0 16px; letter-spacing: -0.4px; }
+    .article-body h3 { font-size: 20px; font-weight: 700; color: var(--heading); margin: 32px 0 12px; }
+    .article-body p { font-size: 17px; color: var(--text); line-height: 1.8; margin-bottom: 20px; }
+    .article-body ul, .article-body ol { padding-left: 28px; margin-bottom: 20px; }
+    .article-body li { font-size: 17px; color: var(--text); line-height: 1.8; margin-bottom: 10px; }
+    .article-body strong { color: var(--heading); font-weight: 700; }
+    .article-body blockquote { border-left: 4px solid var(--primary); padding: 16px 24px; background: var(--bg-alt); border-radius: 0 8px 8px 0; margin: 28px 0; font-size: 17px; font-style: italic; color: var(--heading); }
+    .stat-box { background: var(--bg-alt); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px 28px; margin: 28px 0; display: flex; align-items: center; gap: 20px; }
+    .stat-number { font-size: 48px; font-weight: 900; color: var(--primary); letter-spacing: -2px; white-space: nowrap; }
+    .stat-desc { font-size: 16px; color: var(--text); line-height: 1.5; }
+    .score-bar { background: var(--bg-alt); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin: 24px 0; }
+    .score-bar h4 { font-size: 15px; font-weight: 600; color: var(--heading); margin-bottom: 16px; }
+    .score-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .score-label { font-size: 14px; color: var(--text); width: 180px; flex-shrink: 0; }
+    .score-track { flex: 1; background: var(--border); border-radius: 100px; height: 8px; overflow: hidden; }
+    .score-fill { height: 100%; border-radius: 100px; background: var(--success); }
+    .score-fill.bad { background: #EF4444; }
+    .score-fill.medium { background: var(--cta); }
+    .score-pct { font-size: 13px; font-weight: 700; color: var(--heading); width: 40px; text-align: right; }
+    .cta-box { background: linear-gradient(135deg, #2563EB 0%, #7C3AED 100%); border-radius: var(--radius); padding: 36px; text-align: center; margin: 48px 0; color: #fff; }
+    .cta-box h3 { font-size: 22px; font-weight: 800; margin-bottom: 12px; }
+    .cta-box p { font-size: 16px; opacity: 0.9; margin-bottom: 24px; }
+    .btn-white { background: #fff; color: var(--primary); font-weight: 700; } .btn-white:hover { background: #F1F5F9; text-decoration: none; }
+    .article-nav { display: flex; justify-content: space-between; gap: 16px; padding-top: 48px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+    .article-nav a { font-size: 15px; font-weight: 600; color: var(--primary); }
+    footer { background: var(--bg-card); border-top: 1px solid var(--border); padding: 40px 0 24px; }
+    .footer-bottom { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+    .footer-bottom p { font-size: 13px; color: var(--text); opacity: 0.6; }
+    .footer-links { display: flex; gap: 24px; flex-wrap: wrap; }
+    .footer-links a { font-size: 13px; color: var(--text); opacity: 0.7; text-decoration: none; }
+    .footer-links a:hover { opacity: 1; color: var(--primary); }
+    @media (max-width: 768px) { nav, .header-actions .btn { display: none; } .hamburger { display: flex; } .stat-box { flex-direction: column; text-align: center; } .score-label { width: 120px; font-size: 12px; } }
+  </style>
+</head>
+<body>
+<header>
+  <div class="container">
+    <div class="header-inner">
+      <a href="/" class="logo">ResumeAI</a>
+      <nav><a href="/#features">Возможности</a><a href="/#pricing">Цены</a><a href="/blog/" style="color: var(--primary);">Блог</a></nav>
+      <div class="header-actions">
+        <a href="/app" class="btn btn-outline btn-sm">Войти</a>
+        <a href="/app" class="btn btn-cta btn-sm">Начать бесплатно</a>
+        <button class="dark-toggle" id="darkToggle">🌙</button>
+        <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
+      </div>
+    </div>
+  </div>
+  <div class="mobile-menu" id="mobileMenu">
+    <a href="/#features">Возможности</a><a href="/#pricing">Цены</a><a href="/blog/">Блог</a>
+    <a href="/app">Войти</a><a href="/app" style="color: var(--primary); font-weight: 700;">Начать бесплатно →</a>
+  </div>
+</header>
+
+<div class="article-hero">
+  <div class="article-hero-inner">
+    <div class="article-breadcrumb"><a href="/blog/">← Блог</a></div>
+    <span class="article-tag">ATS</span>
+    <h1>Почему ATS-скор важнее чем вы думаете</h1>
+    <div class="article-meta"><span>📅 3 января 2026</span><span>⏱ 6 минут чтения</span><span>✍️ Команда ResumeAI</span></div>
+  </div>
+</div>
+
+<div class="article-body">
+  <p>Вы потратили часы на идеальное резюме. Отправили его в десятки компаний. И... тишина. Ни одного ответа. Знакомо? Скорее всего, проблема не в вашем опыте — проблема в том, что ваше резюме никто не видел. Его отфильтровала ATS-система ещё до того, как до него добрался рекрутер.</p>
+
+  <div class="stat-box">
+    <div class="stat-number">75%</div>
+    <div class="stat-desc"><strong>Резюме отсеиваются ATS</strong> прежде чем их увидит живой рекрутер. Большинство соискателей об этом не знают — и продолжают слать резюме в пустоту.</div>
+  </div>
+
+  <h2>Что такое ATS и как это работает</h2>
+  <p>ATS (Applicant Tracking System — система отслеживания кандидатов) — это программное обеспечение, которое компании используют для автоматической обработки входящих резюме. Крупные корпорации и даже средние компании обязательно используют ATS, потому что на популярные вакансии приходят сотни откликов в день — рекрутеры физически не могут просмотреть каждое.</p>
+  <p>ATS работает просто: система парсит ваше резюме, извлекает ключевые данные (опыт, навыки, образование, ключевые слова) и сравнивает их с требованиями вакансии. Резюме получает скор (оценку) от 0 до 100%. Если скор ниже порогового значения — резюме автоматически отклоняется. Рекрутер его никогда не увидит.</p>
+
+  <h2>Что влияет на ATS-скор</h2>
+
+  <div class="score-bar">
+    <h4>Факторы оценки резюме ATS-системами:</h4>
+    <div class="score-row"><span class="score-label">Ключевые слова</span><div class="score-track"><div class="score-fill" style="width: 35%;"></div></div><span class="score-pct">35%</span></div>
+    <div class="score-row"><span class="score-label">Структура документа</span><div class="score-track"><div class="score-fill" style="width: 25%;"></div></div><span class="score-pct">25%</span></div>
+    <div class="score-row"><span class="score-label">Форматирование</span><div class="score-track"><div class="score-fill medium" style="width: 20%;"></div></div><span class="score-pct">20%</span></div>
+    <div class="score-row"><span class="score-label">Релевантный опыт</span><div class="score-track"><div class="score-fill medium" style="width: 15%;"></div></div><span class="score-pct">15%</span></div>
+    <div class="score-row"><span class="score-label">Образование</span><div class="score-track"><div class="score-fill bad" style="width: 5%;"></div></div><span class="score-pct">5%</span></div>
+  </div>
+
+  <h3>Ключевые слова — главный фактор</h3>
+  <p>ATS в первую очередь ищет ключевые слова из описания вакансии. Если в вакансии написано «управление проектами», «Agile», «Python 3.10», «опыт работы с AWS» — именно эти слова должны быть в вашем резюме. Не похожие, не синонимы — именно эти.</p>
+
+  <h3>Форматирование разрушает парсинг</h3>
+  <p>ATS читает текст линейно, как программа. Таблицы, двухколоночный макет, вставленные изображения и нестандартные символы ломают парсер. Система читает вашу должность как кашу из символов и не находит совпадений с вакансией. Результат — низкий скор.</p>
+
+  <blockquote>«Я добавил красивую инфографику с навыками в резюме. Оказалось, что ATS вообще не распознаёт изображения — вся секция навыков просто исчезла при парсинге.» — Пользователь ResumeAI</blockquote>
+
+  <h2>Как повысить ATS-скор: пошаговое руководство</h2>
+
+  <h3>Шаг 1. Анализируйте описание вакансии</h3>
+  <p>Перед отправкой резюме внимательно прочитайте описание вакансии. Выпишите все технические требования, soft skills и инструменты, которые упоминаются. Это ваш список ключевых слов для оптимизации.</p>
+
+  <h3>Шаг 2. Оптимизируйте структуру резюме</h3>
+  <p>Используйте стандартные разделы с понятными названиями: «Опыт работы», «Образование», «Навыки», «Достижения». Никаких таблиц, колонок и графиков. Только чистый текст в одну колонку.</p>
+
+  <h3>Шаг 3. Встройте ключевые слова органично</h3>
+  <p>Добавляйте ключевые слова в контексте — не просто перечисляйте их, а вписывайте в описание опыта. «Разработал микросервисную архитектуру на Python с использованием FastAPI и деплоем на AWS ECS» содержит несколько ключевых слов и при этом читается естественно.</p>
+
+  <h3>Шаг 4. Не переусердствуйте</h3>
+  <p>Keyword stuffing (перегруженность ключевыми словами) тоже плохо работает. Современные ATS умеют определять нереалистичные резюме. К тому же после ATS ваше резюме всё равно увидит человек — и оно должно читаться нормально.</p>
+
+  <h2>Средний скор до и после оптимизации</h2>
+  <p>По данным наших пользователей, среднее резюме без оптимизации получает <strong>42% скор</strong> в ATS. После AI-оптимизации под конкретную вакансию скор вырастает до <strong>87-92%</strong>. Это разница между «отказом» и «интервью».</p>
+
+  <div class="cta-box">
+    <h3>Узнайте свой ATS-скор прямо сейчас</h3>
+    <p>ResumeAI бесплатно проанализирует ваше резюме и покажет, что нужно изменить для прохождения ATS.</p>
+    <a href="/app" class="btn btn-white btn-lg">Проверить ATS-скор →</a>
+  </div>
+
+  <div class="article-nav">
+    <a href="/blog/resume-mistakes.html">← 10 ошибок резюме</a>
+    <a href="/blog/auto-apply-guide.html">Руководство по авто-отклику →</a>
+  </div>
+</div>
+
+<footer>
+  <div class="container">
+    <div class="footer-bottom">
+      <p>© 2026 ResumeAI. Все права защищены.</p>
+      <div class="footer-links">
+        <a href="/privacy.html">Конфиденциальность</a><a href="/terms.html">Условия</a>
+        <a href="/refund.html">Возврат</a><a href="/blog/">Блог</a>
+      </div>
+    </div>
+  </div>
+</footer>
+<script>
+  const htmlEl = document.getElementById('html-root'); const toggleBtn = document.getElementById('darkToggle');
+  const saved = localStorage.getItem('theme');
+  if (saved === 'dark') { htmlEl.setAttribute('data-theme', 'dark'); toggleBtn.textContent = '☀️'; }
+  toggleBtn.addEventListener('click', () => {
+    const isDark = htmlEl.getAttribute('data-theme') === 'dark';
+    if (isDark) { htmlEl.removeAttribute('data-theme'); localStorage.setItem('theme', 'light'); toggleBtn.textContent = '🌙'; }
+    else { htmlEl.setAttribute('data-theme', 'dark'); localStorage.setItem('theme', 'dark'); toggleBtn.textContent = '☀️'; }
+  });
+  document.getElementById('hamburger').addEventListener('click', () => { document.getElementById('mobileMenu').classList.toggle('open'); });
+</script>
+</body>
+</html>

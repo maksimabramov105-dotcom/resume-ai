@@ -2,7 +2,7 @@ User-agent: *
 Allow: /
 
 # Sitemaps
-Sitemap: https://resumeai.bot/sitemap.xml
+Sitemap: https://resumeai-bot.ru/sitemap.xml
 
 # Crawl-delay (optional, keep low for good bots)
 Crawl-delay: 1
