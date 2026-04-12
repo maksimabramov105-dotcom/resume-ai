@@ -42,6 +42,7 @@ from autoapply.autoapply_db import (
     get_user_by_email,
     get_user_by_id,
     init_db,
+    log_web_generation,
     mark_user_verified,
     update_campaign_status,
     update_user_last_active,
@@ -732,6 +733,8 @@ Write ONLY the cover letter text, no explanation. Start with 'Уважаемый
             )
             data = resp.json()
             letter = data["choices"][0]["message"]["content"].strip()
+            # Log generation for daily report
+            asyncio.create_task(log_web_generation("cover_letter", current_user.get("id")))
             return {"cover_letter": letter}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI generation failed: {str(e)}")
@@ -957,6 +960,8 @@ Job posting:
                 content = data["choices"][0]["message"]["content"]
                 import json as _json
                 result = _json.loads(content)
+                # Log demo analysis for daily report
+                asyncio.create_task(log_web_generation("demo_analysis"))
                 return result
         except Exception as e:
             logger.warning(f"Demo analyze AI failed: {e}")
@@ -971,6 +976,7 @@ Job posting:
     salary_match = re.search(r'(\d[\d\s]*)\s*[—–-]\s*(\d[\d\s]*)\s*[₽руб]', job_text)
     salary = f"{salary_match.group(0)}" if salary_match else "Не указана"
 
+    asyncio.create_task(log_web_generation("demo_analysis"))
     return {
         "job_title": "Вакансия проанализирована",
         "company": "",
@@ -1236,19 +1242,38 @@ async def create_stripe_checkout(payload: dict, request: Request):
     plan = payload.get("plan", "pro")
     period = payload.get("period", "monthly")
 
-    # Price IDs (create these in Stripe dashboard, or use price_data for dynamic)
-    PRICES = {
-        ("trial", "monthly"): {"amount": 299, "currency": "usd", "name": "РезюмеАИ Trial — 7 дней", "recurring": None},
-        ("pro", "monthly"): {"amount": 1999, "currency": "usd", "name": "РезюмеАИ Pro — месяц", "recurring": "month"},
-        ("pro", "annual"): {"amount": 14900, "currency": "usd", "name": "РезюмеАИ Pro — год", "recurring": "year"},
-        ("premium", "monthly"): {"amount": 3999, "currency": "usd", "name": "РезюмеАИ Premium — месяц", "recurring": "month"},
-        ("premium", "annual"): {"amount": 29900, "currency": "usd", "name": "РезюмеАИ Premium — год", "recurring": "year"},
+    # Real Stripe Price IDs from dashboard (env vars, fallback to price_data)
+    PRICE_ID_MAP = {
+        ("trial",   "monthly"): os.getenv("STRIPE_PRICE_TRIAL",           ""),
+        ("pro",     "monthly"): os.getenv("STRIPE_PRICE_PRO_MONTHLY",     "price_1TLTUuHH7N0YD11QKYiEvUd0"),
+        ("pro",     "annual"):  os.getenv("STRIPE_PRICE_PRO_ANNUAL",      "price_1TLTVhHH7N0YD11QeFRlaDSw"),
+        ("premium", "monthly"): os.getenv("STRIPE_PRICE_PREMIUM_MONTHLY", "price_1TLTWLHH7N0YD11Q7AswwGwm"),
+        ("premium", "annual"):  os.getenv("STRIPE_PRICE_PREMIUM_ANNUAL",  ""),
+    }
+    PRICE_FALLBACK = {
+        ("trial",   "monthly"): {"amount": 299,   "currency": "usd", "name": "РезюмеАИ Trial — 7 дней",     "recurring": None},
+        ("pro",     "monthly"): {"amount": 1999,  "currency": "usd", "name": "РезюмеАИ Pro — месяц",        "recurring": "month"},
+        ("pro",     "annual"):  {"amount": 14900, "currency": "usd", "name": "РезюмеАИ Pro — год",          "recurring": "year"},
+        ("premium", "monthly"): {"amount": 3999,  "currency": "usd", "name": "РезюмеАИ Premium — месяц",   "recurring": "month"},
+        ("premium", "annual"):  {"amount": 29900, "currency": "usd", "name": "РезюмеАИ Premium — год",      "recurring": "year"},
     }
 
-    price_cfg = PRICES.get((plan, period), PRICES[("pro", "monthly")])
+    price_id = PRICE_ID_MAP.get((plan, period), "")
+    price_cfg = PRICE_FALLBACK.get((plan, period), PRICE_FALLBACK[("pro", "monthly")])
 
     try:
-        if price_cfg["recurring"]:
+        if price_id:
+            # Use real Stripe Price ID — cleanest approach
+            is_recurring = price_cfg["recurring"] is not None
+            session = stripe.checkout.Session.create(
+                payment_method_types=["card"],
+                line_items=[{"price": price_id, "quantity": 1}],
+                mode="subscription" if is_recurring else "payment",
+                success_url="https://resumeai-bot.ru/app?payment=success",
+                cancel_url="https://resumeai-bot.ru/app?payment=cancelled",
+                metadata={"plan": plan, "period": period},
+            )
+        elif price_cfg["recurring"]:
             session = stripe.checkout.Session.create(
                 payment_method_types=["card"],
                 line_items=[{

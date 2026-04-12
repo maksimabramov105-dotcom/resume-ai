@@ -76,17 +76,42 @@ def _get_autoapply_stats() -> dict:
         bot_to_web = con.execute(
             "SELECT COUNT(*) FROM autoapply_users WHERE telegram_id IS NOT NULL"
         ).fetchone()[0]
-        # Transitions from landing page (approximated by new registrations today)
+
+        # Web generations (resume, cover letter, analysis) — from web_generations table
+        web_resumes_today = 0
+        web_letters_today = 0
+        web_analyses_today = 0
+        web_resumes_total = 0
+        try:
+            web_resumes_today = con.execute(
+                "SELECT COUNT(*) FROM web_generations WHERE type='resume' AND date(created_at)=?", (today,)
+            ).fetchone()[0]
+            web_letters_today = con.execute(
+                "SELECT COUNT(*) FROM web_generations WHERE type='cover_letter' AND date(created_at)=?", (today,)
+            ).fetchone()[0]
+            web_analyses_today = con.execute(
+                "SELECT COUNT(*) FROM web_generations WHERE type IN ('analysis','demo_analysis') AND date(created_at)=?", (today,)
+            ).fetchone()[0]
+            web_resumes_total = con.execute(
+                "SELECT COUNT(*) FROM web_generations WHERE type='resume'"
+            ).fetchone()[0]
+        except Exception:
+            pass  # table may not exist on older installs
+
         con.close()
         return {
-            "total_web_users":   total_web,
-            "new_web_today":     new_web_today,
-            "apps_today":        apps_today,
-            "apps_total":        apps_total,
-            "responses_today":   responses_today,
-            "active_campaigns":  active_campaigns,
-            "paid_web_users":    paid_web_users,
-            "bot_to_web":        bot_to_web,
+            "total_web_users":    total_web,
+            "new_web_today":      new_web_today,
+            "apps_today":         apps_today,
+            "apps_total":         apps_total,
+            "responses_today":    responses_today,
+            "active_campaigns":   active_campaigns,
+            "paid_web_users":     paid_web_users,
+            "bot_to_web":         bot_to_web,
+            "web_resumes_today":  web_resumes_today,
+            "web_letters_today":  web_letters_today,
+            "web_analyses_today": web_analyses_today,
+            "web_resumes_total":  web_resumes_total,
         }
     except Exception as e:
         logging.getLogger(__name__).warning("_get_autoapply_stats error: %s", e)
@@ -210,15 +235,18 @@ async def send_daily_report(
     # ── AutoApply web service section (if DB available) ───────────────────────
     if web_stats:
         text += (
-            f"🌐 <b>АВТОООТКЛИК (веб-сервис)</b>\n"
+            f"🌐 <b>АвтоОтклик (веб-сервис)</b>\n"
             f"┌ Новых пользователей сайта: +{web_stats.get('new_web_today', 0)}\n"
             f"├ Всего на сайте: {web_stats.get('total_web_users', 0)} "
             f"(платных: {web_stats.get('paid_web_users', 0)})\n"
-            f"├ Заявок отправлено сегодня: {web_stats.get('apps_today', 0)}\n"
-            f"├ Всего заявок: {web_stats.get('apps_total', 0)}\n"
-            f"├ Ответов/собеседований сегодня: {web_stats.get('responses_today', 0)}\n"
+            f"├ Резюме создано на сайте: {web_stats.get('web_resumes_today', 0)} "
+            f"(всего: {web_stats.get('web_resumes_total', 0)})\n"
+            f"├ Писем создано на сайте: {web_stats.get('web_letters_today', 0)}\n"
+            f"├ Анализов вакансий на сайте: {web_stats.get('web_analyses_today', 0)}\n"
+            f"├ Заявок отправлено: {web_stats.get('apps_today', 0)} (всего: {web_stats.get('apps_total', 0)})\n"
+            f"├ Ответов/собеседований: {web_stats.get('responses_today', 0)}\n"
             f"├ Активных кампаний: {web_stats.get('active_campaigns', 0)}\n"
-            f"└ Переходов бот→сайт: {web_stats.get('bot_to_web', 0)}\n\n"
+            f"└ Бот→сайт (telegram linked): {web_stats.get('bot_to_web', 0)}\n\n"
         )
 
     text += (

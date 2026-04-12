@@ -114,6 +114,15 @@ CREATE TABLE IF NOT EXISTS email_drip (
 )
 """
 
+_CREATE_WEB_GENERATIONS = """
+CREATE TABLE IF NOT EXISTS web_generations (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER,
+    type       TEXT NOT NULL,  -- 'resume', 'cover_letter', 'analysis', 'demo_analysis'
+    created_at TEXT DEFAULT (datetime('now'))
+)
+"""
+
 # ── Init ─────────────────────────────────────────────────────────────────────
 
 async def init_db(db_path: str = AUTOAPPLY_DB) -> None:
@@ -126,6 +135,7 @@ async def init_db(db_path: str = AUTOAPPLY_DB) -> None:
             await db.execute(_CREATE_VACANCIES_CACHE)
             await db.execute(_CREATE_EMAIL_TOKENS)
             await db.execute(_CREATE_EMAIL_DRIP)
+            await db.execute(_CREATE_WEB_GENERATIONS)
             # Migration: add is_verified if column doesn't exist yet
             try:
                 await db.execute(_MIGRATE_IS_VERIFIED)
@@ -774,3 +784,16 @@ async def advance_drip_step(drip_id: int, next_send_at, completed: bool = False,
             await db.commit()
     except Exception as exc:
         logger.exception("[autoapply_db] advance_drip_step error: %s", exc)
+
+
+async def log_web_generation(gen_type: str, user_id: int = None, db_path: str = AUTOAPPLY_DB) -> None:
+    """Log a web app generation event (resume, cover_letter, analysis, demo_analysis)."""
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            await db.execute(
+                "INSERT INTO web_generations (user_id, type) VALUES (?, ?)",
+                (user_id, gen_type)
+            )
+            await db.commit()
+    except Exception as exc:
+        logger.warning("[autoapply_db] log_web_generation error: %s", exc)
