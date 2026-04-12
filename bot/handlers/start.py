@@ -1,5 +1,5 @@
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import CommandStart, Command
 
 from database.db import get_or_create_user, save_user
@@ -81,8 +81,9 @@ async def cmd_maintenance_off(message: Message):
 
 
 @router.message(Command("report"))
+@router.message(Command("отчет"))
 async def cmd_report(message: Message):
-    """Admin only: trigger daily report immediately."""
+    """Admin only: trigger daily report immediately (/report or /отчет)."""
     if message.from_user.id != ADMIN_ID:
         return
     await message.answer("📊 Генерирую отчёт…")
@@ -90,3 +91,40 @@ async def cmd_report(message: Message):
         await send_daily_report(message.bot, ADMIN_ID, _ANALYTICS_DB_PATH)
     except Exception as exc:
         await message.answer(f"❌ Ошибка отчёта: {exc}")
+
+
+# ── Upgrade / Pay commands (Build A2) ────────────────────────────────────────
+
+@router.message(Command("upgrade"))
+@router.message(Command("pay"))
+@router.message(Command("plans"))
+async def cmd_upgrade(message: Message):
+    """Show payment options — website (Stripe) or crypto (CryptoBot)."""
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(
+                text="💳 Оплатить картой (Visa/MC)",
+                url="https://resumeai-bot.ru/app#plans",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text="₿ Оплатить криптовалютой (USDT/BTC)",
+                callback_data="buy_credits",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text="💬 Связаться с нами",
+                url="https://t.me/topbestworkerbot",
+            )
+        ],
+    ])
+    await message.answer(
+        "💎 <b>Выберите способ оплаты:</b>\n\n"
+        "💳 <b>Карта</b> (Visa / Mastercard / Amex) — через наш защищённый сайт\n"
+        "₿ <b>Криптовалюта</b> (USDT / BTC / ETH / TON) — прямо здесь в боте\n"
+        "🇷🇺 <b>Карта РФ / Revolut</b> — свяжитесь с нами в Telegram\n\n"
+        "После оплаты план активируется <b>мгновенно</b> ✅",
+        reply_markup=kb,
+    )

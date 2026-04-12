@@ -18,19 +18,18 @@
 
   <!-- ── Open Graph (Telegram + VK) ───────────────────────────────────── -->
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://resumeai-bot.ru" />
-  <meta property="og:title" content="Отправь резюме в 500 компаний за 1 день — ResumeAI + АвтоОтклик" />
-  <meta property="og:description" content="РезюмеАИ создаёт уникальное резюме. АвтоОтклик рассылает его везде пока ты спишь. hh.ru + LinkedIn + Indeed и ещё 5 платформ." />
+  <meta property="og:url" content="https://resumeai-bot.ru/" />
+  <meta property="og:title" content="РезюмеАИ — AI Резюме за 30 секунд | Авто-Отклик на вакансии" />
+  <meta property="og:description" content="Создайте идеальное резюме с AI за 30 секунд. Авто-отклик на hh.ru, LinkedIn, SuperJob пока вы спите." />
   <meta property="og:image" content="https://resumeai-bot.ru/og-image.png" />
   <meta property="og:locale" content="ru_RU" />
-  <meta property="og:locale:alternate" content="en_US" />
-  <meta property="og:site_name" content="ResumeAI" />
+  <meta property="og:site_name" content="РезюмеАИ" />
   <meta property="vk:image" content="https://resumeai-bot.ru/og-image.png" />
 
   <!-- ── Twitter Card ───────────────────────────────────────────────────── -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="ResumeAI — AI Resume + Auto Job Apply" />
-  <meta name="twitter:description" content="Send your resume to 500 companies in 1 day, automatically. AI crafts unique resume per vacancy." />
+  <meta name="twitter:title" content="РезюмеАИ — AI Resume Builder + Auto-Apply" />
+  <meta name="twitter:description" content="AI builds your perfect resume in 30 seconds. Auto-applies to 1000s of jobs while you sleep." />
   <meta name="twitter:image" content="https://resumeai-bot.ru/og-image.png" />
 
   <!-- ── JSON-LD: Telegram Bot ─────────────────────────────────────────── -->
@@ -1078,6 +1077,26 @@
       .results-grid { grid-template-columns: 1fr; }
     }
   </style>
+
+  <!-- Yandex Metrica — REPLACE 00000000 WITH YOUR REAL COUNTER ID -->
+  <script type="text/javascript">
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();
+    for(var j=0;j<document.scripts.length;j++){if(document.scripts[j].src===r){return;}}
+    k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window,document,"script","https://mc.yandex.ru/metrika/tag.js","ym");
+    ym(00000000,"init",{clickmap:true,trackLinks:true,accurateTrackBounce:true,webvisor:true});
+  </script>
+  <noscript><div><img src="https://mc.yandex.ru/watch/00000000" style="position:absolute;left:-9999px;" alt="" /></div></noscript>
+
+  <!-- Google Analytics 4 — REPLACE G-XXXXXXXXXX WITH YOUR REAL MEASUREMENT ID -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+  <script>
+    window.dataLayer=window.dataLayer||[];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js',new Date());
+    gtag('config','G-XXXXXXXXXX');
+  </script>
 </head>
 <body>
 
@@ -1845,5 +1864,38 @@
   }
 </script>
 
+<!-- ── Help Widget (Build B) ──────────────────────────────────────────────── -->
+<div id="help-widget" style="position:fixed;bottom:24px;right:24px;z-index:9999;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div id="help-bubble" style="display:none;width:320px;background:#1a1a1a;border:1px solid #333;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.6);overflow:hidden;margin-bottom:12px;">
+    <div style="background:#7c3aed;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;">
+      <span style="color:#fff;font-weight:600;font-size:14px;">❓ Помощь</span>
+      <span id="help-close" style="color:#fff;cursor:pointer;font-size:18px;line-height:1;">×</span>
+    </div>
+    <div id="help-messages" style="padding:14px;max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;"></div>
+    <div style="padding:12px;border-top:1px solid #2a2a2a;display:flex;gap:8px;">
+      <input id="help-input" type="text" placeholder="Задайте вопрос…" style="flex:1;background:#0d0d0d;border:1px solid #333;border-radius:8px;padding:8px 12px;color:#f0f0f0;font-size:13px;outline:none;" maxlength="300">
+      <button id="help-send" style="background:#7c3aed;border:none;border-radius:8px;padding:8px 14px;color:#fff;cursor:pointer;font-size:14px;">→</button>
+    </div>
+  </div>
+  <button id="help-toggle" style="width:52px;height:52px;border-radius:50%;background:#7c3aed;border:none;cursor:pointer;box-shadow:0 4px 16px rgba(124,58,237,.5);font-size:22px;color:#fff;display:flex;align-items:center;justify-content:center;margin-left:auto;">❓</button>
+</div>
+<script>
+(function(){
+  var tog=document.getElementById('help-toggle');
+  var bub=document.getElementById('help-bubble');
+  var inp=document.getElementById('help-input');
+  var msgs=document.getElementById('help-messages');
+  var snd=document.getElementById('help-send');
+  var cls=document.getElementById('help-close');
+  tog.onclick=function(){bub.style.display=bub.style.display==='none'?'block':'none';if(bub.style.display==='block'&&msgs.children.length===0)addMsg('bot','Привет! Чем могу помочь? Спросите о тарифах, функциях или технических проблемах.');};
+  cls.onclick=function(){bub.style.display='none';};
+  function addMsg(role,text){var d=document.createElement('div');d.style.cssText='padding:8px 12px;border-radius:10px;font-size:13px;line-height:1.5;max-width:85%;'+(role==='bot'?'background:#2a2a2a;color:#e0e0e0;align-self:flex-start;':'background:#7c3aed;color:#fff;align-self:flex-end;');d.textContent=text;msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;}
+  function ask(){var q=inp.value.trim();if(!q)return;addMsg('user',q);inp.value='';snd.disabled=true;
+    fetch('https://resumeai-bot.ru/api/help/question',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q,page:window.location.pathname})})
+    .then(function(r){return r.json();}).then(function(d){addMsg('bot',d.answer||'Напишите нам: @resumeai_support');}).catch(function(){addMsg('bot','Напишите нам: @resumeai_support');}).finally(function(){snd.disabled=false;});
+  }
+  snd.onclick=ask;inp.onkeydown=function(e){if(e.key==='Enter')ask();};
+})();
+</script>
 </body>
 </html>

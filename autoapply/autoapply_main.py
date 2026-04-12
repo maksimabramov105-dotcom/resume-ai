@@ -81,6 +81,58 @@ logging.basicConfig(
 )
 logger = logging.getLogger("autoapply_main")
 
+import httpx as _httpx_module  # noqa: E402 — used in helpers below
+
+
+async def _fetch_job_text_from_url(url: str) -> tuple:
+    """Fetch job description from URL, with special hh.ru API support.
+    Returns (job_text, metadata_dict)."""
+    import re as _re
+    metadata = {}
+
+    # hh.ru public API (no auth needed for public vacancies)
+    hh_match = _re.search(r'hh\.ru/vacancy/(\d+)', url)
+    if hh_match:
+        vacancy_id = hh_match.group(1)
+        try:
+            async with _httpx_module.AsyncClient(timeout=10) as client:
+                r = await client.get(
+                    f"https://api.hh.ru/vacancies/{vacancy_id}",
+                    headers={"User-Agent": "ResumeAI/1.0 (resumeai-bot.ru)"}
+                )
+                if r.status_code == 200:
+                    vdata = r.json()
+                    title = vdata.get("name", "")
+                    company = vdata.get("employer", {}).get("name", "")
+                    sal = vdata.get("salary") or {}
+                    sal_from = sal.get("from") or ""
+                    sal_to = sal.get("to") or ""
+                    currency = sal.get("currency", "RUB")
+                    salary_str = f"{sal_from}–{sal_to} {currency}" if (sal_from or sal_to) else "Не указана"
+                    desc_html = vdata.get("description", "")
+                    desc_text = _re.sub(r'<[^>]+>', ' ', desc_html)
+                    desc_text = _re.sub(r'\s+', ' ', desc_text).strip()[:3000]
+                    key_skills = [s.get("name", "") for s in vdata.get("key_skills", [])]
+                    job_text = f"Должность: {title}\nКомпания: {company}\nЗарплата: {salary_str}\nКлючевые навыки: {', '.join(key_skills)}\n\n{desc_text}"
+                    metadata = {"job_title": title, "company": company, "salary": salary_str, "keywords": key_skills[:10]}
+                    return job_text, metadata
+        except Exception as e:
+            logger.warning(f"hh.ru API fetch failed for {vacancy_id}: {e}")
+
+    # Generic URL fetch for non-hh.ru or fallback
+    try:
+        async with _httpx_module.AsyncClient(timeout=10, follow_redirects=True) as client:
+            r = await client.get(url, headers={"User-Agent": "Mozilla/5.0 (compatible; ResumeAI/1.0)"})
+            raw = r.text
+            import re as _re2
+            job_text = _re2.sub(r'<[^>]+>', ' ', raw)
+            job_text = _re2.sub(r'\s+', ' ', job_text).strip()[:4000]
+            return job_text, {}
+    except Exception as e:
+        logger.warning(f"URL fetch failed for {url}: {e}")
+        return f"Job posting from URL: {url}", {}
+
+
 # ── Password hashing (direct bcrypt — compatible with bcrypt 4.x and 5.x) ────
 def _hash_password(password: str) -> str:
     """Hash a password with bcrypt. Works with bcrypt 4.x and 5.x."""
@@ -112,6 +164,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def security_headers_middleware(request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    return response
+
 
 # ── Static files ──────────────────────────────────────────────────────────────
 STATIC_DIR = Path(ROOT) / "autoapply" / "static"
@@ -157,6 +221,16 @@ async def on_startup():
     await init_db(AUTOAPPLY_DB)
     logger.info("[autoapply_main] DB ready")
     asyncio.create_task(process_email_drip())
+    # Schedule daily marketing posts (9 AM Moscow / 6 AM UTC)
+    try:
+        from apscheduler.schedulers.asyncio import AsyncIOScheduler
+        from marketing_cron import setup_marketing_scheduler
+        _scheduler = AsyncIOScheduler(timezone="UTC")
+        setup_marketing_scheduler(_scheduler)
+        _scheduler.start()
+        logger.info("[autoapply_main] marketing scheduler started")
+    except Exception as _e:
+        logger.warning("[autoapply_main] marketing scheduler not started: %s", _e)
 
 
 # ── Pydantic models ───────────────────────────────────────────────────────────
@@ -227,6 +301,14 @@ async def register(body: RegisterRequest):
 
     if len(body.password) < 6:
         raise HTTPException(status_code=400, detail="Пароль должен быть не менее 6 символов")
+
+    # Validate email domain has real MX records (rejects fake/disposable addresses)
+    from autoapply.email_sender import validate_email_mx
+    if not validate_email_mx(body.email):
+        raise HTTPException(
+            status_code=400,
+            detail="Введите настоящий email-адрес — указанный домен не существует"
+        )
 
     existing = await get_user_by_email(body.email, AUTOAPPLY_DB)
     if existing:
@@ -315,6 +397,61 @@ async def forgot_password(body: ForgotPasswordRequest):
         except Exception as exc:
             logger.error("[api/forgot-password] email error: %s", exc)
     return {"ok": True, "message": "Если email зарегистрирован — письмо отправлено"}
+
+
+@app.post("/api/auth/vk-login", summary="VK ID One Tap login/register")
+async def vk_login(payload: dict):
+    """Receive VK auth data (after exchangeCode), create or log in the user."""
+    access_token = payload.get("access_token") or payload.get("token") or ""
+    vk_user_id = str(payload.get("user_id") or payload.get("id") or "")
+    email = payload.get("email", "")
+
+    if not vk_user_id:
+        raise HTTPException(status_code=400, detail="Нет user_id в VK ответе")
+
+    # Try to get user info from VK if email not provided
+    if not email and access_token:
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=5) as cl:
+                r = await cl.get(
+                    "https://api.vk.com/method/users.get",
+                    params={"fields": "contacts", "access_token": access_token, "v": "5.199"},
+                )
+                data = r.json().get("response", [{}])
+                if data:
+                    email = data[0].get("contacts", {}).get("mobile_phone", "")
+        except Exception:
+            pass
+
+    # Use vk_{user_id}@vk.autoapply as synthetic email if no real email
+    synthetic_email = email or f"vk_{vk_user_id}@vk.autoapply"
+    fake_password_hash = _hash_password(f"vk_{vk_user_id}_immutable_salt")
+
+    existing = await get_user_by_email(synthetic_email, AUTOAPPLY_DB)
+    if existing:
+        user_id = existing["id"]
+    else:
+        try:
+            user_id = await create_user(
+                email=synthetic_email,
+                password_hash=fake_password_hash,
+                telegram_id=None,
+                db_path=AUTOAPPLY_DB,
+            )
+            # Mark as email verified (VK auth = verified identity)
+            async with aiosqlite.connect(AUTOAPPLY_DB) as db:
+                await db.execute(
+                    "UPDATE autoapply_users SET is_verified=1 WHERE id=?", (user_id,)
+                )
+                await db.commit()
+        except Exception as exc:
+            logger.error("[vk-login] create_user error: %s", exc)
+            raise HTTPException(status_code=500, detail="Ошибка создания аккаунта")
+
+    token = _create_token(user_id)
+    logger.info("[vk-login] user_id=%s vk_user_id=%s", user_id, vk_user_id)
+    return {"token": token, "user_id": user_id, "vk_user_id": vk_user_id}
 
 
 @app.post("/api/reset-password", summary="Set new password using reset token")
@@ -601,12 +738,11 @@ Write ONLY the cover letter text, no explanation. Start with 'Уважаемый
 
 
 # ── Job search ─────────────────────────────────────────────────────────────────
-@app.get("/api/jobs/search", summary="Search jobs via Remotive API")
+@app.get("/api/jobs/search", summary="Search jobs via hh.ru + Remotive API")
 async def search_jobs(
     q: str = "",
     city: str = "",
     remote: str = "",
-    current_user: dict = Depends(get_current_user)
 ):
     """Search jobs from Remotive (remote jobs, no API key needed) + mock data."""
     import httpx
@@ -783,18 +919,12 @@ async def demo_analyze(payload: dict, request: Request):
     if not url and not text:
         return JSONResponse({"error": "Укажите URL или текст вакансии"}, status_code=400)
 
-    # If URL provided, try to fetch page text
+    # If URL provided, try to fetch page text (with hh.ru API support)
     job_text = text
+    url_metadata = {}
     if url and not text:
-        try:
-            async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
-                r = await client.get(url, headers={"User-Agent": "Mozilla/5.0"})
-                # Simple text extraction
-                raw = r.text
-                # Remove HTML tags
-                job_text = re.sub(r'<[^>]+>', ' ', raw)
-                job_text = re.sub(r'\s+', ' ', job_text)[:4000]
-        except Exception:
+        job_text, url_metadata = await _fetch_job_text_from_url(url)
+        if not job_text:
             job_text = f"Job posting from: {url}"
 
     # Try OpenAI/OpenRouter
@@ -925,6 +1055,396 @@ async def extension_report(
     except Exception as exc:
         logger.exception("[extension/report] error: %s", exc)
         return {"ok": False, "error": str(exc)}
+
+
+# ── Admin: auto-generate blog post ───────────────────────────────────────────
+@app.post("/api/admin/generate-blog-post", summary="Admin: auto-generate blog post")
+async def admin_generate_blog_post(payload: dict, request: Request):
+    """Generate a new blog post via OpenAI and save to blog directory."""
+    import os as _os, json as _json, re as _re
+    from datetime import datetime, timezone
+
+    secret = request.headers.get("X-Admin-Secret", "")
+    expected = _os.getenv("ADMIN_SECRET", "")
+    if not expected or secret != expected:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    topic = payload.get("topic", "")
+    if not topic:
+        topics = [
+            "Как получить оффер за 30 дней: пошаговый план поиска работы",
+            "Портфолио разработчика: что включить и как оформить",
+            "LinkedIn vs hh.ru: где искать работу в 2026",
+            "Как написать резюме на английском языке для международных компаний",
+            "5 причин почему рекрутеры не отвечают на ваш отклик",
+        ]
+        import random
+        topic = random.choice(topics)
+
+    api_key = _os.getenv("OPENROUTER_API_KEY") or _os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        return JSONResponse({"error": "No API key configured"}, status_code=500)
+
+    model = _os.getenv("OPENAI_MODEL", "openai/gpt-4o-mini")
+    base_url = "https://openrouter.ai/api/v1" if _os.getenv("OPENROUTER_API_KEY") else "https://api.openai.com/v1"
+
+    prompt = f"""Напиши статью на 800 слов в блог для сайта по поиску работы. Тема: "{topic}"
+
+Верни ТОЛЬКО JSON следующего формата:
+{{
+  "title": "заголовок статьи",
+  "slug": "url-slug-latinicey",
+  "meta_description": "SEO описание до 150 символов",
+  "content_html": "HTML контент статьи с тегами <h2>, <h3>, <p>, <ul><li>",
+  "faq": [{{"q": "вопрос", "a": "ответ"}}, {{"q": "вопрос2", "a": "ответ2"}}, {{"q": "вопрос3", "a": "ответ3"}}],
+  "reading_time": "5 мин чтения"
+}}
+
+Требования к статье:
+- H2 подзаголовки каждые 150-200 слов
+- Упомяни РезюмеАИ (resumeai-bot.ru) один раз органично
+- Заканчивай призывом использовать AI для резюме
+- Практические советы с данными
+- Целевая аудитория: русскоязычные соискатели"""
+
+    try:
+        async with _httpx_module.AsyncClient(timeout=60) as client:
+            r = await client.post(
+                f"{base_url}/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                json={"model": model, "messages": [{"role": "user", "content": prompt}], "max_tokens": 2000, "response_format": {"type": "json_object"}}
+            )
+            data = r.json()
+            article = _json.loads(data["choices"][0]["message"]["content"])
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI generation failed: {str(e)}")
+
+    slug = article.get("slug", "article-" + datetime.now(timezone.utc).strftime("%Y%m%d"))
+    title = article.get("title", topic)
+    meta_desc = article.get("meta_description", "")
+    content = article.get("content_html", "")
+    faqs = article.get("faq", [])
+    reading_time = article.get("reading_time", "5 мин чтения")
+    date_str = datetime.now(timezone.utc).strftime("%d.%m.%Y")
+
+    faq_schema = _json.dumps({"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":f["q"],"acceptedAnswer":{"@type":"Answer","text":f["a"]}} for f in faqs]}, ensure_ascii=False)
+    faq_html = "".join(f'<div class="faq-item"><div class="faq-q" onclick="this.nextElementSibling.classList.toggle(\'open\')">{f["q"]} <span>+</span></div><div class="faq-a">{f["a"]}</div></div>' for f in faqs)
+
+    html = f"""<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{title} | РезюмеАИ</title>
+  <meta name="description" content="{meta_desc}" />
+  <meta property="og:title" content="{title}" /><meta property="og:description" content="{meta_desc}" />
+  <meta property="og:image" content="https://resumeai-bot.ru/og-image.png" />
+  <meta property="og:url" content="https://resumeai-bot.ru/blog/{slug}.html" />
+  <link rel="canonical" href="https://resumeai-bot.ru/blog/{slug}.html" />
+  <script type="application/ld+json">{faq_schema}</script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *{{box-sizing:border-box;margin:0;padding:0}} body{{font-family:'Inter',sans-serif;background:#F8FAFC;color:#334155;line-height:1.6}}
+    .container{{max-width:760px;margin:0 auto;padding:0 24px}} header{{background:#fff;border-bottom:1px solid #E2E8F0;padding:0 24px}}
+    .header-inner{{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}}
+    .logo{{font-size:1.2rem;font-weight:800;color:#2563EB;text-decoration:none}}
+    .article-hero{{background:#fff;padding:48px 0 32px;border-bottom:1px solid #E2E8F0}}
+    .article-hero h1{{font-size:clamp(1.6rem,4vw,2.2rem);font-weight:800;color:#0F172A;margin-bottom:12px;line-height:1.3}}
+    .article-meta{{font-size:.85rem;color:#94A3B8;margin-top:12px}}
+    .article-body{{padding:40px 0}} .article-body h2{{font-size:1.35rem;font-weight:700;color:#0F172A;margin:32px 0 12px}}
+    .article-body h3{{font-size:1.1rem;font-weight:600;color:#0F172A;margin:20px 0 8px}}
+    .article-body p{{margin-bottom:16px}} .article-body ul{{margin:12px 0 16px 20px}} .article-body li{{margin-bottom:8px}}
+    .faq-section{{padding:32px 0;border-top:1px solid #E2E8F0}}
+    .faq-item{{border:1px solid #E2E8F0;border-radius:12px;margin-bottom:10px;overflow:hidden}}
+    .faq-q{{padding:16px 20px;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;background:#fff;color:#0F172A}}
+    .faq-a{{padding:0 20px;max-height:0;overflow:hidden;transition:.3s}} .faq-a.open{{max-height:300px;padding:0 20px 16px}}
+    .cta-box{{background:linear-gradient(135deg,#1E40AF,#2563EB);border-radius:16px;padding:32px;text-align:center;color:#fff;margin:40px 0}}
+    .cta-box h2{{font-size:1.4rem;font-weight:800;margin-bottom:8px}} .cta-box p{{opacity:.85;margin-bottom:20px}}
+    .btn-cta{{background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;padding:12px 28px;border-radius:10px;font-weight:700;text-decoration:none;display:inline-block}}
+    footer{{background:#0F172A;color:#64748B;padding:32px 0;margin-top:64px;text-align:center;font-size:.85rem}}
+  </style>
+</head>
+<body>
+<header><div class="header-inner"><a href="/" class="logo">ResumeAI</a><a href="/app" style="background:#F59E0B;color:#fff;padding:8px 20px;border-radius:8px;font-weight:600;font-size:.88rem;text-decoration:none;">Создать резюме</a></div></header>
+<div class="article-hero"><div class="container"><div style="font-size:.82rem;color:#94A3B8;margin-bottom:12px;"><a href="/" style="color:#2563EB;">Главная</a> › <a href="/blog/" style="color:#2563EB;">Блог</a> › {title}</div><h1>{title}</h1><div class="article-meta">📅 {date_str} · ✍️ РезюмеАИ · ⏱ {reading_time}</div></div></div>
+<div class="container"><div class="article-body">{content}</div>
+<div class="cta-box"><h2>Создайте резюме с AI прямо сейчас</h2><p>Бесплатно · 30 секунд · ATS-оптимизация</p><a href="/app" class="btn-cta">Попробовать бесплатно →</a></div>
+<div class="faq-section"><h2 style="font-size:1.4rem;font-weight:800;color:#0F172A;margin-bottom:20px;">Частые вопросы</h2>{faq_html}</div></div>
+<footer>© 2026 РезюмеАИ · <a href="/privacy.html" style="color:#64748B;">Конфиденциальность</a> · <a href="https://t.me/topbestworkerbot" target="_blank" style="color:#0088CC;">@topbestworkerbot</a></footer>
+<script>document.querySelectorAll('.faq-q').forEach(q=>q.addEventListener('click',()=>q.nextElementSibling.classList.toggle('open')))</script>
+</body></html>"""
+
+    blog_path = "/opt/resumeaibot/landing/blog"
+    import os as _os2
+    _os2.makedirs(blog_path, exist_ok=True)
+    filepath = _os2.path.join(blog_path, f"{slug}.html")
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(html)
+
+    logger.info(f"Generated blog post: {slug}")
+    return {"status": "ok", "slug": slug, "title": title, "path": filepath}
+
+
+# ── Admin: post blog article to Telegram channel ──────────────────────────────
+@app.post("/api/admin/post-to-channel", summary="Admin: post blog article to Telegram channel")
+async def post_to_telegram_channel(payload: dict, request: Request):
+    """Post a blog article summary to the configured Telegram channel."""
+    import os as _os3
+
+    secret = request.headers.get("X-Admin-Secret", "")
+    if not _os3.getenv("ADMIN_SECRET") or secret != _os3.getenv("ADMIN_SECRET"):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    channel_id = _os3.getenv("TELEGRAM_CHANNEL_ID", "")
+    bot_token = _os3.getenv("BOT_TOKEN", "")
+
+    if not channel_id or not bot_token:
+        return JSONResponse({"error": "TELEGRAM_CHANNEL_ID or BOT_TOKEN not set"}, status_code=400)
+
+    title = payload.get("title", "")
+    slug = payload.get("slug", "")
+    excerpt = payload.get("excerpt", "")[:200]
+    url = f"https://resumeai-bot.ru/blog/{slug}.html"
+
+    text = (
+        f"📝 *{title}*\n\n"
+        f"{excerpt}...\n\n"
+        f"👉 [Читать полностью]({url})\n\n"
+        f"🤖 Создать резюме: https://t.me/topbestworkerbot"
+    )
+
+    async with _httpx_module.AsyncClient(timeout=10) as client:
+        r = await client.post(
+            f"https://api.telegram.org/bot{bot_token}/sendMessage",
+            json={"chat_id": channel_id, "text": text, "parse_mode": "Markdown", "disable_web_page_preview": False}
+        )
+        data = r.json()
+
+    if data.get("ok"):
+        return {"status": "ok", "message_id": data["result"]["message_id"]}
+    else:
+        return JSONResponse({"error": data.get("description", "Unknown error")}, status_code=500)
+
+
+# ── Stripe Checkout ──────────────────────────────────────────────────────────
+@app.post("/api/payments/create-checkout", summary="Create Stripe Checkout session")
+async def create_stripe_checkout(payload: dict, request: Request):
+    import os, stripe
+    stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
+    if not stripe.api_key:
+        return JSONResponse({"error": "Stripe not configured"}, status_code=503)
+
+    plan = payload.get("plan", "pro")
+    period = payload.get("period", "monthly")
+
+    # Price IDs (create these in Stripe dashboard, or use price_data for dynamic)
+    PRICES = {
+        ("trial", "monthly"): {"amount": 299, "currency": "usd", "name": "РезюмеАИ Trial — 7 дней", "recurring": None},
+        ("pro", "monthly"): {"amount": 1999, "currency": "usd", "name": "РезюмеАИ Pro — месяц", "recurring": "month"},
+        ("pro", "annual"): {"amount": 14900, "currency": "usd", "name": "РезюмеАИ Pro — год", "recurring": "year"},
+        ("premium", "monthly"): {"amount": 3999, "currency": "usd", "name": "РезюмеАИ Premium — месяц", "recurring": "month"},
+        ("premium", "annual"): {"amount": 29900, "currency": "usd", "name": "РезюмеАИ Premium — год", "recurring": "year"},
+    }
+
+    price_cfg = PRICES.get((plan, period), PRICES[("pro", "monthly")])
+
+    try:
+        if price_cfg["recurring"]:
+            session = stripe.checkout.Session.create(
+                payment_method_types=["card"],
+                line_items=[{
+                    "price_data": {
+                        "currency": price_cfg["currency"],
+                        "unit_amount": price_cfg["amount"],
+                        "product_data": {"name": price_cfg["name"]},
+                        "recurring": {"interval": price_cfg["recurring"]},
+                    },
+                    "quantity": 1,
+                }],
+                mode="subscription",
+                success_url="https://resumeai-bot.ru/app?payment=success",
+                cancel_url="https://resumeai-bot.ru/app?payment=cancelled",
+                metadata={"plan": plan, "period": period},
+            )
+        else:
+            session = stripe.checkout.Session.create(
+                payment_method_types=["card"],
+                line_items=[{
+                    "price_data": {
+                        "currency": price_cfg["currency"],
+                        "unit_amount": price_cfg["amount"],
+                        "product_data": {"name": price_cfg["name"]},
+                    },
+                    "quantity": 1,
+                }],
+                mode="payment",
+                success_url="https://resumeai-bot.ru/app?payment=success",
+                cancel_url="https://resumeai-bot.ru/app?payment=cancelled",
+                metadata={"plan": plan, "period": period},
+            )
+        return {"url": session.url}
+    except Exception as e:
+        logger.error(f"Stripe checkout error: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@app.post("/api/payments/webhook", summary="Stripe webhook handler")
+async def stripe_webhook(request: Request):
+    import os, stripe
+    stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
+    webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature", "")
+
+    try:
+        if webhook_secret:
+            event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
+        else:
+            import json as _json_stripe
+            event = stripe.Event.construct_from(_json_stripe.loads(payload), stripe.api_key)
+    except Exception as e:
+        logger.error(f"Stripe webhook error: {e}")
+        return JSONResponse({"error": str(e)}, status_code=400)
+
+    event_type = event["type"]
+    data = event["data"]["object"]
+
+    if event_type == "checkout.session.completed":
+        plan = data.get("metadata", {}).get("plan", "pro")
+        customer_email = data.get("customer_details", {}).get("email", "")
+        logger.info(f"Stripe payment completed: plan={plan} email={customer_email}")
+        # TODO: update user subscription in DB when user auth is linked
+
+    elif event_type in ("customer.subscription.updated", "customer.subscription.deleted"):
+        logger.info(f"Stripe subscription event: {event_type}")
+
+    return {"status": "ok"}
+
+
+@app.get("/api/payments/status", summary="Get payment status info")
+async def get_payment_status():
+    return {
+        "stripe_configured": bool(os.getenv("STRIPE_SECRET_KEY")),
+        "crypto_configured": bool(os.getenv("CRYPTOBOT_API_TOKEN") or os.getenv("CRYPTOBOT_TOKEN")),
+        "plans": {
+            "trial": {"price_usd": 2.99, "duration": "7 days"},
+            "pro_monthly": {"price_usd": 19.99, "period": "monthly"},
+            "pro_annual": {"price_usd": 149, "period": "annual"},
+            "premium_monthly": {"price_usd": 39.99, "period": "monthly"},
+            "premium_annual": {"price_usd": 299, "period": "annual"},
+        }
+    }
+
+
+# ── Build B: Help widget endpoint ─────────────────────────────────────────────
+class HelpQuestionRequest(BaseModel):
+    question: str
+    user_id: Optional[int] = None
+    page: Optional[str] = None
+
+
+@app.post("/api/help/question", summary="Help widget: answer user question via AI")
+async def help_question(body: HelpQuestionRequest):
+    """Floating help widget Q&A — answers common questions, falls back to FAQ list."""
+    q = body.question.strip()
+    if not q:
+        raise HTTPException(status_code=400, detail="Вопрос не может быть пустым")
+
+    OPENROUTER_KEY = os.getenv("OPENROUTER_API_KEY", "")
+    if not OPENROUTER_KEY:
+        # Fallback FAQ
+        faq = [
+            ("бесплатно", "Бесплатный план: 1 резюме, 1 письмо, 3 AI-запроса. Без кредитной карты."),
+            ("стоит", "Про-тариф — 990 ₽/месяц. Безлимит резюме, писем, ATS-анализ, авто-отклики."),
+            ("hh\\.ru|hh ", "Вставьте ссылку на вакансию с hh.ru — AI создаст резюме под неё за 30 секунд."),
+            ("пароль", "Нажмите «Забыли пароль?» на странице входа — пришлём ссылку на email."),
+            ("отмен", "Отменить подписку можно в личном кабинете в разделе «Тариф»."),
+        ]
+        import re as _re
+        for kw, answer in faq:
+            if _re.search(kw, q, _re.I):
+                return {"answer": answer, "source": "faq"}
+        return {
+            "answer": "Напишите нам в Telegram: @resumeai_support — ответим в течение часа.",
+            "source": "fallback",
+        }
+
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={"Authorization": f"Bearer {OPENROUTER_KEY}", "Content-Type": "application/json"},
+                json={
+                    "model": "openai/gpt-4o-mini",
+                    "messages": [
+                        {"role": "system", "content": (
+                            "Ты виджет поддержки сервиса АвтоОтклик (resumeai-bot.ru). "
+                            "Отвечай кратко (1-3 предложения), по-русски, дружелюбно. "
+                            "Если не знаешь ответа — направь в Telegram @resumeai_support."
+                        )},
+                        {"role": "user", "content": q},
+                    ],
+                    "max_tokens": 200,
+                },
+            )
+        data = resp.json()
+        answer = data["choices"][0]["message"]["content"].strip()
+        return {"answer": answer, "source": "ai"}
+    except Exception as exc:
+        logger.error("[help/question] AI error: %s", exc)
+        return {"answer": "Напишите нам: @resumeai_support — поможем в течение часа.", "source": "fallback"}
+
+
+# ── Build F: VK community posting ─────────────────────────────────────────────
+class VKPostRequest(BaseModel):
+    message: str
+    link: Optional[str] = None
+    attachments: Optional[str] = None   # e.g. "photo-237549969_123456"
+
+
+@app.post("/api/admin/post-to-vk", summary="Admin: post message to VK community")
+async def post_to_vk(body: VKPostRequest, x_admin_key: str = Header(default="")):
+    """Post a message to VK public club237549969. Requires ADMIN_SECRET header."""
+    ADMIN_SECRET = os.getenv("ADMIN_SECRET", "")
+    if ADMIN_SECRET and x_admin_key != ADMIN_SECRET:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    VK_TOKEN = os.getenv("VK_API_TOKEN", "")
+    VK_GROUP_ID = os.getenv("VK_GROUP_ID", "237549969")
+    if not VK_TOKEN:
+        raise HTTPException(status_code=503, detail="VK_API_TOKEN not configured")
+
+    text = body.message
+    if body.link:
+        text = f"{text}\n\n{body.link}"
+
+    params: dict = {
+        "owner_id": f"-{VK_GROUP_ID}",
+        "message": text,
+        "from_group": 1,
+        "access_token": VK_TOKEN,
+        "v": "5.131",
+    }
+    if body.attachments:
+        params["attachments"] = body.attachments
+
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post("https://api.vk.com/method/wall.post", data=params)
+        data = resp.json()
+        if "error" in data:
+            logger.error("[post-to-vk] VK error: %s", data["error"])
+            raise HTTPException(status_code=502, detail=f"VK error: {data['error'].get('error_msg')}")
+        post_id = data.get("response", {}).get("post_id")
+        logger.info("[post-to-vk] posted to VK group %s, post_id=%s", VK_GROUP_ID, post_id)
+        return {"ok": True, "post_id": post_id, "url": f"https://vk.com/wall-{VK_GROUP_ID}_{post_id}"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("[post-to-vk] error: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 # ── SPA fallback ──────────────────────────────────────────────────────────────

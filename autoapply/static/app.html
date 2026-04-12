@@ -6,6 +6,8 @@
   <title>АвтоОтклик — Автоматические заявки на работу</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- VK ID SDK (F1: One Tap Login) -->
+  <script src="https://unpkg.com/@vkid/sdk@2.9.4/dist-sdk/umd/index.js"></script>
   <style>
     :root {
       --bg: #0a0a0a;
@@ -460,6 +462,13 @@
       </div>
       <div class="error-msg" id="login-error"></div>
       <button class="btn-primary" style="width:100%; justify-content:center; margin-top:4px;" onclick="doLogin()">Войти</button>
+      <!-- VK One Tap Login (F1) -->
+      <div style="display:flex;align-items:center;gap:10px;margin:16px 0 8px;">
+        <div style="flex:1;height:1px;background:#2a2a2a;"></div>
+        <span style="color:#555;font-size:12px;">или</span>
+        <div style="flex:1;height:1px;background:#2a2a2a;"></div>
+      </div>
+      <div id="vk-one-tap-container-login"></div>
     </div>
 
     <!-- Register tab -->
@@ -2166,6 +2175,34 @@
           <div style="color:var(--text-muted);font-size:0.82rem;margin-top:6px;">Совет: добавьте больше ключевых слов из вакансии в резюме для повышения рейтинга.</div>
         </div>
       </div>`;
+    showShareCard(score);
+  }
+
+  function showShareCard(score) {
+    const existing = document.getElementById('share-card');
+    if (existing) existing.remove();
+
+    const card = document.createElement('div');
+    card.id = 'share-card';
+    card.style.cssText = 'background:linear-gradient(135deg,#1E40AF,#2563EB);border-radius:12px;padding:24px;margin-top:20px;color:white;text-align:center;';
+
+    const shareUrl = 'https://resumeai-bot.ru/?ref=share&score=' + score;
+    const tgUrl = 'https://t.me/share/url?url=' + encodeURIComponent(shareUrl) + '&text=' + encodeURIComponent('🎯 Мой ATS Score: ' + score + '/100 — проверь своё резюме бесплатно!');
+    const vkUrl = 'https://vk.com/share.php?url=' + encodeURIComponent(shareUrl) + '&title=' + encodeURIComponent('ATS Score ' + score + '/100 — РезюмеАИ');
+
+    card.innerHTML = '<div style="font-size:2rem;font-weight:800;margin-bottom:4px;">🎯 ATS Score: ' + score + '/100</div>' +
+      '<div style="opacity:.85;font-size:.9rem;margin-bottom:20px;">Поделись результатом — пусть друзья тоже проверят своё резюме</div>' +
+      '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">' +
+      '<a href="' + tgUrl + '" target="_blank" style="background:#0088CC;color:#fff;padding:10px 20px;border-radius:8px;font-weight:600;font-size:.88rem;text-decoration:none;">✈ Поделиться в Telegram</a>' +
+      '<a href="' + vkUrl + '" target="_blank" style="background:#4C75A3;color:#fff;padding:10px 20px;border-radius:8px;font-weight:600;font-size:.88rem;text-decoration:none;">ВК Поделиться</a>' +
+      '<button onclick="navigator.clipboard.writeText(\'' + shareUrl + '\').then(function(){showToast(\'Ссылка скопирована ✓\')})" style="background:rgba(255,255,255,.2);border:none;color:#fff;padding:10px 20px;border-radius:8px;font-weight:600;font-size:.88rem;cursor:pointer;">Копировать ссылку</button>' +
+      '</div>';
+
+    // Try to insert after ATS result area, or append to resume page
+    const atsEl = document.getElementById('ats-result') || document.querySelector('#page-resume .result-card') || document.getElementById('page-resume');
+    if (atsEl) {
+      atsEl.appendChild(card);
+    }
   }
 
   // ================================================================
@@ -2699,6 +2736,81 @@
       checkLoginUrlParams();
     }
   });
+</script>
+
+<!-- ── VK One Tap Login Init (F1) ──────────────────────────────────────────── -->
+<script>
+(function initVKOneTap(){
+  if (typeof window.VKIDSDK === 'undefined') return;
+  try {
+    var VKID = window.VKIDSDK;
+    VKID.Config.init({
+      app: 54539288,
+      redirectUrl: 'https://resumeai-bot.ru/app',
+      responseMode: VKID.ConfigResponseMode.Callback,
+      source: VKID.ConfigSource.LOWCODE,
+      scope: '',
+    });
+    var oneTap = new VKID.OneTap();
+    oneTap.render({
+      container: document.getElementById('vk-one-tap-container-login'),
+      showAlternativeLogin: true,
+    }).on(VKID.OneTapInternalEvents.LOGIN_SUCCESS, function(payload){
+      VKID.Auth.exchangeCode(payload.code, payload.device_id)
+        .then(function(data){
+          return fetch('/api/auth/vk-login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data),
+          });
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(result){
+          if (result.token) {
+            localStorage.setItem('aa_token', result.token);
+            navigate('#dashboard');
+          } else {
+            showToast('Ошибка входа через VK: ' + (result.detail || 'неизвестная ошибка'));
+          }
+        })
+        .catch(function(e){ showToast('Ошибка VK: ' + e.message); });
+    });
+  } catch(e) { console.warn('VK One Tap init error:', e); }
+})();
+</script>
+
+<!-- ── Help Widget (Build B) ──────────────────────────────────────────────── -->
+<div id="help-widget" style="position:fixed;bottom:24px;right:24px;z-index:9999;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div id="help-bubble" style="display:none;width:320px;background:#1a1a1a;border:1px solid #333;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.6);overflow:hidden;margin-bottom:12px;">
+    <div style="background:#7c3aed;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;">
+      <span style="color:#fff;font-weight:600;font-size:14px;">❓ Помощь</span>
+      <span id="help-close" style="color:#fff;cursor:pointer;font-size:18px;line-height:1;">×</span>
+    </div>
+    <div id="help-messages" style="padding:14px;max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;"></div>
+    <div style="padding:12px;border-top:1px solid #2a2a2a;display:flex;gap:8px;">
+      <input id="help-input" type="text" placeholder="Задайте вопрос…" style="flex:1;background:#0d0d0d;border:1px solid #333;border-radius:8px;padding:8px 12px;color:#f0f0f0;font-size:13px;outline:none;" maxlength="300">
+      <button id="help-send" style="background:#7c3aed;border:none;border-radius:8px;padding:8px 14px;color:#fff;cursor:pointer;font-size:14px;">→</button>
+    </div>
+  </div>
+  <button id="help-toggle" style="width:52px;height:52px;border-radius:50%;background:#7c3aed;border:none;cursor:pointer;box-shadow:0 4px 16px rgba(124,58,237,.5);font-size:22px;color:#fff;display:flex;align-items:center;justify-content:center;margin-left:auto;">❓</button>
+</div>
+<script>
+(function(){
+  var tog=document.getElementById('help-toggle');
+  var bub=document.getElementById('help-bubble');
+  var inp=document.getElementById('help-input');
+  var msgs=document.getElementById('help-messages');
+  var snd=document.getElementById('help-send');
+  var cls=document.getElementById('help-close');
+  tog.onclick=function(){bub.style.display=bub.style.display==='none'?'block':'none';if(bub.style.display==='block'&&msgs.children.length===0)addMsg('bot','Привет! Чем могу помочь? Спросите о тарифах, функциях или возникших проблемах.');};
+  cls.onclick=function(){bub.style.display='none';};
+  function addMsg(role,text){var d=document.createElement('div');d.style.cssText='padding:8px 12px;border-radius:10px;font-size:13px;line-height:1.5;max-width:85%;'+(role==='bot'?'background:#2a2a2a;color:#e0e0e0;align-self:flex-start;':'background:#7c3aed;color:#fff;align-self:flex-end;');d.textContent=text;msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;}
+  function ask(){var q=inp.value.trim();if(!q)return;addMsg('user',q);inp.value='';snd.disabled=true;
+    fetch('/api/help/question',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q,page:window.location.hash})})
+    .then(function(r){return r.json();}).then(function(d){addMsg('bot',d.answer||'Напишите нам: @resumeai_support');}).catch(function(){addMsg('bot','Напишите нам: @resumeai_support');}).finally(function(){snd.disabled=false;});
+  }
+  snd.onclick=ask;inp.onkeydown=function(e){if(e.key==='Enter')ask();};
+})();
 </script>
 </body>
 </html>

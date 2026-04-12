@@ -10,3 +10,5 @@ fastapi
 uvicorn[standard]
 greenlet
 apscheduler
+stripe>=7.0.0
+dnspython>=2.6.0

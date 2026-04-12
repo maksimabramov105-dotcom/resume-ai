@@ -67,6 +67,23 @@ async def run_bot() -> None:
     except Exception as e:
         logger.warning("Could not set short description: %s", e)
 
+    # Register bot commands (shows in Telegram menu "/" list)
+    try:
+        from aiogram.types import BotCommand
+        await bot.set_my_commands([
+            BotCommand(command="start",      description="🏠 Главное меню"),
+            BotCommand(command="resume",     description="📄 Создать резюме"),
+            BotCommand(command="cover",      description="✉️ Сопроводительное письмо"),
+            BotCommand(command="interview",  description="🎤 Подготовка к собеседованию"),
+            BotCommand(command="vacancy",    description="🔍 Анализ вакансии"),
+            BotCommand(command="assistant",  description="🤖 AI-ассистент"),
+            BotCommand(command="upgrade",    description="💎 Тарифы и оплата"),
+            BotCommand(command="profile",    description="👤 Мой профиль"),
+        ], language_code="ru")
+        logger.info("Bot commands registered.")
+    except Exception as e:
+        logger.warning("Could not set commands: %s", e)
+
     dp = Dispatcher(storage=MemoryStorage())
 
     # ── Global error middleware ───────────────────────────────────────────────

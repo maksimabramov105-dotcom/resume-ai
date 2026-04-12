@@ -6,6 +6,12 @@
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "5555", "--bind", "0.0.0.0", "--directory", "landing"],
       "port": 5555
+    },
+    {
+      "name": "autoapply-static",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "5556", "--bind", "0.0.0.0", "--directory", "autoapply/static"],
+      "port": 5556
     }
   ]
 }

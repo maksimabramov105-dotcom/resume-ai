@@ -8,10 +8,16 @@ Uses smtplib (no extra deps). Configure via .env:
   SMTP_PASSWORD    — app password (not account password!)
   SMTP_FROM        — sender address, e.g. noreply@resumeai-bot.ru
   SMTP_USE_SSL     — "1" for port 465, leave empty for STARTTLS (port 587)
+
+Deliverability notes:
+  - Validates MX records before sending to avoid bounces from fake/disposable addresses
+  - For production, switch to Resend (resend.com) or Brevo for better inbox placement
 """
 
+import dns.resolver
 import logging
 import os
+import re
 import smtplib
 import ssl
 from email.mime.multipart import MIMEMultipart
@@ -28,11 +34,42 @@ SMTP_USE_SSL  = os.getenv("SMTP_USE_SSL", "").strip() in ("1", "true", "yes")
 
 WEBAPP_URL = os.getenv("WEBAPP_BASE_URL", "https://resumeai-bot.ru")
 
+_EMAIL_RE = re.compile(r"^[^@\s]+@([^@\s]+\.[^@\s]+)$")
+
+
+def validate_email_mx(address: str) -> bool:
+    """Return True if the email domain has valid MX or A records.
+    Rejects fake/disposable domains before wasting an SMTP connection."""
+    m = _EMAIL_RE.match(address.strip().lower())
+    if not m:
+        return False
+    domain = m.group(1)
+    try:
+        dns.resolver.resolve(domain, "MX", lifetime=5)
+        return True
+    except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer):
+        pass
+    except Exception:
+        pass
+    # Fallback: try A record (some domains use A instead of MX)
+    try:
+        dns.resolver.resolve(domain, "A", lifetime=5)
+        return True
+    except Exception:
+        pass
+    logger.warning("[email] domain %s has no MX/A records — rejecting %s", domain, address)
+    return False
+
 
 def _send(to: str, subject: str, html: str, text: str) -> bool:
     """Send email. Returns True on success."""
     if not SMTP_HOST or not SMTP_USER or not SMTP_PASSWORD:
         logger.warning("[email] SMTP not configured — skipping send to %s", to)
+        return False
+
+    # Validate MX records — abort early for fake/disposable domains
+    if not validate_email_mx(to):
+        logger.warning("[email] MX validation failed for %s — skipping send", to)
         return False
 
     msg = MIMEMultipart("alternative")
