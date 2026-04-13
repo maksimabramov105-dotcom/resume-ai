@@ -5,6 +5,7 @@ from aiogram.fsm.state import State, StatesGroup
 
 from database.db import get_or_create_user, save_user, log_generation
 from services.openai_service import start_interview, continue_interview, finish_interview
+from utils.md_cleaner import md_to_telegram
 from utils.keyboards import interview_kb, after_interview_kb, buy_credits_kb, cancel_kb
 from utils.texts import (
     INTERVIEW_ASK_VACANCY, INTERVIEW_STARTING, INTERVIEW_NO_CREDITS, INTERVIEW_FINISH_PROMPT,
@@ -86,7 +87,7 @@ async def handle_answer(message: Message, state: FSMContext):
 
     can_finish = question_count >= MIN_QUESTIONS_TO_FINISH
 
-    await message.answer(response, reply_markup=interview_kb(can_finish=can_finish))
+    await message.answer(md_to_telegram(response), parse_mode="HTML", reply_markup=interview_kb(can_finish=can_finish))
 
 
 @router.callback_query(F.data == "finish_interview", InterviewStates.active)

@@ -1,6 +1,7 @@
 import random
 
 from aiogram import Router, F
+from utils.md_cleaner import md_to_telegram
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -100,10 +101,10 @@ async def handle_assistant_message(message: Message, state: FSMContext):
     elif user.credits_assistant == 0:
         warning = ASSISTANT_LAST_MESSAGE
 
-    full_text = f"{response}{upsell}{warning}"
+    full_text = f"{md_to_telegram(response)}{upsell}{warning}"
     if len(full_text) > 4096:
         full_text = full_text[:4093] + "…"
-    await message.answer(full_text, reply_markup=assistant_kb())
+    await message.answer(full_text, parse_mode="HTML", reply_markup=assistant_kb())
 
 
 @router.message(AssistantStates.active)

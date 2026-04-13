@@ -526,6 +526,7 @@ async def campaign_create(
         raise HTTPException(status_code=500, detail="Failed to create campaign")
 
     logger.info("[api/campaign/create] user=%s campaign_id=%s", user_id, campaign_id)
+    asyncio.create_task(log_web_generation("autoapply", user_id))
     return {"campaign_id": campaign_id, "daily_limit": requested_limit}
 
 
@@ -659,6 +660,7 @@ async def resume_connect(
         logger.error("[api/resume/connect] autoapply_db write error: %s", exc)
         raise HTTPException(status_code=500, detail="Failed to save resume")
 
+    asyncio.create_task(log_web_generation("resume", current_user["id"]))
     return {
         "success": True,
         "message": "Resume imported successfully",

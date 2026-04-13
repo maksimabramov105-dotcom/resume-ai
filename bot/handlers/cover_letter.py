@@ -5,6 +5,7 @@ from aiogram.fsm.state import State, StatesGroup
 
 from database.db import get_or_create_user, save_user, log_generation
 from services.openai_service import generate_cover_letter
+from utils.md_cleaner import md_to_telegram
 from utils.keyboards import after_cover_letter_kb, buy_credits_kb, cancel_kb
 from utils.texts import (
     COVER_LETTER_ASK_VACANCY, COVER_LETTER_GENERATING, COVER_LETTER_NO_CREDITS,
@@ -65,9 +66,10 @@ async def got_vacancy(message: Message, state: FSMContext):
 
     await log_generation(message.from_user.id, "cover_letter", vacancy, letter_text, tokens)
 
-    text_preview = letter_text[:3800] if len(letter_text) > 3800 else letter_text
+    text_preview = md_to_telegram(letter_text[:3800] if len(letter_text) > 3800 else letter_text)
     await status_msg.edit_text(
         f"✉️ <b>Сопроводительное письмо готово!</b>\n\n{text_preview}",
+        parse_mode="HTML",
         reply_markup=after_cover_letter_kb(),
     )
 
