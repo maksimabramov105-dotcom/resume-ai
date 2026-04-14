@@ -145,6 +145,33 @@ CREATE TABLE IF NOT EXISTS page_views (
 )
 """
 
+# ── Indexes ───────────────────────────────────────────────────────────────────
+
+_CREATE_INDEXES = [
+    # Users — most-queried column (login, auth)
+    "CREATE INDEX IF NOT EXISTS idx_users_email ON autoapply_users(email)",
+    "CREATE INDEX IF NOT EXISTS idx_users_created_at ON autoapply_users(created_at)",
+    # Campaigns — by owner, hot on dashboard
+    "CREATE INDEX IF NOT EXISTS idx_campaigns_user_id ON campaigns(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_campaigns_status ON campaigns(status)",
+    # Applications — by campaign and user for listing
+    "CREATE INDEX IF NOT EXISTS idx_applications_user_id ON applications(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_applications_campaign_id ON applications(campaign_id)",
+    "CREATE INDEX IF NOT EXISTS idx_applications_sent_at ON applications(sent_at)",
+    # Email tokens — by token (consumed on every email-verify / reset click)
+    "CREATE INDEX IF NOT EXISTS idx_email_tokens_token ON email_tokens(token)",
+    "CREATE INDEX IF NOT EXISTS idx_email_tokens_user_id ON email_tokens(user_id)",
+    # Drip — scheduler polls this table every minute
+    "CREATE INDEX IF NOT EXISTS idx_drip_user_id ON email_drip(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_drip_next_send ON email_drip(next_send_at) WHERE completed = 0",
+    # Web generations — rolling-window aggregate queries
+    "CREATE INDEX IF NOT EXISTS idx_web_gen_created_at ON web_generations(created_at)",
+    "CREATE INDEX IF NOT EXISTS idx_web_gen_user_id ON web_generations(user_id)",
+    # Page views — daily/24h analytics queries
+    "CREATE INDEX IF NOT EXISTS idx_page_views_created_at ON page_views(created_at)",
+    "CREATE INDEX IF NOT EXISTS idx_page_views_ip_hash ON page_views(ip_hash)",
+]
+
 # ── Init ─────────────────────────────────────────────────────────────────────
 
 async def init_db(db_path: str = AUTOAPPLY_DB) -> None:
@@ -160,6 +187,12 @@ async def init_db(db_path: str = AUTOAPPLY_DB) -> None:
             await db.execute(_CREATE_TESTIMONIALS)
             await db.execute(_CREATE_WEB_GENERATIONS)
             await db.execute(_CREATE_PAGE_VIEWS)
+            # Indexes
+            for _idx_sql in _CREATE_INDEXES:
+                try:
+                    await db.execute(_idx_sql)
+                except Exception:
+                    pass  # partial-index syntax not supported on older SQLite
             # Migration: add is_verified if column doesn't exist yet
             try:
                 await db.execute(_MIGRATE_IS_VERIFIED)
