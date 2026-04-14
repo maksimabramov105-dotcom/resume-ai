@@ -46,38 +46,61 @@ def _get_autoapply_stats() -> dict:
         con = sqlite3.connect(AUTOAPPLY_DB)
         con.row_factory = sqlite3.Row
         today = date.today().isoformat()
+        yesterday = (date.today() - timedelta(days=1)).isoformat()
 
         # Total registered web users
         total_web = con.execute("SELECT COUNT(*) FROM autoapply_users").fetchone()[0]
-        # New web users today (registered today)
+
+        # New signups: last 24h rolling window (catches yesterday's evening signups in morning report)
         new_web_today = con.execute(
-            "SELECT COUNT(*) FROM autoapply_users WHERE date(created_at) = ?", (today,)
+            "SELECT COUNT(*) FROM autoapply_users WHERE datetime(created_at) >= datetime('now', '-24 hours')"
         ).fetchone()[0]
-        # Applications sent today across all users
+        # Also show yesterday's date total for context
+        new_web_yesterday = con.execute(
+            "SELECT COUNT(*) FROM autoapply_users WHERE date(created_at) = ?", (yesterday,)
+        ).fetchone()[0]
+
+        # Applications sent: last 24h
         apps_today = con.execute(
-            "SELECT COUNT(*) FROM applications WHERE date(sent_at) = ?", (today,)
+            "SELECT COUNT(*) FROM applications WHERE datetime(sent_at) >= datetime('now', '-24 hours')"
         ).fetchone()[0]
         # Total applications ever
         apps_total = con.execute("SELECT COUNT(*) FROM applications").fetchone()[0]
-        # Responses/interviews received today
+        # Responses/interviews: last 24h
         responses_today = con.execute(
-            "SELECT COUNT(*) FROM applications WHERE status IN ('response','interview') AND date(response_at) = ?",
-            (today,)
+            "SELECT COUNT(*) FROM applications WHERE status IN ('response','interview') "
+            "AND datetime(response_at) >= datetime('now', '-24 hours')"
         ).fetchone()[0]
         # Active campaigns
         active_campaigns = con.execute(
             "SELECT COUNT(*) FROM campaigns WHERE status = 'active'"
         ).fetchone()[0]
-        # Revenue from paid plan upgrades (users with paid plans)
+        # Paid users
         paid_web_users = con.execute(
             "SELECT COUNT(*) FROM autoapply_users WHERE plan != 'free'"
         ).fetchone()[0]
-        # Bot→web transitions: users who have both telegram_id set and are web users
+        # Bot→web transitions
         bot_to_web = con.execute(
             "SELECT COUNT(*) FROM autoapply_users WHERE telegram_id IS NOT NULL"
         ).fetchone()[0]
 
-        # Web generations (resume, cover letter, analysis) — from web_generations table
+        # Page views: last 24h and total (from page_views table)
+        page_views_today = 0
+        page_views_total = 0
+        unique_visitors_today = 0
+        try:
+            page_views_today = con.execute(
+                "SELECT COUNT(*) FROM page_views WHERE datetime(created_at) >= datetime('now', '-24 hours')"
+            ).fetchone()[0]
+            page_views_total = con.execute("SELECT COUNT(*) FROM page_views").fetchone()[0]
+            unique_visitors_today = con.execute(
+                "SELECT COUNT(DISTINCT ip_hash) FROM page_views "
+                "WHERE datetime(created_at) >= datetime('now', '-24 hours')"
+            ).fetchone()[0]
+        except Exception:
+            pass  # table may not exist on older deploys
+
+        # Web generations: last 24h
         web_resumes_today = 0
         web_letters_today = 0
         web_analyses_today = 0
@@ -85,38 +108,46 @@ def _get_autoapply_stats() -> dict:
         web_autoapply_today = 0
         try:
             web_resumes_today = con.execute(
-                "SELECT COUNT(*) FROM web_generations WHERE type='resume' AND date(created_at)=?", (today,)
+                "SELECT COUNT(*) FROM web_generations WHERE type='resume' "
+                "AND datetime(created_at) >= datetime('now', '-24 hours')"
             ).fetchone()[0]
             web_letters_today = con.execute(
-                "SELECT COUNT(*) FROM web_generations WHERE type='cover_letter' AND date(created_at)=?", (today,)
+                "SELECT COUNT(*) FROM web_generations WHERE type='cover_letter' "
+                "AND datetime(created_at) >= datetime('now', '-24 hours')"
             ).fetchone()[0]
             web_analyses_today = con.execute(
-                "SELECT COUNT(*) FROM web_generations WHERE type IN ('analysis','demo_analysis') AND date(created_at)=?", (today,)
+                "SELECT COUNT(*) FROM web_generations WHERE type IN ('analysis','demo_analysis') "
+                "AND datetime(created_at) >= datetime('now', '-24 hours')"
             ).fetchone()[0]
             web_resumes_total = con.execute(
                 "SELECT COUNT(*) FROM web_generations WHERE type='resume'"
             ).fetchone()[0]
             web_autoapply_today = con.execute(
-                "SELECT COUNT(*) FROM web_generations WHERE type='autoapply' AND date(created_at)=?", (today,)
+                "SELECT COUNT(*) FROM web_generations WHERE type='autoapply' "
+                "AND datetime(created_at) >= datetime('now', '-24 hours')"
             ).fetchone()[0]
         except Exception:
             pass  # table may not exist on older installs
 
         con.close()
         return {
-            "total_web_users":      total_web,
-            "new_web_today":        new_web_today,
-            "apps_today":           apps_today,
-            "apps_total":           apps_total,
-            "responses_today":      responses_today,
-            "active_campaigns":     active_campaigns,
-            "paid_web_users":       paid_web_users,
-            "bot_to_web":           bot_to_web,
-            "web_resumes_today":    web_resumes_today,
-            "web_letters_today":    web_letters_today,
-            "web_analyses_today":   web_analyses_today,
-            "web_resumes_total":    web_resumes_total,
-            "web_autoapply_today":  web_autoapply_today,
+            "total_web_users":        total_web,
+            "new_web_today":          new_web_today,
+            "new_web_yesterday":      new_web_yesterday,
+            "apps_today":             apps_today,
+            "apps_total":             apps_total,
+            "responses_today":        responses_today,
+            "active_campaigns":       active_campaigns,
+            "paid_web_users":         paid_web_users,
+            "bot_to_web":             bot_to_web,
+            "page_views_today":       page_views_today,
+            "page_views_total":       page_views_total,
+            "unique_visitors_today":  unique_visitors_today,
+            "web_resumes_today":      web_resumes_today,
+            "web_letters_today":      web_letters_today,
+            "web_analyses_today":     web_analyses_today,
+            "web_resumes_total":      web_resumes_total,
+            "web_autoapply_today":    web_autoapply_today,
         }
     except Exception as e:
         logging.getLogger(__name__).warning("_get_autoapply_stats error: %s", e)
@@ -241,7 +272,10 @@ async def send_daily_report(
     if web_stats:
         text += (
             f"🌐 <b>АвтоОтклик (веб-сервис)</b>\n"
-            f"┌ Новых пользователей сайта: +{web_stats.get('new_web_today', 0)}\n"
+            f"┌ 👁 Посещений (24ч): {web_stats.get('page_views_today', 0)} "
+            f"| уникальных: {web_stats.get('unique_visitors_today', 0)}\n"
+            f"├ Новых регистраций (24ч): +{web_stats.get('new_web_today', 0)} "
+            f"| вчера: +{web_stats.get('new_web_yesterday', 0)}\n"
             f"├ Всего на сайте: {web_stats.get('total_web_users', 0)} "
             f"(платных: {web_stats.get('paid_web_users', 0)})\n"
             f"├ Резюме создано на сайте: {web_stats.get('web_resumes_today', 0)} "

@@ -1124,6 +1124,7 @@
   </script>
 </head>
 <body>
+<img src="/api/pixel?page=landing&ref=" id="track-pixel" style="display:none;width:1px;height:1px;" alt="" onload="this.src='/api/pixel?page=landing&ref='+encodeURIComponent(document.referrer)" />
 
 <!-- ══════════════════ HEADER ══════════════════ -->
 <header>
@@ -2159,25 +2160,101 @@
     return nav.startsWith('ru') ? 'ru' : 'en';
   }
 
+  // Full-page section text map: Russian → English for every visible heading/text
+  var PAGE_EN = {
+    // Demo/try section
+    'Попробуй прямо сейчас — без регистрации': 'Try Right Now — No Registration Required',
+    // Features section
+    'Всё для успешного поиска работы': 'Everything for a Successful Job Search',
+    'AI Конструктор Резюме': 'AI Resume Builder',
+    'Генератор Сопроводительных Писем': 'Cover Letter Generator',
+    'Подготовка к Интервью (STAR)': 'Interview Prep (STAR Method)',
+    'Анализ Вакансии': 'Job Analysis',
+    'AI Карьерный Ассистент 24/7': 'AI Career Assistant 24/7',
+    // Telegram CTA
+    'Зачем Открывать Ещё Одно Приложение? Карьерный AI Уже в Telegram.': 'Why Open Another App? Career AI is Already in Telegram.',
+    // How it works
+    'Три шага до оффера': 'Three Steps to an Offer',
+    'Загрузи резюме': 'Upload Your Resume',
+    'Настрой фильтры': 'Set Up Filters',
+    'AI откликается за тебя': 'AI Applies for You',
+    // Results
+    'Реальные результаты': 'Real Results',
+    // Testimonials
+    'Что говорят пользователи': 'What Our Users Say',
+    // Pricing
+    'Простые и прозрачные цены': 'Simple & Transparent Pricing',
+    'Бесплатно': 'Free',
+    'Старт': 'Starter',
+    'Про': 'Pro',
+    'Безлимит': 'Unlimited',
+    'навсегда': 'forever',
+    'в месяц': '/ month',
+    // FAQ
+    'Частые вопросы': 'Frequently Asked Questions',
+    // CTA sections
+    '🤖 ЕДИНСТВЕННЫЙ AI для поиска работы в Telegram': '🤖 THE ONLY Job Search AI in Telegram',
+    'Chrome-расширение для ещё более быстрых откликов': 'Chrome Extension for Even Faster Applications',
+    // Feature descriptions
+    'Создай резюме под каждую вакансию за 30 секунд': 'Create a tailored resume for every job in 30 seconds',
+    'Персонализированное письмо к каждой заявке': 'Personalized cover letter for every application',
+    'STAR-метод, разбор типичных вопросов': 'STAR method, common interview questions',
+    'Совместимость с ATS, ключевые слова': 'ATS compatibility, keyword optimization',
+    'Резюме, карьера, зарплата — круглосуточно': 'Resume, career, salary — around the clock',
+    // How-it-works descriptions
+    'Загрузи существующее или создай с нуля': 'Upload existing or build from scratch',
+    'Должность, город, зарплата, платформы': 'Job title, city, salary, platforms',
+    'Рассылает уникальные заявки 24/7': 'Sends unique applications 24/7',
+    // Footer / extra CTAs
+    'Начать бесплатно': 'Start Free',
+    'Попробовать в Telegram': 'Try in Telegram',
+    'Войти в аккаунт': 'Sign In',
+    'Попробовать бесплатно': 'Try for Free',
+    'Создать резюме': 'Create Resume',
+  };
+  var _pageCache = null;
+
+  function _buildPageCache() {
+    _pageCache = {};
+    document.querySelectorAll('h1,h2,h3,h4,.pricing-name,.pricing-period').forEach(function(el) {
+      var t = el.textContent.trim();
+      if (PAGE_EN[t]) _pageCache[t] = el;
+    });
+  }
+
+  function _applyFullPage(lang) {
+    if (!_pageCache) _buildPageCache();
+    if (lang === 'en') {
+      Object.keys(PAGE_EN).forEach(function(ru) {
+        var el = _pageCache[ru];
+        if (el) { el.setAttribute('data-ru', ru); el.textContent = PAGE_EN[ru]; }
+      });
+    } else {
+      document.querySelectorAll('[data-ru]').forEach(function(el) {
+        el.textContent = el.getAttribute('data-ru');
+      });
+    }
+  }
+
   function applyLang(lang) {
     currentLang = lang;
     var dict = T[lang] || T.ru;
-    // text nodes
+    // data-i18n keyed elements (nav, hero)
     document.querySelectorAll('[data-i18n]').forEach(function(el) {
       var key = el.getAttribute('data-i18n');
       if (dict[key] !== undefined) el.textContent = dict[key];
     });
-    // HTML nodes (elements with inline spans)
     document.querySelectorAll('[data-i18n-html]').forEach(function(el) {
       var key = el.getAttribute('data-i18n-html');
       if (dict[key] !== undefined) el.innerHTML = dict[key];
     });
-    // toggle button emoji
+    // full-page text-map swap (all section headings)
+    _applyFullPage(lang);
+    // toggle buttons
     var btn = document.getElementById('langToggle');
     var btnM = document.getElementById('langToggleMobile');
     if (btn) btn.textContent = lang === 'ru' ? '🇷🇺' : '🇬🇧';
     if (btnM) btnM.textContent = lang === 'ru' ? '🇷🇺 Русский' : '🇬🇧 English';
-    // html lang attr
     document.documentElement.lang = lang;
     localStorage.setItem('resumeai_lang', lang);
   }

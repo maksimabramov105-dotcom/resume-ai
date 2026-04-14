@@ -135,6 +135,16 @@ CREATE TABLE IF NOT EXISTS web_generations (
 )
 """
 
+_CREATE_PAGE_VIEWS = """
+CREATE TABLE IF NOT EXISTS page_views (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    page       TEXT,
+    referrer   TEXT,
+    ip_hash    TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+)
+"""
+
 # ── Init ─────────────────────────────────────────────────────────────────────
 
 async def init_db(db_path: str = AUTOAPPLY_DB) -> None:
@@ -149,6 +159,7 @@ async def init_db(db_path: str = AUTOAPPLY_DB) -> None:
             await db.execute(_CREATE_EMAIL_DRIP)
             await db.execute(_CREATE_TESTIMONIALS)
             await db.execute(_CREATE_WEB_GENERATIONS)
+            await db.execute(_CREATE_PAGE_VIEWS)
             # Migration: add is_verified if column doesn't exist yet
             try:
                 await db.execute(_MIGRATE_IS_VERIFIED)

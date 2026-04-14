@@ -1748,6 +1748,36 @@ Respond ONLY in Russian with valid JSON (no markdown):
         raise HTTPException(status_code=500, detail=f"AI evaluation failed: {exc}")
 
 
+# ── Page view tracking ────────────────────────────────────────────────────────
+_PIXEL_GIF = b"GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00!\xf9\x04\x00\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;"
+
+
+@app.get("/api/pixel", include_in_schema=False)
+async def tracking_pixel(
+    request: Request,
+    page: str = Query("landing"),
+    ref: str = Query(""),
+):
+    """1×1 transparent GIF tracking pixel — logs page visits to page_views table."""
+    import hashlib as _hl
+    ip = request.client.host if request.client else "unknown"
+    ip_hash = _hl.sha256(ip.encode()).hexdigest()[:16]
+    try:
+        async with aiosqlite.connect(AUTOAPPLY_DB) as db:
+            await db.execute(
+                "INSERT INTO page_views (page, referrer, ip_hash) VALUES (?, ?, ?)",
+                (page[:100], ref[:200], ip_hash),
+            )
+            await db.commit()
+    except Exception:
+        pass
+    from fastapi.responses import Response as _Resp
+    return _Resp(content=_PIXEL_GIF, media_type="image/gif", headers={
+        "Cache-Control": "no-store, no-cache, must-revalidate",
+        "Pragma": "no-cache",
+    })
+
+
 # ── LinkedIn Import ───────────────────────────────────────────────────────────
 async def _scrape_linkedin_url(url: str) -> dict:
     import re as _re2
