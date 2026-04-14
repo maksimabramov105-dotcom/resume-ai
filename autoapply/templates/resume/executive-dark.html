@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resume — Executive Dark</title>
+<style>
+  @page {
+    margin: 15mm 15mm 15mm 20mm;
+  }
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .experience-item, .edu-item { page-break-inside: avoid; }
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #1e293b;
+    background: #fff;
+  }
+
+  /* ── TOP HEADER STRIP ────────────────────────────────── */
+  #header-strip {
+    background: #1e293b;
+    padding: 18px 28px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  #header-strip .header-name {
+    font-size: 26px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.04em;
+  }
+  #header-strip .header-title {
+    font-size: 13px;
+    color: #f59e0b;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-top: 3px;
+  }
+
+  /* ── BODY COLUMNS ─────────────────────────────────────── */
+  #body-wrap {
+    display: flex;
+    min-height: calc(100vh - 70px);
+  }
+
+  /* ── LEFT SIDEBAR ─────────────────────────────────────── */
+  #sidebar {
+    width: 32%;
+    background: #1e293b;
+    color: #e2e8f0;
+    padding: 28px 22px;
+    flex-shrink: 0;
+  }
+
+  .photo-circle {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    background: #334155;
+    border: 3px solid #f59e0b;
+    margin: 0 auto 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .photo-circle svg {
+    width: 52px;
+    height: 52px;
+    fill: #64748b;
+  }
+  .photo-circle img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+  }
+
+  .sidebar-name {
+    text-align: center;
+    font-size: 17px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 4px;
+    line-height: 1.3;
+  }
+  .sidebar-title {
+    text-align: center;
+    font-size: 12px;
+    color: #f59e0b;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 22px;
+  }
+
+  .sidebar-section {
+    margin-bottom: 24px;
+  }
+  .sidebar-section-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #f59e0b;
+    border-bottom: 1px solid #334155;
+    padding-bottom: 6px;
+    margin-bottom: 12px;
+  }
+
+  /* Contact */
+  .contact-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 9px;
+    font-size: 12.5px;
+    color: #cbd5e1;
+    word-break: break-all;
+  }
+  .contact-icon {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    margin-top: 1px;
+    fill: #f59e0b;
+  }
+
+  /* Skills */
+  .skill-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 7px;
+    font-size: 12.5px;
+    color: #cbd5e1;
+  }
+  .skill-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .dot-amber   { background: #f59e0b; }
+  .dot-blue    { background: #3b82f6; }
+  .dot-green   { background: #22c55e; }
+  .dot-purple  { background: #a855f7; }
+  .dot-red     { background: #ef4444; }
+  .dot-cyan    { background: #06b6d4; }
+
+  /* Languages */
+  .lang-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 7px;
+    font-size: 12.5px;
+    color: #cbd5e1;
+  }
+  .lang-level {
+    color: #f59e0b;
+    font-weight: 600;
+    font-size: 11px;
+  }
+
+  /* ── RIGHT MAIN CONTENT ───────────────────────────────── */
+  #main {
+    flex: 1;
+    background: #f8fafc;
+    padding: 30px 30px 30px 28px;
+    overflow: hidden;
+  }
+
+  .main-section {
+    margin-bottom: 30px;
+  }
+  .main-section-title {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #1e293b;
+    border-bottom: 2px solid #f59e0b;
+    padding-bottom: 6px;
+    margin-bottom: 18px;
+  }
+
+  /* Summary */
+  .summary-text {
+    font-size: 13.5px;
+    color: #475569;
+    line-height: 1.7;
+  }
+
+  /* Experience timeline */
+  .experience-item {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+    page-break-inside: avoid;
+  }
+  .timeline-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+    width: 18px;
+    padding-top: 4px;
+  }
+  .timeline-dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: #f59e0b;
+    border: 2px solid #1e293b;
+    flex-shrink: 0;
+  }
+  .timeline-line {
+    width: 2px;
+    flex: 1;
+    background: #cbd5e1;
+    margin-top: 4px;
+  }
+  .experience-content { flex: 1; }
+  .exp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 2px;
+  }
+  .exp-position {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1e293b;
+  }
+  .exp-period {
+    font-size: 11.5px;
+    color: #f59e0b;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .exp-company {
+    font-size: 12.5px;
+    color: #64748b;
+    font-weight: 500;
+    margin-bottom: 6px;
+  }
+  .exp-description {
+    font-size: 13px;
+    color: #475569;
+    line-height: 1.65;
+  }
+
+  /* Education */
+  .edu-item {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 16px;
+    page-break-inside: avoid;
+  }
+  .edu-dot-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+    width: 18px;
+    padding-top: 4px;
+  }
+  .edu-dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: #1e293b;
+    border: 2px solid #f59e0b;
+    flex-shrink: 0;
+  }
+  .edu-content { flex: 1; }
+  .edu-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .edu-degree {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #1e293b;
+  }
+  .edu-period {
+    font-size: 11.5px;
+    color: #64748b;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .edu-institution {
+    font-size: 12.5px;
+    color: #64748b;
+    margin-top: 2px;
+  }
+</style>
+</head>
+<body>
+
+<div id="header-strip">
+  <div>
+    <div class="header-name" id="hdr-name">Иван Иванов</div>
+    <div class="header-title" id="hdr-title">Разработчик Python</div>
+  </div>
+</div>
+
+<div id="body-wrap">
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="photo-circle" id="photo-wrap">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
+      </svg>
+    </div>
+
+    <div class="sidebar-name" id="sb-name">Иван Иванов</div>
+    <div class="sidebar-title" id="sb-title">Разработчик Python</div>
+
+    <div class="sidebar-section" id="contact-section">
+      <div class="sidebar-section-title">Контакты</div>
+      <div id="contact-list"></div>
+    </div>
+
+    <div class="sidebar-section" id="skills-section">
+      <div class="sidebar-section-title">Навыки</div>
+      <div id="skills-list"></div>
+    </div>
+
+    <div class="sidebar-section" id="lang-section">
+      <div class="sidebar-section-title">Языки</div>
+      <div id="lang-list"></div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main">
+    <div class="main-section" id="summary-section">
+      <div class="main-section-title">Обо мне</div>
+      <div class="summary-text" id="summary-text"></div>
+    </div>
+
+    <div class="main-section" id="exp-section">
+      <div class="main-section-title">Профессиональный опыт</div>
+      <div id="exp-list"></div>
+    </div>
+
+    <div class="main-section" id="edu-section">
+      <div class="main-section-title">Образование</div>
+      <div id="edu-list"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+function renderResume(templateId, data) {
+  if (!data) return;
+
+  // Header strip
+  document.getElementById('hdr-name').textContent = data.name || '';
+  document.getElementById('hdr-title').textContent = data.title || '';
+
+  // Sidebar name/title
+  document.getElementById('sb-name').textContent = data.name || '';
+  document.getElementById('sb-title').textContent = data.title || '';
+
+  // Photo
+  if (data.photo) {
+    const wrap = document.getElementById('photo-wrap');
+    wrap.innerHTML = '<img src="' + data.photo + '" alt="photo">';
+  }
+
+  // Contact
+  const contactList = document.getElementById('contact-list');
+  contactList.innerHTML = '';
+  const contacts = [
+    { icon: phoneSvg(), value: data.phone },
+    { icon: emailSvg(), value: data.email },
+    { icon: pinSvg(),   value: data.location },
+    { icon: linkSvg(),  value: data.linkedin },
+    { icon: webSvg(),   value: data.website },
+  ];
+  contacts.forEach(c => {
+    if (!c.value) return;
+    const d = document.createElement('div');
+    d.className = 'contact-item';
+    d.innerHTML = c.icon + '<span>' + escHtml(c.value) + '</span>';
+    contactList.appendChild(d);
+  });
+
+  // Skills
+  const dotClasses = ['dot-amber','dot-blue','dot-green','dot-purple','dot-red','dot-cyan'];
+  const skillsList = document.getElementById('skills-list');
+  skillsList.innerHTML = '';
+  (data.skills || []).forEach((sk, i) => {
+    const d = document.createElement('div');
+    d.className = 'skill-item';
+    d.innerHTML = '<span class="skill-dot ' + dotClasses[i % dotClasses.length] + '"></span><span>' + escHtml(sk) + '</span>';
+    skillsList.appendChild(d);
+  });
+
+  // Languages
+  const langList = document.getElementById('lang-list');
+  langList.innerHTML = '';
+  (data.languages || []).forEach(l => {
+    const d = document.createElement('div');
+    d.className = 'lang-item';
+    d.innerHTML = '<span>' + escHtml(l.language) + '</span><span class="lang-level">' + escHtml(l.level) + '</span>';
+    langList.appendChild(d);
+  });
+
+  // Summary
+  const summaryEl = document.getElementById('summary-text');
+  if (data.summary) {
+    summaryEl.textContent = data.summary;
+    document.getElementById('summary-section').style.display = '';
+  } else {
+    document.getElementById('summary-section').style.display = 'none';
+  }
+
+  // Experience
+  const expList = document.getElementById('exp-list');
+  expList.innerHTML = '';
+  (data.experience || []).forEach((exp, idx, arr) => {
+    const item = document.createElement('div');
+    item.className = 'experience-item';
+    const isLast = idx === arr.length - 1;
+    item.innerHTML =
+      '<div class="timeline-col">' +
+        '<div class="timeline-dot"></div>' +
+        (isLast ? '' : '<div class="timeline-line"></div>') +
+      '</div>' +
+      '<div class="experience-content">' +
+        '<div class="exp-header">' +
+          '<div class="exp-position">' + escHtml(exp.position || '') + '</div>' +
+          '<div class="exp-period">' + escHtml(exp.period || '') + '</div>' +
+        '</div>' +
+        '<div class="exp-company">' + escHtml(exp.company || '') + '</div>' +
+        (exp.description ? '<div class="exp-description">' + escHtml(exp.description) + '</div>' : '') +
+      '</div>';
+    expList.appendChild(item);
+  });
+
+  // Education
+  const eduList = document.getElementById('edu-list');
+  eduList.innerHTML = '';
+  (data.education || []).forEach(edu => {
+    const item = document.createElement('div');
+    item.className = 'edu-item';
+    item.innerHTML =
+      '<div class="edu-dot-col"><div class="edu-dot"></div></div>' +
+      '<div class="edu-content">' +
+        '<div class="edu-header">' +
+          '<div class="edu-degree">' + escHtml(edu.degree || '') + '</div>' +
+          '<div class="edu-period">' + escHtml(edu.period || '') + '</div>' +
+        '</div>' +
+        '<div class="edu-institution">' + escHtml(edu.institution || '') + '</div>' +
+      '</div>';
+    eduList.appendChild(item);
+  });
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function phoneSvg() {
+  return '<svg class="contact-icon" viewBox="0 0 24 24"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/></svg>';
+}
+function emailSvg() {
+  return '<svg class="contact-icon" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>';
+}
+function pinSvg() {
+  return '<svg class="contact-icon" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>';
+}
+function linkSvg() {
+  return '<svg class="contact-icon" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>';
+}
+function webSvg() {
+  return '<svg class="contact-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>';
+}
+</script>
+
+<script>
+window.RESUME_DATA = null;
+if(window.RESUME_DATA) { document.addEventListener('DOMContentLoaded', () => renderResume(null, window.RESUME_DATA)); }
+</script>
+</body>
+</html>

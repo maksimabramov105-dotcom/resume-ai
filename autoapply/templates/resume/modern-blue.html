@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resume</title>
+<style>
+  @page { margin: 0; size: A4; }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 210mm;
+    min-height: 297mm;
+    font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 9pt;
+    color: #1e293b;
+    background: #fff;
+  }
+
+  @media print {
+    html, body { width: 210mm; }
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+
+  .page {
+    display: flex;
+    width: 210mm;
+    min-height: 297mm;
+  }
+
+  /* ── LEFT SIDEBAR ── */
+  .sidebar {
+    width: 30%;
+    background: #f0f5ff;
+    padding: 10mm 6mm 10mm 6mm;
+    display: flex;
+    flex-direction: column;
+    gap: 6mm;
+  }
+
+  .photo-placeholder {
+    width: 28mm;
+    height: 28mm;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2563eb 0%, #60a5fa 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 2mm;
+    color: #fff;
+    font-size: 14pt;
+    font-weight: 700;
+    letter-spacing: 1px;
+    flex-shrink: 0;
+  }
+
+  .sidebar-section { display: flex; flex-direction: column; gap: 2mm; }
+
+  .sidebar-label {
+    font-size: 7pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: #2563eb;
+    border-bottom: 1.5pt solid #2563eb;
+    padding-bottom: 1mm;
+    margin-bottom: 1.5mm;
+  }
+
+  .contact-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 2mm;
+    font-size: 7.5pt;
+    color: #374151;
+    line-height: 1.4;
+    word-break: break-all;
+  }
+
+  .contact-icon {
+    font-size: 8pt;
+    flex-shrink: 0;
+    color: #2563eb;
+    margin-top: 0.5pt;
+  }
+
+  .skill-list { display: flex; flex-direction: column; gap: 1.5mm; }
+
+  .skill-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8mm;
+  }
+
+  .skill-name { font-size: 7.5pt; color: #374151; font-weight: 500; }
+
+  .skill-bar-bg {
+    height: 3pt;
+    background: #dbeafe;
+    border-radius: 2pt;
+    overflow: hidden;
+  }
+
+  .skill-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #2563eb, #60a5fa);
+    border-radius: 2pt;
+    width: 80%;
+  }
+
+  .lang-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 7.5pt;
+    color: #374151;
+    padding: 1mm 0;
+    border-bottom: 0.5pt solid #e2e8f0;
+  }
+
+  .lang-level {
+    background: #dbeafe;
+    color: #2563eb;
+    font-size: 6.5pt;
+    font-weight: 600;
+    padding: 0.5mm 2mm;
+    border-radius: 10pt;
+  }
+
+  /* ── RIGHT MAIN ── */
+  .main {
+    width: 70%;
+    padding: 10mm 8mm 10mm 8mm;
+    display: flex;
+    flex-direction: column;
+    gap: 6mm;
+  }
+
+  .header {
+    border-bottom: 2pt solid #2563eb;
+    padding-bottom: 4mm;
+  }
+
+  .header-name {
+    font-size: 22pt;
+    font-weight: 800;
+    color: #1e293b;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+  }
+
+  .header-name span { color: #2563eb; }
+
+  .header-title {
+    font-size: 11pt;
+    font-weight: 400;
+    color: #2563eb;
+    margin-top: 1mm;
+    letter-spacing: 0.3px;
+  }
+
+  .section { display: flex; flex-direction: column; gap: 3mm; }
+
+  .section-title {
+    font-size: 8pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #2563eb;
+    display: flex;
+    align-items: center;
+    gap: 2mm;
+  }
+
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1pt;
+    background: #bfdbfe;
+  }
+
+  .summary-text {
+    font-size: 8.5pt;
+    line-height: 1.6;
+    color: #475569;
+  }
+
+  .exp-item {
+    display: flex;
+    gap: 3mm;
+    page-break-inside: avoid;
+  }
+
+  .exp-timeline {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+    width: 4mm;
+  }
+
+  .exp-dot {
+    width: 3mm;
+    height: 3mm;
+    border-radius: 50%;
+    background: #2563eb;
+    flex-shrink: 0;
+    margin-top: 1mm;
+  }
+
+  .exp-line {
+    width: 0.8pt;
+    flex: 1;
+    background: #bfdbfe;
+    margin-top: 1mm;
+  }
+
+  .exp-content { flex: 1; }
+
+  .exp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 2mm;
+  }
+
+  .exp-position {
+    font-size: 9pt;
+    font-weight: 700;
+    color: #1e293b;
+  }
+
+  .exp-period {
+    font-size: 7pt;
+    color: #2563eb;
+    font-weight: 600;
+    background: #eff6ff;
+    padding: 0.5mm 2mm;
+    border-radius: 4pt;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .exp-company {
+    font-size: 8pt;
+    color: #2563eb;
+    font-weight: 500;
+    margin-top: 0.5mm;
+  }
+
+  .exp-desc {
+    font-size: 7.5pt;
+    line-height: 1.55;
+    color: #475569;
+    margin-top: 1.5mm;
+  }
+
+  .edu-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 2.5mm 3mm;
+    background: #f8faff;
+    border-left: 2.5pt solid #2563eb;
+    border-radius: 0 4pt 4pt 0;
+    page-break-inside: avoid;
+    gap: 2mm;
+  }
+
+  .edu-institution {
+    font-size: 8.5pt;
+    font-weight: 700;
+    color: #1e293b;
+  }
+
+  .edu-degree {
+    font-size: 7.5pt;
+    color: #475569;
+    margin-top: 0.5mm;
+  }
+
+  .edu-period {
+    font-size: 7pt;
+    color: #2563eb;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="photo-placeholder" id="photoInitials">ИИ</div>
+
+    <!-- CONTACT -->
+    <div class="sidebar-section" id="contactSection">
+      <div class="sidebar-label">Контакты</div>
+      <div id="contactEmail" class="contact-item">
+        <span class="contact-icon">✉</span>
+        <span id="emailText"></span>
+      </div>
+      <div id="contactPhone" class="contact-item">
+        <span class="contact-icon">☎</span>
+        <span id="phoneText"></span>
+      </div>
+      <div id="contactLocation" class="contact-item">
+        <span class="contact-icon">◎</span>
+        <span id="locationText"></span>
+      </div>
+      <div id="contactLinkedin" class="contact-item">
+        <span class="contact-icon">in</span>
+        <span id="linkedinText"></span>
+      </div>
+      <div id="contactWebsite" class="contact-item">
+        <span class="contact-icon">⊕</span>
+        <span id="websiteText"></span>
+      </div>
+    </div>
+
+    <!-- SKILLS -->
+    <div class="sidebar-section" id="skillsSection">
+      <div class="sidebar-label">Навыки</div>
+      <div class="skill-list" id="skillsList"></div>
+    </div>
+
+    <!-- LANGUAGES -->
+    <div class="sidebar-section" id="languagesSection">
+      <div class="sidebar-label">Языки</div>
+      <div id="languagesList"></div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- HEADER -->
+    <header class="header">
+      <div class="header-name" id="headerName">Имя Фамилия</div>
+      <div class="header-title" id="headerTitle"></div>
+    </header>
+
+    <!-- SUMMARY -->
+    <section class="section" id="summarySection">
+      <div class="section-title">О себе</div>
+      <p class="summary-text" id="summaryText"></p>
+    </section>
+
+    <!-- EXPERIENCE -->
+    <section class="section" id="experienceSection">
+      <div class="section-title">Опыт работы</div>
+      <div id="experienceList"></div>
+    </section>
+
+    <!-- EDUCATION -->
+    <section class="section" id="educationSection">
+      <div class="section-title">Образование</div>
+      <div id="educationList"></div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+function renderResume(templateId, data) {
+  if (!data) return;
+
+  // Initials for photo
+  if (data.name) {
+    const parts = data.name.trim().split(' ');
+    const initials = parts.length >= 2
+      ? (parts[0][0] + parts[1][0]).toUpperCase()
+      : parts[0].substring(0, 2).toUpperCase();
+    document.getElementById('photoInitials').textContent = initials;
+    document.getElementById('headerName').textContent = data.name;
+  }
+
+  if (data.title) {
+    document.getElementById('headerTitle').textContent = data.title;
+  } else {
+    document.getElementById('headerTitle').classList.add('hidden');
+  }
+
+  // Contact
+  function setContact(elementId, text) {
+    if (text) {
+      document.getElementById(elementId).querySelector('span:last-child').textContent = text;
+    } else {
+      document.getElementById(elementId).classList.add('hidden');
+    }
+  }
+  setContact('contactEmail', data.email);
+  setContact('contactPhone', data.phone);
+  setContact('contactLocation', data.location);
+  setContact('contactLinkedin', data.linkedin);
+  setContact('contactWebsite', data.website);
+
+  // Summary
+  if (data.summary) {
+    document.getElementById('summaryText').textContent = data.summary;
+  } else {
+    document.getElementById('summarySection').classList.add('hidden');
+  }
+
+  // Skills
+  if (data.skills && data.skills.length > 0) {
+    const skillsHtml = data.skills.map((skill, i) => {
+      const widths = [95, 88, 92, 78, 85, 90, 82, 88, 94, 80];
+      const w = widths[i % widths.length];
+      return `<div class="skill-item">
+        <span class="skill-name">${skill}</span>
+        <div class="skill-bar-bg"><div class="skill-bar-fill" style="width:${w}%"></div></div>
+      </div>`;
+    }).join('');
+    document.getElementById('skillsList').innerHTML = skillsHtml;
+  } else {
+    document.getElementById('skillsSection').classList.add('hidden');
+  }
+
+  // Languages
+  if (data.languages && data.languages.length > 0) {
+    const langsHtml = data.languages.map(l =>
+      `<div class="lang-item">
+        <span>${l.language}</span>
+        <span class="lang-level">${l.level}</span>
+      </div>`
+    ).join('');
+    document.getElementById('languagesList').innerHTML = langsHtml;
+  } else {
+    document.getElementById('languagesSection').classList.add('hidden');
+  }
+
+  // Experience
+  if (data.experience && data.experience.length > 0) {
+    const expHtml = data.experience.map((exp, idx) => {
+      const isLast = idx === data.experience.length - 1;
+      return `<div class="exp-item">
+        <div class="exp-timeline">
+          <div class="exp-dot"></div>
+          ${!isLast ? '<div class="exp-line"></div>' : ''}
+        </div>
+        <div class="exp-content" style="padding-bottom:${isLast ? '0' : '4mm'}">
+          <div class="exp-header">
+            <span class="exp-position">${exp.position || ''}</span>
+            ${exp.period ? `<span class="exp-period">${exp.period}</span>` : ''}
+          </div>
+          ${exp.company ? `<div class="exp-company">${exp.company}</div>` : ''}
+          ${exp.description ? `<div class="exp-desc">${exp.description}</div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+    document.getElementById('experienceList').innerHTML = expHtml;
+  } else {
+    document.getElementById('experienceSection').classList.add('hidden');
+  }
+
+  // Education
+  if (data.education && data.education.length > 0) {
+    const eduHtml = data.education.map(edu =>
+      `<div class="edu-item">
+        <div>
+          <div class="edu-institution">${edu.institution || ''}</div>
+          ${edu.degree ? `<div class="edu-degree">${edu.degree}</div>` : ''}
+        </div>
+        ${edu.period ? `<div class="edu-period">${edu.period}</div>` : ''}
+      </div>`
+    ).join('');
+    document.getElementById('educationList').innerHTML = eduHtml;
+  } else {
+    document.getElementById('educationSection').classList.add('hidden');
+  }
+}
+
+window.onload = () => { if (window.RESUME_DATA) renderResume(null, window.RESUME_DATA); };
+</script>
+
+<script>
+window.RESUME_DATA = null; // populated by server before PDF generation
+if(window.RESUME_DATA) { document.addEventListener('DOMContentLoaded', () => renderResume(null, window.RESUME_DATA)); }
+</script>
+</body>
+</html>

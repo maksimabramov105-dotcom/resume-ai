@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Resume — Minimal White</title>
+<style>
+@page { margin: 18mm 20mm; }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system,'Helvetica Neue',Arial,sans-serif; color:#111; background:#fff; font-size:9.5pt; line-height:1.55; }
+@media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+#name { font-size:22pt; font-weight:300; letter-spacing:-0.5px; }
+#title { font-size:10.5pt; color:#555; margin-top:4px; }
+#contacts { margin-top:8px; display:flex; flex-wrap:wrap; gap:6px 18px; font-size:8.5pt; color:#666; }
+.section { margin-bottom:20px; }
+.section-title { font-size:7.5pt; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:#999; margin-bottom:8px; }
+hr.div { border:none; border-top:1px solid #eee; margin:0 0 12px; }
+.exp-item,.edu-item { margin-bottom:14px; page-break-inside:avoid; }
+.row { display:flex; justify-content:space-between; align-items:baseline; }
+.fw6 { font-weight:600; }
+.muted { color:#888; font-size:8pt; }
+.pos { color:#444; font-size:9pt; margin:2px 0 4px; }
+.desc { color:#555; font-size:8.5pt; }
+.skills-list { display:flex; flex-wrap:wrap; gap:6px; }
+.stag { background:#f5f5f5; border:1px solid #e5e5e5; border-radius:4px; padding:3px 10px; font-size:8pt; color:#333; }
+.lang-item { font-size:8.5pt; margin-right:16px; display:inline-block; }
+</style>
+</head>
+<body>
+<div style="padding-bottom:16px;border-bottom:1px solid #ddd;margin-bottom:20px;">
+  <div id="name"></div><div id="title"></div>
+  <div id="contacts"><span id="c-email"></span><span id="c-phone"></span><span id="c-loc"></span></div>
+</div>
+<div id="s-summary" class="section"><div class="section-title">О себе</div><hr class="div"><div id="summary"></div></div>
+<div id="s-exp" class="section"><div class="section-title">Опыт работы</div><hr class="div"><div id="exp-list"></div></div>
+<div id="s-edu" class="section"><div class="section-title">Образование</div><hr class="div"><div id="edu-list"></div></div>
+<div id="s-skills" class="section"><div class="section-title">Навыки</div><hr class="div"><div id="skills-list" class="skills-list"></div></div>
+<div id="s-lang" class="section"><div class="section-title">Языки</div><hr class="div"><div id="lang-list"></div></div>
+<script>
+function renderResume(_,d){
+  if(!d)return;
+  document.getElementById('name').textContent=d.name||'';
+  document.getElementById('title').textContent=d.title||'';
+  var e=document.getElementById('c-email');if(d.email)e.textContent=d.email;else e.style.display='none';
+  var p=document.getElementById('c-phone');if(d.phone)p.textContent=d.phone;else p.style.display='none';
+  var l=document.getElementById('c-loc');if(d.location)l.textContent=d.location;else l.style.display='none';
+  var ss=document.getElementById('s-summary');if(d.summary)document.getElementById('summary').textContent=d.summary;else ss.style.display='none';
+  var el=document.getElementById('exp-list');
+  if(d.experience&&d.experience.length){el.innerHTML=d.experience.map(function(e){return'<div class="exp-item"><div class="row"><span class="fw6">'+e.company+'</span><span class="muted">'+e.period+'</span></div><div class="pos">'+e.position+'</div><div class="desc">'+e.description+'</div></div>';}).join('');}else document.getElementById('s-exp').style.display='none';
+  var ul=document.getElementById('edu-list');
+  if(d.education&&d.education.length){ul.innerHTML=d.education.map(function(e){return'<div class="edu-item"><div class="row"><span class="fw6">'+e.institution+'</span><span class="muted">'+e.period+'</span></div><div class="desc">'+e.degree+'</div></div>';}).join('');}else document.getElementById('s-edu').style.display='none';
+  var sl=document.getElementById('skills-list');
+  if(d.skills&&d.skills.length){sl.innerHTML=d.skills.map(function(s){return'<span class="stag">'+s+'</span>';}).join('');}else document.getElementById('s-skills').style.display='none';
+  var ll=document.getElementById('lang-list');
+  if(d.languages&&d.languages.length){ll.innerHTML=d.languages.map(function(l){return'<span class="lang-item"><b>'+l.language+'</b> — '+l.level+'</span>';}).join('');}else document.getElementById('s-lang').style.display='none';
+}
+window.RESUME_DATA=null;
+if(window.RESUME_DATA){document.addEventListener('DOMContentLoaded',function(){renderResume(null,window.RESUME_DATA);});}
+</script>
+</body></html>

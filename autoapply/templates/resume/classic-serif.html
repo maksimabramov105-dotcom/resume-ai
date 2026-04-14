@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resume</title>
+<style>
+  @page { margin: 0; size: A4; }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 210mm;
+    min-height: 297mm;
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    font-size: 9.5pt;
+    color: #111;
+    background: #fff;
+  }
+
+  @media print {
+    html, body { width: 210mm; }
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    padding: 14mm 16mm 14mm 16mm;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    text-align: center;
+    padding-bottom: 5mm;
+    border-bottom: 2pt solid #111;
+    margin-bottom: 5mm;
+  }
+
+  .header-name {
+    font-size: 26pt;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: #111;
+    font-family: Georgia, serif;
+    line-height: 1.15;
+  }
+
+  .header-title {
+    font-size: 11pt;
+    font-style: italic;
+    color: #444;
+    margin-top: 2mm;
+  }
+
+  .header-contacts {
+    margin-top: 3mm;
+    font-size: 8pt;
+    color: #333;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0 6mm;
+    font-family: Georgia, serif;
+  }
+
+  .header-contacts span { white-space: nowrap; }
+
+  .contact-sep {
+    color: #aaa;
+    margin: 0 1mm;
+  }
+
+  /* ── SECTION ── */
+  .section {
+    margin-bottom: 5mm;
+    page-break-inside: avoid;
+  }
+
+  .section-title {
+    font-size: 8.5pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: #111;
+    font-family: Georgia, serif;
+    padding-bottom: 1.5mm;
+    border-bottom: 1pt solid #111;
+    margin-bottom: 3mm;
+  }
+
+  /* ── SUMMARY ── */
+  .summary-text {
+    font-size: 9pt;
+    line-height: 1.65;
+    color: #222;
+    text-align: justify;
+    font-style: italic;
+  }
+
+  /* ── EXPERIENCE ── */
+  .exp-item {
+    margin-bottom: 4mm;
+    page-break-inside: avoid;
+  }
+
+  .exp-item:last-child { margin-bottom: 0; }
+
+  .exp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .exp-position {
+    font-size: 10pt;
+    font-weight: 700;
+    color: #111;
+  }
+
+  .exp-period {
+    font-size: 8.5pt;
+    color: #444;
+    font-style: italic;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-left: 4mm;
+  }
+
+  .exp-company {
+    font-size: 9pt;
+    color: #333;
+    font-style: italic;
+    margin-top: 0.5mm;
+  }
+
+  .exp-divider {
+    height: 0.5pt;
+    background: #ddd;
+    margin: 2mm 0;
+  }
+
+  .exp-desc {
+    font-size: 8.5pt;
+    line-height: 1.6;
+    color: #333;
+    text-align: justify;
+    padding-left: 3mm;
+    border-left: 1.5pt solid #ccc;
+  }
+
+  /* ── EDUCATION ── */
+  .edu-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 3mm;
+    page-break-inside: avoid;
+  }
+
+  .edu-item:last-child { margin-bottom: 0; }
+
+  .edu-main { flex: 1; }
+
+  .edu-institution {
+    font-size: 9.5pt;
+    font-weight: 700;
+    color: #111;
+  }
+
+  .edu-degree {
+    font-size: 8.5pt;
+    color: #333;
+    font-style: italic;
+    margin-top: 0.5mm;
+  }
+
+  .edu-period {
+    font-size: 8.5pt;
+    color: #444;
+    font-style: italic;
+    white-space: nowrap;
+    margin-left: 4mm;
+    flex-shrink: 0;
+  }
+
+  /* ── SKILLS ── */
+  .skills-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5mm 4mm;
+  }
+
+  .skill-tag {
+    font-size: 8.5pt;
+    color: #222;
+    padding-left: 3mm;
+    position: relative;
+  }
+
+  .skill-tag::before {
+    content: '•';
+    position: absolute;
+    left: 0;
+    color: #555;
+  }
+
+  /* ── LANGUAGES ── */
+  .lang-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2mm 6mm;
+  }
+
+  .lang-item {
+    font-size: 8.5pt;
+    color: #222;
+  }
+
+  .lang-item strong { font-weight: 700; }
+
+  .lang-item em {
+    color: #555;
+    font-style: italic;
+    font-size: 8pt;
+  }
+
+  /* ── TWO-COLUMN bottom ── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 8mm;
+  }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-name" id="headerName">Имя Фамилия</div>
+    <div class="header-title" id="headerTitle"></div>
+    <div class="header-contacts" id="headerContacts">
+      <span id="emailSpan"></span>
+      <span id="phoneSep" class="contact-sep hidden">·</span>
+      <span id="phoneSpan"></span>
+      <span id="locationSep" class="contact-sep hidden">·</span>
+      <span id="locationSpan"></span>
+      <span id="linkedinSep" class="contact-sep hidden">·</span>
+      <span id="linkedinSpan"></span>
+      <span id="websiteSep" class="contact-sep hidden">·</span>
+      <span id="websiteSpan"></span>
+    </div>
+  </header>
+
+  <!-- SUMMARY -->
+  <section class="section" id="summarySection">
+    <div class="section-title">Профессиональный профиль</div>
+    <p class="summary-text" id="summaryText"></p>
+  </section>
+
+  <!-- EXPERIENCE -->
+  <section class="section" id="experienceSection">
+    <div class="section-title">Опыт работы</div>
+    <div id="experienceList"></div>
+  </section>
+
+  <!-- EDUCATION -->
+  <section class="section" id="educationSection">
+    <div class="section-title">Образование</div>
+    <div id="educationList"></div>
+  </section>
+
+  <!-- SKILLS + LANGUAGES (two column) -->
+  <div class="two-col">
+    <section class="section" id="skillsSection">
+      <div class="section-title">Навыки</div>
+      <div class="skills-grid" id="skillsList"></div>
+    </section>
+
+    <section class="section" id="languagesSection">
+      <div class="section-title">Языки</div>
+      <div class="lang-row" id="languagesList"></div>
+    </section>
+  </div>
+
+</div>
+
+<script>
+function renderResume(templateId, data) {
+  if (!data) return;
+
+  if (data.name) document.getElementById('headerName').textContent = data.name;
+
+  if (data.title) {
+    document.getElementById('headerTitle').textContent = data.title;
+  } else {
+    document.getElementById('headerTitle').classList.add('hidden');
+  }
+
+  // Contacts — build inline with separators
+  const contactPairs = [
+    ['emailSpan', 'phoneSep', data.email],
+    ['phoneSpan', 'locationSep', data.phone],
+    ['locationSpan', 'linkedinSep', data.location],
+    ['linkedinSpan', 'websiteSep', data.linkedin],
+    ['websiteSpan', null, data.website],
+  ];
+
+  let prevVisible = false;
+  contactPairs.forEach(([spanId, sepId, value], idx) => {
+    if (value) {
+      document.getElementById(spanId).textContent = value;
+      if (prevVisible && sepId) {
+        // show the separator BEFORE this item (which is the sep attached to previous)
+      }
+      prevVisible = true;
+    } else {
+      document.getElementById(spanId).classList.add('hidden');
+    }
+  });
+
+  // show separators between visible contact items
+  const contactIds = ['emailSpan','phoneSpan','locationSpan','linkedinSpan','websiteSpan'];
+  const sepIds = ['phoneSep','locationSep','linkedinSep','websiteSep'];
+  const vals = [data.email, data.phone, data.location, data.linkedin, data.website];
+  for (let i = 1; i < vals.length; i++) {
+    if (vals[i] && vals.slice(0, i).some(Boolean)) {
+      const sep = document.getElementById(sepIds[i-1]);
+      if (sep) sep.classList.remove('hidden');
+    }
+  }
+
+  // Summary
+  if (data.summary) {
+    document.getElementById('summaryText').textContent = data.summary;
+  } else {
+    document.getElementById('summarySection').classList.add('hidden');
+  }
+
+  // Experience
+  if (data.experience && data.experience.length > 0) {
+    const html = data.experience.map(exp => `
+      <div class="exp-item">
+        <div class="exp-header">
+          <span class="exp-position">${exp.position || ''}</span>
+          ${exp.period ? `<span class="exp-period">${exp.period}</span>` : ''}
+        </div>
+        ${exp.company ? `<div class="exp-company">${exp.company}</div>` : ''}
+        ${exp.description ? `<div class="exp-divider"></div><div class="exp-desc">${exp.description}</div>` : ''}
+      </div>
+    `).join('');
+    document.getElementById('experienceList').innerHTML = html;
+  } else {
+    document.getElementById('experienceSection').classList.add('hidden');
+  }
+
+  // Education
+  if (data.education && data.education.length > 0) {
+    const html = data.education.map(edu => `
+      <div class="edu-item">
+        <div class="edu-main">
+          <div class="edu-institution">${edu.institution || ''}</div>
+          ${edu.degree ? `<div class="edu-degree">${edu.degree}</div>` : ''}
+        </div>
+        ${edu.period ? `<div class="edu-period">${edu.period}</div>` : ''}
+      </div>
+    `).join('');
+    document.getElementById('educationList').innerHTML = html;
+  } else {
+    document.getElementById('educationSection').classList.add('hidden');
+  }
+
+  // Skills
+  if (data.skills && data.skills.length > 0) {
+    document.getElementById('skillsList').innerHTML = data.skills.map(s =>
+      `<div class="skill-tag">${s}</div>`
+    ).join('');
+  } else {
+    document.getElementById('skillsSection').classList.add('hidden');
+  }
+
+  // Languages
+  if (data.languages && data.languages.length > 0) {
+    document.getElementById('languagesList').innerHTML = data.languages.map(l =>
+      `<div class="lang-item"><strong>${l.language}</strong> — <em>${l.level}</em></div>`
+    ).join('');
+  } else {
+    document.getElementById('languagesSection').classList.add('hidden');
+  }
+}
+
+window.onload = () => { if (window.RESUME_DATA) renderResume(null, window.RESUME_DATA); };
+</script>
+
+<script>
+window.RESUME_DATA = null; // populated by server before PDF generation
+if(window.RESUME_DATA) { document.addEventListener('DOMContentLoaded', () => renderResume(null, window.RESUME_DATA)); }
+</script>
+</body>
+</html>

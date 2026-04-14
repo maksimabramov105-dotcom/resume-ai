@@ -1082,6 +1082,32 @@
     </div>
     <div id="resume-list" style="margin-bottom:32px;"></div>
 
+    <!-- Template Gallery -->
+    <div class="section-header" style="margin-bottom:16px;margin-top:8px;">
+      <span class="section-title">🎨 Шаблоны резюме — скачать PDF</span>
+    </div>
+    <div id="template-gallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-bottom:32px;">
+      <div style="text-align:center;padding:20px;color:var(--text-muted);grid-column:1/-1;">
+        <div style="font-size:1.5rem;margin-bottom:8px;">⏳</div>
+        <div>Загрузка шаблонов...</div>
+      </div>
+    </div>
+
+    <!-- Template Preview Modal -->
+    <div id="template-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;">
+      <div style="background:var(--card);border-radius:16px;width:90vw;max-width:900px;height:85vh;display:flex;flex-direction:column;overflow:hidden;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);">
+          <span id="modal-template-name" style="font-weight:700;font-size:1rem;"></span>
+          <div style="display:flex;gap:10px;">
+            <button id="modal-use-btn" class="btn-primary" style="padding:8px 18px;font-size:0.85rem;" onclick="useTemplate()">Использовать шаблон</button>
+            <button id="modal-pdf-btn" class="btn-secondary" style="padding:8px 18px;font-size:0.85rem;" onclick="downloadPDF()">⬇ Скачать PDF</button>
+            <button onclick="closeTemplateModal()" style="background:none;border:none;color:var(--text-muted);font-size:1.4rem;cursor:pointer;line-height:1;">✕</button>
+          </div>
+        </div>
+        <iframe id="modal-iframe" src="" style="flex:1;border:none;background:#fff;"></iframe>
+      </div>
+    </div>
+
     <!-- ATS Score -->
     <div class="card">
       <div style="font-size:1rem;font-weight:700;margin-bottom:16px;">🎯 Проверка ATS-совместимости</div>
@@ -2776,6 +2802,132 @@
         .catch(function(e){ showToast('Ошибка VK: ' + e.message); });
     });
   } catch(e) { console.warn('VK One Tap init error:', e); }
+})();
+</script>
+
+<!-- ── Resume Template Gallery ─────────────────────────────────────────────── -->
+<script>
+(function(){
+  var TEMPLATE_LABELS = {
+    'modern-blue':      {label:'Modern Blue',   icon:'💼', desc:'Двухколоночный, синий акцент'},
+    'classic-serif':    {label:'Classic Serif',  icon:'📜', desc:'Традиционный, одноколоночный'},
+    'minimal-white':    {label:'Minimal White',  icon:'⬜', desc:'Минималистичный, много пространства'},
+    'creative-gradient':{label:'Creative',       icon:'🎨', desc:'Градиент, для дизайнеров'},
+    'executive-dark':   {label:'Executive Dark', icon:'🌑', desc:'Тёмный сайдбар, для руководителей'},
+    'tech-mono':        {label:'Tech Mono',      icon:'💻', desc:'Терминальный стиль, для разработчиков'},
+    'ats-safe':         {label:'ATS Safe',       icon:'🤖', desc:'Максимальная ATS-совместимость'},
+    'russian-formal':   {label:'Рус. ГОСТ',      icon:'🇷🇺', desc:'По российским стандартам'},
+  };
+  var currentTemplateId = null;
+  var currentUserData   = null;
+
+  function loadTemplateGallery() {
+    var gallery = document.getElementById('template-gallery');
+    if (!gallery) return;
+    fetch('/api/resume/templates')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var html = '';
+        d.templates.forEach(function(t){
+          var info = TEMPLATE_LABELS[t.id] || {label: t.id, icon:'📄', desc:''};
+          var avail = t.available;
+          html += '<div onclick="openTemplatePreview(\'' + t.id + '\')" style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;cursor:pointer;transition:border-color 0.2s,transform 0.2s;" onmouseover="this.style.borderColor=\'var(--accent1)\';this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.transform=\'\'\">' +
+            '<div style="height:120px;background:linear-gradient(135deg,var(--bg2),var(--card));display:flex;align-items:center;justify-content:center;font-size:2.5rem;">' + info.icon + '</div>' +
+            '<div style="padding:12px 14px;">' +
+              '<div style="font-weight:700;font-size:0.9rem;margin-bottom:3px;">' + info.label + '</div>' +
+              '<div style="color:var(--text-muted);font-size:0.78rem;margin-bottom:10px;">' + info.desc + '</div>' +
+              '<div style="display:flex;gap:6px;">' +
+                '<button onclick="event.stopPropagation();openTemplatePreview(\'' + t.id + '\')" style="flex:1;padding:6px;background:var(--accent1);border:none;border-radius:6px;color:#fff;font-size:0.75rem;cursor:pointer;">Просмотр</button>' +
+                '<button onclick="event.stopPropagation();downloadTemplatePDF(\'' + t.id + '\')" style="flex:1;padding:6px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.75rem;cursor:pointer;">⬇ PDF</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>';
+        });
+        gallery.innerHTML = html;
+      })
+      .catch(function(){ gallery.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:20px;grid-column:1/-1;">Шаблоны недоступны</div>'; });
+  }
+
+  window.openTemplatePreview = function(templateId) {
+    currentTemplateId = templateId;
+    var info = TEMPLATE_LABELS[templateId] || {label: templateId};
+    document.getElementById('modal-template-name').textContent = info.label;
+    document.getElementById('modal-iframe').src = '/api/resume/template-preview/' + templateId;
+    var modal = document.getElementById('template-modal');
+    modal.style.display = 'flex';
+  };
+
+  window.closeTemplateModal = function() {
+    document.getElementById('template-modal').style.display = 'none';
+    document.getElementById('modal-iframe').src = '';
+  };
+
+  window.useTemplate = function() {
+    if (!currentTemplateId) return;
+    localStorage.setItem('selected_resume_template', currentTemplateId);
+    closeTemplateModal();
+    showToast('Шаблон выбран: ' + (TEMPLATE_LABELS[currentTemplateId]||{label:currentTemplateId}).label);
+  };
+
+  window.downloadTemplatePDF = function(templateId) {
+    currentTemplateId = templateId || currentTemplateId;
+    if (!currentTemplateId) return;
+    var userData = buildUserDataFromProfile();
+    var token = localStorage.getItem('token');
+    if (!token) { showToast('Войдите чтобы скачать PDF'); return; }
+    showToast('Генерируем PDF...');
+    fetch('/api/resume/generate-pdf', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body: JSON.stringify({template: currentTemplateId, data: userData})
+    })
+    .then(function(r){
+      if (!r.ok) throw new Error('PDF generation failed: ' + r.status);
+      return r.blob();
+    })
+    .then(function(blob){
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = (userData.name || 'resume') + '_' + currentTemplateId + '.pdf';
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('PDF скачан!');
+    })
+    .catch(function(e){ showToast('Ошибка генерации PDF: ' + e.message); });
+  };
+  window.downloadPDF = function() { window.downloadTemplatePDF(currentTemplateId); };
+
+  function buildUserDataFromProfile() {
+    // Pull data from current profile state in the app
+    var profile = window._cachedProfile || {};
+    return {
+      name:     profile.name || (document.getElementById('profile-name') ? document.getElementById('profile-name').value : '') || 'Имя Фамилия',
+      title:    profile.title || '',
+      email:    profile.email || '',
+      phone:    profile.phone || '',
+      location: profile.location || '',
+      summary:  profile.summary || '',
+      experience: profile.experience || [],
+      education:  profile.education  || [],
+      skills:     profile.skills     || [],
+      languages:  profile.languages  || [],
+    };
+  }
+
+  // Close modal on backdrop click
+  document.addEventListener('click', function(e){
+    if (e.target && e.target.id === 'template-modal') closeTemplateModal();
+  });
+
+  // Load gallery when resume page is shown
+  var _origNavigate = window.navigate;
+  window.navigate = function(hash) {
+    if (_origNavigate) _origNavigate(hash);
+    if (hash === '#resume') setTimeout(loadTemplateGallery, 100);
+  };
+  // Also load if already on resume page
+  if (window.location.hash === '#resume') loadTemplateGallery();
 })();
 </script>
 

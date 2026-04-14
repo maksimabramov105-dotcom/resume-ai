@@ -1,0 +1,62 @@
+<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>Resume — Tech Mono</title>
+<style>
+@page{margin:16mm 18mm;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Courier New',Courier,monospace;background:#0d1117;color:#c9d1d9;font-size:8.5pt;line-height:1.6;}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
+#header{border-bottom:1px solid #30363d;padding-bottom:14px;margin-bottom:18px;}
+#name{font-size:18pt;font-weight:700;color:#58a6ff;text-shadow:0 0 20px rgba(88,166,255,0.3);}
+#title{color:#8b949e;font-size:9pt;margin-top:4px;}
+#title::before{content:'// ';}
+.contacts{margin-top:8px;display:flex;flex-wrap:wrap;gap:4px 20px;font-size:7.5pt;color:#8b949e;}
+.contacts span::before{content:'> ';}
+.section{margin-bottom:18px;}
+.sec-title{color:#22c55e;font-size:8pt;font-weight:700;letter-spacing:1px;margin-bottom:10px;}
+.sec-title::before{content:'$ ';}
+.exp-item{margin-bottom:14px;page-break-inside:avoid;border-left:2px solid #30363d;padding-left:12px;}
+.commit-line{display:flex;justify-content:space-between;align-items:baseline;}
+.commit-hash{color:#58a6ff;font-size:7.5pt;}
+.commit-date{color:#8b949e;font-size:7.5pt;}
+.exp-company{color:#f0f6fc;font-weight:700;font-size:9pt;}
+.exp-pos{color:#22c55e;font-size:8.5pt;margin:2px 0;}
+.exp-desc{color:#8b949e;font-size:8pt;line-height:1.5;}
+.edu-item{margin-bottom:10px;page-break-inside:avoid;}
+.edu-inst{color:#f0f6fc;font-weight:700;}
+.edu-deg{color:#8b949e;font-size:8pt;}
+.code-block{background:#161b22;border:1px solid #30363d;border-radius:4px;padding:8px 12px;display:inline-block;margin:4px 4px 4px 0;color:#22c55e;font-size:7.5pt;}
+.lang-item{color:#8b949e;font-size:8.5pt;margin-right:16px;display:inline-block;}
+.lang-item b{color:#f0f6fc;}
+.summary-text{color:#8b949e;font-size:8.5pt;font-style:italic;margin-bottom:16px;border-left:3px solid #22c55e;padding-left:10px;}
+</style></head>
+<body>
+<div id="header">
+  <div id="name"></div><div id="title"></div>
+  <div class="contacts"><span id="c-email"></span><span id="c-phone"></span><span id="c-loc"></span></div>
+</div>
+<div id="s-summary" class="section"><div id="summary-text" class="summary-text"></div></div>
+<div id="s-exp" class="section"><div class="sec-title">EXPERIENCE</div><div id="exp-list"></div></div>
+<div id="s-edu" class="section"><div class="sec-title">EDUCATION</div><div id="edu-list"></div></div>
+<div id="s-skills" class="section"><div class="sec-title">SKILLS</div><div id="skills-list"></div></div>
+<div id="s-lang" class="section"><div class="sec-title">LANGUAGES</div><div id="lang-list"></div></div>
+<script>
+function renderResume(_,d){
+  if(!d)return;
+  document.getElementById('name').textContent=d.name||'';
+  document.getElementById('title').textContent=d.title||'';
+  var ce=document.getElementById('c-email');if(d.email)ce.textContent=d.email;else ce.style.display='none';
+  var cp=document.getElementById('c-phone');if(d.phone)cp.textContent=d.phone;else cp.style.display='none';
+  var cl=document.getElementById('c-loc');if(d.location)cl.textContent=d.location;else cl.style.display='none';
+  if(d.summary)document.getElementById('summary-text').textContent=d.summary;else document.getElementById('s-summary').style.display='none';
+  var el=document.getElementById('exp-list');
+  if(d.experience&&d.experience.length){el.innerHTML=d.experience.map(function(e,i){return'<div class="exp-item"><div class="commit-line"><span class="exp-company">'+e.company+'</span><span class="commit-date">'+e.period+'</span></div><div class="exp-pos">'+e.position+'</div><div class="exp-desc">'+e.description+'</div></div>';}).join('');}else document.getElementById('s-exp').style.display='none';
+  var ul=document.getElementById('edu-list');
+  if(d.education&&d.education.length){ul.innerHTML=d.education.map(function(e){return'<div class="edu-item"><span class="edu-inst">'+e.institution+'</span> <span class="commit-date">'+e.period+'</span><div class="edu-deg">'+e.degree+'</div></div>';}).join('');}else document.getElementById('s-edu').style.display='none';
+  var sl=document.getElementById('skills-list');
+  if(d.skills&&d.skills.length){sl.innerHTML=d.skills.map(function(s){return'<span class="code-block">'+s+'</span>';}).join('');}else document.getElementById('s-skills').style.display='none';
+  var ll=document.getElementById('lang-list');
+  if(d.languages&&d.languages.length){ll.innerHTML=d.languages.map(function(l){return'<span class="lang-item"><b>'+l.language+'</b>: '+l.level+'</span>';}).join('');}else document.getElementById('s-lang').style.display='none';
+}
+window.RESUME_DATA=null;
+if(window.RESUME_DATA){document.addEventListener('DOMContentLoaded',function(){renderResume(null,window.RESUME_DATA);});}
+</script>
+</body></html>

@@ -1,0 +1,57 @@
+<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>Resume</title>
+<style>
+@page{margin:20mm 22mm;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:Arial,Helvetica,sans-serif;background:#fff;color:#000;font-size:10pt;line-height:1.5;}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
+#name{font-size:16pt;font-weight:700;text-align:center;margin-bottom:4px;}
+#title{font-size:11pt;text-align:center;color:#333;margin-bottom:8px;}
+#contacts{text-align:center;font-size:9pt;color:#333;margin-bottom:12px;}
+hr{border:none;border-top:1px solid #000;margin:8px 0 10px;}
+.sec-title{font-size:10pt;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;}
+.section{margin-bottom:14px;}
+.exp-item{margin-bottom:12px;page-break-inside:avoid;}
+.exp-top{display:flex;justify-content:space-between;font-weight:700;font-size:10pt;}
+.exp-pos{font-style:italic;font-size:9.5pt;color:#222;margin-bottom:4px;}
+.exp-desc{font-size:9pt;color:#333;}
+.edu-item{margin-bottom:8px;page-break-inside:avoid;}
+.edu-top{display:flex;justify-content:space-between;font-weight:700;}
+.edu-deg{font-size:9pt;color:#333;}
+.skills-text{font-size:9pt;color:#333;line-height:1.8;}
+.lang-text{font-size:9pt;color:#333;}
+</style></head>
+<body>
+<div id="name"></div><div id="title"></div>
+<div id="contacts"><span id="c-email"></span><span id="c-sep1"> | </span><span id="c-phone"></span><span id="c-sep2"> | </span><span id="c-loc"></span></div>
+<hr>
+<div id="s-summary" class="section"><div class="sec-title">Профессиональное резюме</div><div id="summary"></div></div>
+<hr>
+<div id="s-exp" class="section"><div class="sec-title">Опыт работы</div><div id="exp-list"></div></div>
+<hr>
+<div id="s-edu" class="section"><div class="sec-title">Образование</div><div id="edu-list"></div></div>
+<hr>
+<div id="s-skills" class="section"><div class="sec-title">Ключевые навыки</div><div id="skills-text" class="skills-text"></div></div>
+<hr>
+<div id="s-lang" class="section"><div class="sec-title">Иностранные языки</div><div id="lang-text" class="lang-text"></div></div>
+<script>
+function renderResume(_,d){
+  if(!d)return;
+  document.getElementById('name').textContent=d.name||'';
+  document.getElementById('title').textContent=d.title||'';
+  var ce=document.getElementById('c-email');if(d.email)ce.textContent=d.email;else{ce.style.display='none';document.getElementById('c-sep1').style.display='none';}
+  var cp=document.getElementById('c-phone');if(d.phone)cp.textContent=d.phone;else{cp.style.display='none';document.getElementById('c-sep2').style.display='none';}
+  var cl=document.getElementById('c-loc');if(d.location)cl.textContent=d.location;else cl.style.display='none';
+  if(d.summary)document.getElementById('summary').textContent=d.summary;else document.getElementById('s-summary').style.display='none';
+  var el=document.getElementById('exp-list');
+  if(d.experience&&d.experience.length){el.innerHTML=d.experience.map(function(e){return'<div class="exp-item"><div class="exp-top"><span>'+e.company+'</span><span>'+e.period+'</span></div><div class="exp-pos">'+e.position+'</div><div class="exp-desc">'+e.description+'</div></div>';}).join('<hr style="border-top:1px dashed #ccc;margin:8px 0;">');}else document.getElementById('s-exp').style.display='none';
+  var ul=document.getElementById('edu-list');
+  if(d.education&&d.education.length){ul.innerHTML=d.education.map(function(e){return'<div class="edu-item"><div class="edu-top"><span>'+e.institution+'</span><span>'+e.period+'</span></div><div class="edu-deg">'+e.degree+'</div></div>';}).join('');}else document.getElementById('s-edu').style.display='none';
+  var st=document.getElementById('skills-text');
+  if(d.skills&&d.skills.length){st.textContent=d.skills.join(' • ');}else document.getElementById('s-skills').style.display='none';
+  var lt=document.getElementById('lang-text');
+  if(d.languages&&d.languages.length){lt.textContent=d.languages.map(function(l){return l.language+' ('+l.level+')';}).join(', ');}else document.getElementById('s-lang').style.display='none';
+}
+window.RESUME_DATA=null;
+if(window.RESUME_DATA){document.addEventListener('DOMContentLoaded',function(){renderResume(null,window.RESUME_DATA);});}
+</script>
+</body></html>

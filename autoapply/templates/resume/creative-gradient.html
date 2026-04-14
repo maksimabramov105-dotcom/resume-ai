@@ -1,0 +1,73 @@
+<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>Resume — Creative Gradient</title>
+<style>
+@page{margin:0;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:#fff;font-size:9pt;line-height:1.5;color:#1e293b;}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
+#header{background:linear-gradient(135deg,#7c3aed 0%,#2563eb 100%);color:#fff;padding:28px 32px 22px;}
+#name{font-size:22pt;font-weight:800;letter-spacing:-0.5px;}
+#title{font-size:10.5pt;opacity:0.85;margin-top:5px;font-weight:400;}
+#header-contacts{margin-top:10px;display:flex;flex-wrap:wrap;gap:4px 20px;font-size:8pt;opacity:0.9;}
+#body{display:flex;min-height:calc(297mm - 90px);}
+#sidebar{width:32%;background:#1e293b;color:#e2e8f0;padding:24px 20px;flex-shrink:0;}
+#main{flex:1;padding:24px 28px;}
+.sb-section{margin-bottom:20px;}
+.sb-title{font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#7c3aed;margin-bottom:10px;border-bottom:1px solid #334155;padding-bottom:6px;}
+.skill-bar{margin-bottom:8px;}
+.skill-name{font-size:8.5pt;margin-bottom:3px;color:#cbd5e1;}
+.skill-dot-row{display:flex;gap:4px;}
+.dot{width:8px;height:8px;border-radius:50%;background:#334155;}
+.dot.filled{background:#7c3aed;}
+.lang-item-sb{font-size:8.5pt;color:#cbd5e1;margin-bottom:6px;}
+.lang-level-sb{font-size:7.5pt;color:#64748b;}
+.section-m{margin-bottom:22px;}
+.sec-title{font-size:7.5pt;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#7c3aed;margin-bottom:12px;}
+.exp-item{margin-bottom:14px;page-break-inside:avoid;padding-left:16px;border-left:2px solid #e2e8f0;}
+.exp-company{font-weight:700;font-size:9.5pt;color:#1e293b;}
+.exp-pos{font-size:9pt;color:#475569;margin:2px 0 4px;}
+.exp-period{font-size:7.5pt;color:#94a3b8;}
+.exp-desc{font-size:8.5pt;color:#64748b;line-height:1.5;}
+.edu-item{margin-bottom:10px;page-break-inside:avoid;}
+.edu-inst{font-weight:600;font-size:9pt;}
+.edu-deg{font-size:8.5pt;color:#64748b;}
+.edu-per{font-size:7.5pt;color:#94a3b8;}
+.summary-text{font-size:9pt;color:#475569;line-height:1.6;margin-bottom:20px;}
+</style></head>
+<body>
+<div id="header">
+  <div id="name"></div><div id="title"></div>
+  <div id="header-contacts"><span id="hc-email"></span><span id="hc-phone"></span><span id="hc-loc"></span></div>
+</div>
+<div id="body">
+  <div id="sidebar">
+    <div class="sb-section"><div class="sb-title">Навыки</div><div id="skills-sb"></div></div>
+    <div class="sb-section"><div class="sb-title">Языки</div><div id="lang-sb"></div></div>
+  </div>
+  <div id="main">
+    <div id="s-summary" class="section-m"><div id="summary-text" class="summary-text"></div></div>
+    <div id="s-exp" class="section-m"><div class="sec-title">◆ Опыт работы</div><div id="exp-list"></div></div>
+    <div id="s-edu" class="section-m"><div class="sec-title">◆ Образование</div><div id="edu-list"></div></div>
+  </div>
+</div>
+<script>
+function renderResume(_,d){
+  if(!d)return;
+  document.getElementById('name').textContent=d.name||'';
+  document.getElementById('title').textContent=d.title||'';
+  var hce=document.getElementById('hc-email');if(d.email)hce.textContent=d.email;else hce.style.display='none';
+  var hcp=document.getElementById('hc-phone');if(d.phone)hcp.textContent=d.phone;else hcp.style.display='none';
+  var hcl=document.getElementById('hc-loc');if(d.location)hcl.textContent=d.location;else hcl.style.display='none';
+  if(d.summary)document.getElementById('summary-text').textContent=d.summary;else document.getElementById('s-summary').style.display='none';
+  var ssb=document.getElementById('skills-sb');
+  if(d.skills&&d.skills.length){ssb.innerHTML=d.skills.slice(0,10).map(function(s){return'<div class="skill-bar"><div class="skill-name">'+s+'</div></div>';}).join('');}
+  var lsb=document.getElementById('lang-sb');
+  if(d.languages&&d.languages.length){lsb.innerHTML=d.languages.map(function(l){return'<div class="lang-item-sb"><b>'+l.language+'</b><div class="lang-level-sb">'+l.level+'</div></div>';}).join('');}
+  var el=document.getElementById('exp-list');
+  if(d.experience&&d.experience.length){el.innerHTML=d.experience.map(function(e){return'<div class="exp-item"><div class="exp-company">'+e.company+'</div><div class="exp-pos">'+e.position+'</div><div class="exp-period">'+e.period+'</div><div class="exp-desc">'+e.description+'</div></div>';}).join('');}else document.getElementById('s-exp').style.display='none';
+  var ul=document.getElementById('edu-list');
+  if(d.education&&d.education.length){ul.innerHTML=d.education.map(function(e){return'<div class="edu-item"><div class="edu-inst">'+e.institution+'</div><div class="edu-deg">'+e.degree+'</div><div class="edu-per">'+e.period+'</div></div>';}).join('');}else document.getElementById('s-edu').style.display='none';
+}
+window.RESUME_DATA=null;
+if(window.RESUME_DATA){document.addEventListener('DOMContentLoaded',function(){renderResume(null,window.RESUME_DATA);});}
+</script>
+</body></html>

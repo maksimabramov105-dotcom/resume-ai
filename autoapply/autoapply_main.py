@@ -1474,6 +1474,106 @@ async def post_to_vk(body: VKPostRequest, x_admin_key: str = Header(default=""))
         raise HTTPException(status_code=500, detail=str(exc))
 
 
+# ── Resume PDF generation ─────────────────────────────────────────────────────
+
+TEMPLATES_DIR = Path(ROOT) / "autoapply" / "templates" / "resume"
+
+VALID_TEMPLATES = {
+    "modern-blue", "classic-serif", "minimal-white", "creative-gradient",
+    "executive-dark", "tech-mono", "ats-safe", "russian-formal",
+}
+
+
+class ResumePDFRequest(BaseModel):
+    template: str = "modern-blue"
+    data: dict
+    language: str = "ru"
+
+
+@app.post("/api/resume/generate-pdf", summary="Generate resume PDF from template")
+async def generate_resume_pdf(
+    body: ResumePDFRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    template_id = body.template if body.template in VALID_TEMPLATES else "modern-blue"
+    template_path = TEMPLATES_DIR / f"{template_id}.html"
+
+    if not template_path.exists():
+        raise HTTPException(status_code=404, detail=f"Template '{template_id}' not found")
+
+    try:
+        html_source = template_path.read_text(encoding="utf-8")
+        # Inject resume data as JS variable before </body>
+        import json as _json
+        data_script = f"<script>window.RESUME_DATA = {_json.dumps(body.data, ensure_ascii=False)}; document.addEventListener('DOMContentLoaded', () => renderResume(null, window.RESUME_DATA));</script>"
+        html_ready = html_source.replace("window.RESUME_DATA = null;", "").replace("</body>", data_script + "\n</body>")
+
+        from weasyprint import HTML as WeasyprintHTML
+        pdf_bytes = WeasyprintHTML(string=html_ready, base_url=str(TEMPLATES_DIR)).write_pdf()
+
+        asyncio.create_task(log_web_generation("resume_pdf", current_user.get("id")))
+
+        name_slug = body.data.get("name", "resume").replace(" ", "_")[:30]
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{name_slug}_{template_id}.pdf"'},
+        )
+    except ImportError:
+        raise HTTPException(status_code=503, detail="PDF generation not available on this server. Install weasyprint.")
+    except Exception as exc:
+        logger.error("[generate-pdf] error: %s", exc)
+        raise HTTPException(status_code=500, detail="PDF generation failed")
+
+
+@app.get("/api/resume/templates", summary="List available resume templates")
+async def list_resume_templates():
+    templates = []
+    for tid in sorted(VALID_TEMPLATES):
+        path = TEMPLATES_DIR / f"{tid}.html"
+        templates.append({
+            "id": tid,
+            "available": path.exists(),
+            "preview_url": f"/api/resume/template-preview/{tid}",
+        })
+    return {"templates": templates}
+
+
+@app.get("/api/resume/template-preview/{template_id}", include_in_schema=False)
+async def serve_template_preview(template_id: str):
+    """Serve template HTML with sample data for preview."""
+    if template_id not in VALID_TEMPLATES:
+        raise HTTPException(status_code=404, detail="Template not found")
+    template_path = TEMPLATES_DIR / f"{template_id}.html"
+    if not template_path.exists():
+        raise HTTPException(status_code=404, detail="Template file not found")
+
+    import json as _json
+    sample = {
+        "name": "Иван Иванов",
+        "title": "Senior Python Developer",
+        "email": "ivan@example.com",
+        "phone": "+7 999 123-45-67",
+        "location": "Москва",
+        "summary": "Опытный Python-разработчик с 6+ годами коммерческого опыта. Специализируюсь на создании высоконагруженных микросервисов и REST API.",
+        "experience": [
+            {"company": "Яндекс", "position": "Senior Python Developer", "period": "2021–2024",
+             "description": "Разрабатывал микросервисы на FastAPI. Оптимизировал запросы PostgreSQL, снизив время ответа на 40%."},
+            {"company": "Сбербанк", "position": "Python Developer", "period": "2019–2021",
+             "description": "Разработал REST API для банковского мобильного приложения. Покрытие тестами 90%."},
+        ],
+        "education": [
+            {"institution": "МГУ им. Ломоносова", "degree": "Бакалавр, Прикладная математика и информатика", "period": "2015–2019"},
+        ],
+        "skills": ["Python", "FastAPI", "Django", "PostgreSQL", "Redis", "Docker", "Kubernetes", "AWS"],
+        "languages": [{"language": "Русский", "level": "Родной"}, {"language": "Английский", "level": "B2"}],
+    }
+    html_source = template_path.read_text(encoding="utf-8")
+    data_script = f"<script>window.RESUME_DATA = {_json.dumps(sample, ensure_ascii=False)}; document.addEventListener('DOMContentLoaded', () => renderResume(null, window.RESUME_DATA));</script>"
+    html_ready = html_source.replace("window.RESUME_DATA = null;", "").replace("</body>", data_script + "\n</body>")
+    return Response(content=html_ready, media_type="text/html")
+
+
 # ── SPA fallback ──────────────────────────────────────────────────────────────
 @app.get("/app", include_in_schema=False)
 @app.get("/app/{path:path}", include_in_schema=False)

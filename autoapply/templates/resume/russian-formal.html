@@ -1,0 +1,77 @@
+<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>Резюме</title>
+<style>
+@page{margin:20mm 25mm 20mm 30mm;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Times New Roman',Times,serif;background:#fff;color:#000;font-size:10pt;line-height:1.5;}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
+#top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;}
+#top-left{flex:1;}
+#photo-box{width:70px;height:90px;border:1px solid #000;display:flex;align-items:center;justify-content:center;font-size:7pt;color:#666;text-align:center;flex-shrink:0;margin-left:20px;}
+#doc-title{font-size:14pt;font-weight:700;text-align:center;text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;}
+table.info{width:100%;border-collapse:collapse;margin-bottom:12px;}
+table.info td{padding:3px 6px;font-size:9.5pt;vertical-align:top;}
+table.info td:first-child{font-weight:700;width:40%;color:#333;}
+.section{margin-bottom:16px;}
+.sec-title{font-size:10pt;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #000;padding-bottom:3px;margin-bottom:10px;}
+table.exp{width:100%;border-collapse:collapse;font-size:9.5pt;}
+table.exp td,table.exp th{border:1px solid #ccc;padding:5px 8px;vertical-align:top;}
+table.exp th{background:#f0f0f0;font-weight:700;font-size:9pt;text-align:left;}
+table.exp td:first-child{width:22%;white-space:nowrap;color:#333;}
+.skill-row{margin-bottom:4px;font-size:9.5pt;}
+.signature-line{margin-top:30px;display:flex;justify-content:space-between;font-size:9pt;}
+.sig-item{text-align:center;}
+.sig-line{border-top:1px solid #000;width:120px;margin:0 auto 4px;padding-top:4px;}
+</style></head>
+<body>
+<div id="doc-title">Резюме</div>
+<div id="top">
+  <div id="top-left">
+    <table class="info">
+      <tr><td>Фамилия Имя Отчество:</td><td id="full-name"></td></tr>
+      <tr id="r-dob" style="display:none"><td>Дата рождения:</td><td id="dob"></td></tr>
+      <tr><td>Желаемая должность:</td><td id="desired-pos"></td></tr>
+      <tr><td>Адрес / город:</td><td id="location"></td></tr>
+      <tr><td>Телефон:</td><td id="phone"></td></tr>
+      <tr><td>Email:</td><td id="email"></td></tr>
+    </table>
+  </div>
+  <div id="photo-box">Фото</div>
+</div>
+<div id="s-summary" class="section"><div class="sec-title">Цель</div><div id="summary"></div></div>
+<div id="s-edu" class="section"><div class="sec-title">Образование</div>
+  <table class="exp"><thead><tr><th>Период</th><th>Учебное заведение</th><th>Специальность / степень</th></tr></thead>
+  <tbody id="edu-body"></tbody></table>
+</div>
+<div id="s-exp" class="section"><div class="sec-title">Опыт работы</div>
+  <table class="exp"><thead><tr><th>Период</th><th>Организация / должность</th><th>Обязанности / достижения</th></tr></thead>
+  <tbody id="exp-body"></tbody></table>
+</div>
+<div id="s-skills" class="section"><div class="sec-title">Профессиональные навыки</div><div id="skills-list"></div></div>
+<div id="s-lang" class="section"><div class="sec-title">Иностранные языки</div><div id="lang-list"></div></div>
+<div class="signature-line">
+  <div class="sig-item"><div id="sig-date" style="margin-bottom:20px;"></div><div class="sig-line">Дата</div></div>
+  <div class="sig-item"><div style="height:40px;"></div><div class="sig-line">Подпись</div></div>
+</div>
+<script>
+function renderResume(_,d){
+  if(!d)return;
+  document.getElementById('full-name').textContent=d.name||'';
+  document.getElementById('desired-pos').textContent=d.title||'';
+  document.getElementById('location').textContent=d.location||'';
+  document.getElementById('phone').textContent=d.phone||'';
+  document.getElementById('email').textContent=d.email||'';
+  document.getElementById('sig-date').textContent=new Date().toLocaleDateString('ru-RU');
+  if(d.summary)document.getElementById('summary').textContent=d.summary;else document.getElementById('s-summary').style.display='none';
+  var eb=document.getElementById('edu-body');
+  if(d.education&&d.education.length){eb.innerHTML=d.education.map(function(e){return'<tr><td>'+e.period+'</td><td>'+e.institution+'</td><td>'+e.degree+'</td></tr>';}).join('');}else document.getElementById('s-edu').style.display='none';
+  var xb=document.getElementById('exp-body');
+  if(d.experience&&d.experience.length){xb.innerHTML=d.experience.map(function(e){return'<tr><td>'+e.period+'</td><td><b>'+e.company+'</b><br>'+e.position+'</td><td>'+e.description+'</td></tr>';}).join('');}else document.getElementById('s-exp').style.display='none';
+  var sl=document.getElementById('skills-list');
+  if(d.skills&&d.skills.length){sl.innerHTML=d.skills.map(function(s){return'<div class="skill-row">• '+s+'</div>';}).join('');}else document.getElementById('s-skills').style.display='none';
+  var ll=document.getElementById('lang-list');
+  if(d.languages&&d.languages.length){ll.innerHTML=d.languages.map(function(l){return'<div class="skill-row">• '+l.language+' — '+l.level+'</div>';}).join('');}else document.getElementById('s-lang').style.display='none';
+}
+window.RESUME_DATA=null;
+if(window.RESUME_DATA){document.addEventListener('DOMContentLoaded',function(){renderResume(null,window.RESUME_DATA);});}
+</script>
+</body></html>
