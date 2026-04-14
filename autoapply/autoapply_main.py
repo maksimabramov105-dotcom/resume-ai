@@ -1680,6 +1680,194 @@ async def salary_insights(title: str = Query(..., min_length=2), area: int = Que
         raise HTTPException(status_code=502, detail=f"hh.ru API error: {exc}")
 
 
+# ── Interview Prep ────────────────────────────────────────────────────────────
+class InterviewEvalRequest(BaseModel):
+    question: str
+    answer: str
+    job_title: str = "специалист"
+
+
+@app.post("/api/interview/evaluate", summary="Evaluate interview answer with STAR method")
+async def evaluate_interview_answer(
+    req: InterviewEvalRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    import json as _json, re as _re, os as _os2, httpx as _hx2
+    api_key = _os2.getenv("OPENROUTER_API_KEY") or _os2.getenv("OPENAI_API_KEY")
+    model = _os2.getenv("OPENAI_MODEL", "openai/gpt-4o-mini")
+
+    if not api_key:
+        return {
+            "score": 7,
+            "star_breakdown": {
+                "situation": "Хорошо описана контекст ситуации",
+                "task": "Задача обозначена",
+                "action": "Действия перечислены",
+                "result": "Добавьте количественные результаты",
+            },
+            "strengths": ["Структурированный ответ", "Конкретный пример из практики"],
+            "improvements": ["Добавьте цифры: % рост, сроки, объём", "Усильте описание вашей личной роли"],
+            "better_answer": "Пример: В 2023 году наша команда столкнулась с X. Моей задачей было Y. Я предпринял A, B, C — в результате достигли D (конкретные цифры).",
+            "demo": True,
+        }
+
+    prompt = f"""You are an expert interview coach. Evaluate this interview answer using the STAR method.
+
+Job title: {req.job_title}
+Question: {req.question}
+Candidate's answer: {req.answer}
+
+Respond ONLY in Russian with valid JSON (no markdown):
+{{
+  "score": <integer 1-10>,
+  "star_breakdown": {{
+    "situation": "<feedback on Situation clarity>",
+    "task": "<feedback on Task clarity>",
+    "action": "<feedback on Action specificity>",
+    "result": "<feedback on Result and impact>"
+  }},
+  "strengths": ["<strength 1>", "<strength 2>"],
+  "improvements": ["<improvement 1>", "<improvement 2>"],
+  "better_answer": "<Brief improved version showing ideal structure>"
+}}"""
+
+    base_url = "https://openrouter.ai/api/v1" if _os2.getenv("OPENROUTER_API_KEY") else "https://api.openai.com/v1"
+    try:
+        async with _hx2.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                f"{base_url}/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                json={"model": model, "messages": [{"role": "user", "content": prompt}], "max_tokens": 700},
+            )
+            content = resp.json()["choices"][0]["message"]["content"].strip()
+            m = _re.search(r"\{.*\}", content, _re.DOTALL)
+            if not m:
+                raise ValueError("No JSON in response")
+            return _json.loads(m.group())
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"AI evaluation failed: {exc}")
+
+
+# ── LinkedIn Import ───────────────────────────────────────────────────────────
+async def _scrape_linkedin_url(url: str) -> dict:
+    import re as _re2
+    try:
+        async with _httpx_module.AsyncClient(timeout=12, follow_redirects=True, headers={
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8",
+        }) as client:
+            resp = await client.get(url)
+            html = resp.text
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Не удалось загрузить профиль: {exc}")
+
+    result: dict = {}
+    # JSON-LD (public profiles)
+    ld = _re2.search(r'<script type="application/ld\+json">(.*?)</script>', html, _re2.DOTALL)
+    if ld:
+        try:
+            import json as _j
+            d = _j.loads(ld.group(1))
+            result["name"] = d.get("name", "")
+            result["headline"] = d.get("jobTitle", "")
+            result["summary"] = d.get("description", "")
+        except Exception:
+            pass
+    # OG fallback
+    og_title = _re2.search(r'<meta property="og:title" content="([^"]+)"', html)
+    if og_title and not result.get("name"):
+        result["name"] = og_title.group(1).split(" | ")[0]
+    og_desc = _re2.search(r'<meta property="og:description" content="([^"]+)"', html)
+    if og_desc and not result.get("summary"):
+        result["summary"] = og_desc.group(1)
+
+    if not result.get("name"):
+        raise HTTPException(
+            status_code=422,
+            detail="LinkedIn заблокировал автоматический парсинг. Используйте экспорт ZIP.",
+        )
+    return result
+
+
+def _parse_linkedin_zip(zip_bytes: bytes) -> dict:
+    import zipfile, io, csv as _csv
+    result: dict = {}
+    try:
+        with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
+            names = zf.namelist()
+
+            def read_csv(fname):
+                for n in names:
+                    if n.endswith(fname):
+                        with zf.open(n) as f:
+                            return list(_csv.DictReader(io.TextIOWrapper(f, encoding="utf-8-sig")))
+                return []
+
+            for row in read_csv("Profile.csv"):
+                result["name"] = f"{row.get('First Name','')} {row.get('Last Name','')}".strip()
+                result["email"] = row.get("Email Address", "")
+                result["phone"] = row.get("Phone Numbers", "")
+                result["summary"] = row.get("Summary", "")
+                result["headline"] = row.get("Headline", "")
+                break
+
+            result["experience"] = [
+                {
+                    "company": r.get("Company Name", ""),
+                    "title": r.get("Title", ""),
+                    "start": r.get("Started On", ""),
+                    "end": r.get("Finished On", "") or "по настоящее время",
+                    "description": r.get("Description", ""),
+                    "location": r.get("Location", ""),
+                }
+                for r in read_csv("Positions.csv")
+            ]
+            result["education"] = [
+                {
+                    "school": r.get("School Name", ""),
+                    "degree": r.get("Degree Name", ""),
+                    "field": r.get("Field Of Study", ""),
+                    "start": r.get("Start Date", ""),
+                    "end": r.get("End Date", ""),
+                }
+                for r in read_csv("Education.csv")
+            ]
+            result["skills"] = [r.get("Name", "") for r in read_csv("Skills.csv") if r.get("Name")]
+            result["languages"] = [
+                f"{r.get('Name','')} ({r.get('Proficiency','')})"
+                for r in read_csv("Languages.csv") if r.get("Name")
+            ]
+    except zipfile.BadZipFile:
+        raise HTTPException(status_code=400, detail="Некорректный ZIP файл")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Ошибка обработки ZIP: {exc}")
+
+    if not result.get("name") and not result.get("experience"):
+        raise HTTPException(status_code=422, detail="ZIP не содержит данных LinkedIn. Убедитесь, что выбрали 'Данные профиля'.")
+    return result
+
+
+@app.post("/api/resume/import-linkedin", summary="Import LinkedIn profile via URL scrape or ZIP export")
+async def import_linkedin(
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+):
+    ct = request.headers.get("content-type", "")
+    if "application/json" in ct:
+        body = await request.json()
+        url = body.get("linkedin_url", "").strip()
+        if not url:
+            raise HTTPException(status_code=400, detail="linkedin_url обязателен")
+        return await _scrape_linkedin_url(url)
+    else:
+        form = await request.form()
+        file_field = form.get("file")
+        if not file_field:
+            raise HTTPException(status_code=400, detail="Файл не передан")
+        zip_bytes = await file_field.read()
+        return _parse_linkedin_zip(zip_bytes)
+
+
 # ── SPA fallback ──────────────────────────────────────────────────────────────
 @app.get("/app", include_in_schema=False)
 @app.get("/app/{path:path}", include_in_schema=False)

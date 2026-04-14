@@ -282,6 +282,12 @@
       transition: all 0.2s;
     }
     .dark-toggle:hover { background: var(--bg-alt); }
+    .lang-toggle {
+      background: none; border: 1px solid var(--border);
+      border-radius: 8px; padding: 5px 9px; cursor: pointer;
+      font-size: 15px; transition: all 0.2s; line-height: 1;
+    }
+    .lang-toggle:hover { background: var(--bg-alt); }
 
     .hamburger {
       display: none;
@@ -1125,14 +1131,15 @@
     <div class="header-inner">
       <a href="/" class="logo">ResumeAI</a>
       <nav>
-        <a href="#features">Возможности</a>
-        <a href="#pricing">Цены</a>
-        <a href="/blog/">Блог</a>
+        <a href="#features" data-i18n="nav.features">Возможности</a>
+        <a href="#pricing" data-i18n="nav.pricing">Цены</a>
+        <a href="/blog/" data-i18n="nav.blog">Блог</a>
         <a href="https://t.me/topbestworkerbot" target="_blank" rel="noopener" style="color: #0088CC; font-weight: 600;">✈ Telegram</a>
       </nav>
       <div class="header-actions">
-        <a href="/app" class="btn btn-outline btn-sm">Войти</a>
-        <a href="/app" class="btn btn-cta btn-sm">Начать бесплатно</a>
+        <a href="/app" class="btn btn-outline btn-sm" data-i18n="nav.login">Войти</a>
+        <a href="/app" class="btn btn-cta btn-sm" data-i18n="nav.start">Начать бесплатно</a>
+        <button class="lang-toggle" id="langToggle" onclick="toggleLang()" aria-label="Toggle language" title="Switch language">🇷🇺</button>
         <button class="dark-toggle" id="darkToggle" aria-label="Toggle dark mode">🌙</button>
         <button class="hamburger" id="hamburger" aria-label="Menu">
           <span></span><span></span><span></span>
@@ -1141,26 +1148,27 @@
     </div>
   </div>
   <div class="mobile-menu" id="mobileMenu">
-    <a href="#features">Возможности</a>
-    <a href="#pricing">Цены</a>
-    <a href="/blog/">Блог</a>
+    <a href="#features" data-i18n="nav.features">Возможности</a>
+    <a href="#pricing" data-i18n="nav.pricing">Цены</a>
+    <a href="/blog/" data-i18n="nav.blog">Блог</a>
     <a href="https://t.me/topbestworkerbot" target="_blank" rel="noopener" style="color: #0088CC; font-weight: 600;">✈ Telegram — попробовать бота</a>
-    <a href="/app">Войти</a>
-    <a href="/app" style="color: var(--primary); font-weight: 700;">Начать бесплатно →</a>
+    <a href="/app" data-i18n="nav.login">Войти</a>
+    <a href="/app" style="color: var(--primary); font-weight: 700;" data-i18n="nav.start_arrow">Начать бесплатно →</a>
+    <button onclick="toggleLang()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:14px;text-align:left;" id="langToggleMobile">🇷🇺 Русский / English</button>
   </div>
 </header>
 
 <!-- ══════════════════ HERO ══════════════════ -->
 <section id="hero">
   <div class="container">
-    <div class="hero-badge">🤖 Работает прямо в Telegram и на Web</div>
-    <h1>Получи в <span>3x Больше Интервью.</span> AI Создаёт Идеальное Резюме за 30 Секунд.</h1>
-    <p class="hero-sub">Вставь ссылку на вакансию. AI создаёт резюме, сопроводительное письмо и подготовку к интервью — мгновенно. Работает на Web и в Telegram.</p>
+    <div class="hero-badge" data-i18n="hero.badge">🤖 Работает прямо в Telegram и на Web</div>
+    <h1 data-i18n-html="hero.h1">Получи в <span>3x Больше Интервью.</span> AI Создаёт Идеальное Резюме за 30 Секунд.</h1>
+    <p class="hero-sub" data-i18n="hero.sub">Вставь ссылку на вакансию. AI создаёт резюме, сопроводительное письмо и подготовку к интервью — мгновенно. Работает на Web и в Telegram.</p>
     <div class="hero-ctas">
-      <a href="/app" class="btn-hero-primary btn-lg">Создать Резюме Бесплатно →</a>
-      <a href="https://t.me/topbestworkerbot" target="_blank" rel="noopener" class="btn-hero-tg btn-lg">💬 Или Попробовать в Telegram</a>
+      <a href="/app" class="btn-hero-primary btn-lg" data-i18n="hero.cta1">Создать Резюме Бесплатно →</a>
+      <a href="https://t.me/topbestworkerbot" target="_blank" rel="noopener" class="btn-hero-tg btn-lg" data-i18n="hero.cta2">💬 Или Попробовать в Telegram</a>
     </div>
-    <p class="hero-trust">Без карты • 1 бесплатное резюме • Готово за 30 секунд</p>
+    <p class="hero-trust" data-i18n="hero.trust">Без карты • 1 бесплатное резюме • Готово за 30 секунд</p>
 
     <!-- Animated Demo Preview -->
     <div class="hero-demo-wrap">
@@ -2105,6 +2113,81 @@
   document.getElementById('exit-popup').addEventListener('click', function(e){
     if(e.target === this) closeExitPopup();
   });
+})();
+</script>
+
+<!-- ═══════════════ i18n / Language Toggle ═══════════════ -->
+<script>
+(function(){
+  var T = {
+    ru: {
+      'nav.features':   'Возможности',
+      'nav.pricing':    'Цены',
+      'nav.blog':       'Блог',
+      'nav.login':      'Войти',
+      'nav.start':      'Начать бесплатно',
+      'nav.start_arrow':'Начать бесплатно →',
+      'hero.badge':     '🤖 Работает прямо в Telegram и на Web',
+      'hero.h1':        'Получи в <span>3x Больше Интервью.</span> AI Создаёт Идеальное Резюме за 30 Секунд.',
+      'hero.sub':       'Вставь ссылку на вакансию. AI создаёт резюме, сопроводительное письмо и подготовку к интервью — мгновенно. Работает на Web и в Telegram.',
+      'hero.cta1':      'Создать Резюме Бесплатно →',
+      'hero.cta2':      '💬 Или Попробовать в Telegram',
+      'hero.trust':     'Без карты • 1 бесплатное резюме • Готово за 30 секунд'
+    },
+    en: {
+      'nav.features':   'Features',
+      'nav.pricing':    'Pricing',
+      'nav.blog':       'Blog',
+      'nav.login':      'Sign In',
+      'nav.start':      'Start Free',
+      'nav.start_arrow':'Start Free →',
+      'hero.badge':     '🤖 Works in Telegram and on Web',
+      'hero.h1':        'Get <span>3x More Interviews.</span> AI Builds Your Perfect Resume in 30 Seconds.',
+      'hero.sub':       'Paste a job link. AI creates a tailored resume, cover letter, and interview prep — instantly. Works on Web and in Telegram.',
+      'hero.cta1':      'Build Resume Free →',
+      'hero.cta2':      '💬 Or Try in Telegram',
+      'hero.trust':     'No card needed • 1 free resume • Ready in 30 seconds'
+    }
+  };
+
+  var currentLang = 'ru';
+
+  function detectLang() {
+    var saved = localStorage.getItem('resumeai_lang');
+    if (saved === 'en' || saved === 'ru') return saved;
+    var nav = (navigator.language || navigator.userLanguage || 'ru').toLowerCase();
+    return nav.startsWith('ru') ? 'ru' : 'en';
+  }
+
+  function applyLang(lang) {
+    currentLang = lang;
+    var dict = T[lang] || T.ru;
+    // text nodes
+    document.querySelectorAll('[data-i18n]').forEach(function(el) {
+      var key = el.getAttribute('data-i18n');
+      if (dict[key] !== undefined) el.textContent = dict[key];
+    });
+    // HTML nodes (elements with inline spans)
+    document.querySelectorAll('[data-i18n-html]').forEach(function(el) {
+      var key = el.getAttribute('data-i18n-html');
+      if (dict[key] !== undefined) el.innerHTML = dict[key];
+    });
+    // toggle button emoji
+    var btn = document.getElementById('langToggle');
+    var btnM = document.getElementById('langToggleMobile');
+    if (btn) btn.textContent = lang === 'ru' ? '🇷🇺' : '🇬🇧';
+    if (btnM) btnM.textContent = lang === 'ru' ? '🇷🇺 Русский' : '🇬🇧 English';
+    // html lang attr
+    document.documentElement.lang = lang;
+    localStorage.setItem('resumeai_lang', lang);
+  }
+
+  window.toggleLang = function() {
+    applyLang(currentLang === 'ru' ? 'en' : 'ru');
+  };
+
+  // Init on load
+  applyLang(detectLang());
 })();
 </script>
 </body>

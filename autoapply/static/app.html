@@ -401,18 +401,20 @@
 <nav id="navbar" style="display:none;">
   <a class="nav-logo" onclick="navigate('#dashboard')">АвтоОтклик</a>
   <div class="nav-links">
-    <button class="nav-link" onclick="navigate('#dashboard')">Кампании</button>
-    <button class="nav-link" onclick="navigate('#applications')">Заявки</button>
-    <button class="nav-link" onclick="navigate('#resume')">📄 Резюме</button>
-    <button class="nav-link" onclick="navigate('#cover')">✉️ Письма</button>
-    <button class="nav-link" onclick="navigate('#jobs')">🔍 Вакансии</button>
-    <button class="nav-link" onclick="navigate('#tracker')">📋 Трекер</button>
-    <button class="nav-link" onclick="navigate('#settings')">Настройки</button>
+    <button class="nav-link" onclick="navigate('#dashboard')" data-i18n="nav.campaigns">Кампании</button>
+    <button class="nav-link" onclick="navigate('#applications')" data-i18n="nav.applications">Заявки</button>
+    <button class="nav-link" onclick="navigate('#resume')" data-i18n="nav.resume">📄 Резюме</button>
+    <button class="nav-link" onclick="navigate('#cover')" data-i18n="nav.cover">✉️ Письма</button>
+    <button class="nav-link" onclick="navigate('#jobs')" data-i18n="nav.jobs">🔍 Вакансии</button>
+    <button class="nav-link" onclick="navigate('#tracker')" data-i18n="nav.tracker">📋 Трекер</button>
+    <button class="nav-link" onclick="navigate('#settings')" data-i18n="nav.settings">Настройки</button>
+    <button class="nav-link" onclick="navigate('#interview')" data-i18n="nav.interview">🎯 Интервью</button>
   </div>
   <div class="nav-right">
     <span class="plan-badge plan-free" id="nav-plan">FREE</span>
-    <button class="nav-link" onclick="navigate('#billing')">💳 Тарифы</button>
-    <button class="btn-logout" onclick="logout()">Выйти</button>
+    <button class="nav-link" onclick="navigate('#billing')" data-i18n="nav.billing">💳 Тарифы</button>
+    <button class="btn-logout" onclick="toggleAppLang()" id="appLangBtn" title="Switch language" style="font-size:15px;padding:5px 10px;">🇷🇺</button>
+    <button class="btn-logout" onclick="logout()" data-i18n="nav.logout">Выйти</button>
   </div>
   <div class="hamburger" onclick="toggleMobile()">
     <span></span><span></span><span></span>
@@ -426,6 +428,7 @@
   <button class="nav-link" onclick="navigate('#jobs');toggleMobile()">🔍 Вакансии</button>
   <button class="nav-link" onclick="navigate('#tracker');toggleMobile()">📋 Трекер</button>
   <button class="nav-link" onclick="navigate('#settings');toggleMobile()">Настройки</button>
+  <button class="nav-link" onclick="navigate('#interview');toggleMobile()">🎯 Интервью</button>
   <button class="nav-link" onclick="navigate('#billing');toggleMobile()">💳 Тарифы</button>
   <button class="nav-link" onclick="logout()">Выйти</button>
 </div>
@@ -1066,7 +1069,10 @@
         <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:4px;">📄 Мои Резюме</h2>
         <p style="color:var(--text-muted);font-size:0.9rem;">Загружайте резюме и проверяйте ATS-совместимость</p>
       </div>
-      <button class="btn-primary" onclick="document.getElementById('resume-file-input').click()">+ Загрузить резюме</button>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn-secondary" onclick="openLinkedInModal()" style="display:flex;align-items:center;gap:6px;">💼 Импорт из LinkedIn</button>
+        <button class="btn-primary" onclick="document.getElementById('resume-file-input').click()">+ Загрузить резюме</button>
+      </div>
       <input type="file" id="resume-file-input" accept=".pdf,.docx,.txt" style="display:none;" onchange="handleResumeUpload(this)" />
     </div>
 
@@ -1335,6 +1341,164 @@
 </div>
 
 <!-- ============================== MODALS ============================== -->
+
+<!-- ============================== PAGE: INTERVIEW PREP ============================== -->
+<div class="page" id="page-interview">
+  <div class="container">
+    <div style="text-align:center;margin-bottom:32px;">
+      <h2 style="font-size:1.8rem;font-weight:800;margin-bottom:8px;">🎯 Подготовка к Интервью</h2>
+      <p style="color:var(--text-muted);">AI-оценка ваших ответов по методу STAR. Ни один конкурент не имеет этого.</p>
+    </div>
+
+    <!-- Mode tabs -->
+    <div style="display:flex;gap:8px;margin-bottom:24px;background:var(--bg);border-radius:12px;padding:4px;max-width:500px;">
+      <button class="tab-btn active" id="iTab-mock" onclick="switchInterviewTab('mock')" style="flex:1;padding:10px;border:none;background:var(--card2);color:var(--text);border-radius:8px;cursor:pointer;font-family:inherit;font-weight:600;">🎤 Мок-интервью</button>
+      <button class="tab-btn" id="iTab-library" onclick="switchInterviewTab('library')" style="flex:1;padding:10px;border:none;background:none;color:var(--text-muted);border-radius:8px;cursor:pointer;font-family:inherit;">📚 Банк вопросов</button>
+    </div>
+
+    <!-- === MOCK INTERVIEW === -->
+    <div id="interview-mock">
+      <div class="card" style="max-width:700px;margin-bottom:20px;">
+        <div class="form-group">
+          <label>Желаемая должность</label>
+          <input class="input" id="interview-job-title" placeholder="например: Python Developer, Product Manager..." value="" style="max-width:400px;" />
+        </div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn-primary" onclick="startMockInterview()" style="width:auto;">🚀 Начать мок-интервью</button>
+          <button class="btn-secondary" onclick="nextInterviewQuestion()" id="btn-next-q" style="display:none;">→ Следующий вопрос</button>
+        </div>
+      </div>
+
+      <!-- Question card -->
+      <div class="card" id="interview-question-card" style="max-width:700px;display:none;margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <span style="font-size:0.8rem;color:var(--text-muted);" id="interview-q-counter">Вопрос 1 / 7</span>
+          <span class="plan-badge" id="interview-q-category" style="background:rgba(124,58,237,0.15);color:#a78bfa;border:1px solid rgba(124,58,237,0.3);">Поведенческий</span>
+        </div>
+        <p id="interview-question-text" style="font-size:1.1rem;font-weight:600;line-height:1.5;margin-bottom:16px;"></p>
+        <div class="form-group">
+          <label>Ваш ответ (используйте метод STAR: Ситуация → Задача → Действие → Результат)</label>
+          <textarea class="textarea" id="interview-answer" placeholder="Опишите конкретную ситуацию из вашего опыта..." style="min-height:140px;"></textarea>
+        </div>
+        <button class="btn-primary" onclick="evaluateAnswer()" id="btn-evaluate">🤖 Оценить ответ AI</button>
+      </div>
+
+      <!-- AI Evaluation result -->
+      <div class="card" id="interview-eval-card" style="max-width:700px;display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+          <h3 style="font-size:1.1rem;font-weight:700;">📊 Оценка AI</h3>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="color:var(--text-muted);font-size:0.85rem;">Оценка:</span>
+            <span id="eval-score" style="font-size:1.6rem;font-weight:800;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">—</span>
+            <span style="color:var(--text-muted);font-size:0.85rem;">/10</span>
+          </div>
+        </div>
+
+        <!-- STAR breakdown -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;" id="eval-star-grid">
+          <div class="card" style="background:var(--bg);padding:12px;">
+            <div style="font-size:0.75rem;font-weight:700;color:#a78bfa;margin-bottom:4px;">S — СИТУАЦИЯ</div>
+            <div id="eval-star-s" style="font-size:0.85rem;color:var(--text-muted);"></div>
+          </div>
+          <div class="card" style="background:var(--bg);padding:12px;">
+            <div style="font-size:0.75rem;font-weight:700;color:#60a5fa;margin-bottom:4px;">T — ЗАДАЧА</div>
+            <div id="eval-star-t" style="font-size:0.85rem;color:var(--text-muted);"></div>
+          </div>
+          <div class="card" style="background:var(--bg);padding:12px;">
+            <div style="font-size:0.75rem;font-weight:700;color:#34d399;margin-bottom:4px;">A — ДЕЙСТВИЕ</div>
+            <div id="eval-star-a" style="font-size:0.85rem;color:var(--text-muted);"></div>
+          </div>
+          <div class="card" style="background:var(--bg);padding:12px;">
+            <div style="font-size:0.75rem;font-weight:700;color:#fbbf24;margin-bottom:4px;">R — РЕЗУЛЬТАТ</div>
+            <div id="eval-star-r" style="font-size:0.85rem;color:var(--text-muted);"></div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+          <div>
+            <div style="font-size:0.82rem;font-weight:600;color:#34d399;margin-bottom:6px;">✅ Сильные стороны</div>
+            <ul id="eval-strengths" style="list-style:none;font-size:0.85rem;color:var(--text-muted);line-height:1.8;"></ul>
+          </div>
+          <div>
+            <div style="font-size:0.82rem;font-weight:600;color:#f59e0b;margin-bottom:6px;">💡 Как улучшить</div>
+            <ul id="eval-improvements" style="list-style:none;font-size:0.85rem;color:var(--text-muted);line-height:1.8;"></ul>
+          </div>
+        </div>
+
+        <div style="background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.2);border-radius:10px;padding:14px;">
+          <div style="font-size:0.82rem;font-weight:600;color:#a78bfa;margin-bottom:6px;">💬 Пример улучшенного ответа</div>
+          <div id="eval-better" style="font-size:0.85rem;color:var(--text-muted);line-height:1.6;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- === QUESTION LIBRARY === -->
+    <div id="interview-library" style="display:none;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;" id="qlib-cats">
+        <button class="btn-secondary btn-sm active" onclick="filterQLib('all')" id="qcat-all">Все (100)</button>
+        <button class="btn-secondary btn-sm" onclick="filterQLib('behavioral')" id="qcat-behavioral">Поведенческие (20)</button>
+        <button class="btn-secondary btn-sm" onclick="filterQLib('motivation')" id="qcat-motivation">Мотивация (15)</button>
+        <button class="btn-secondary btn-sm" onclick="filterQLib('situational')" id="qcat-situational">Ситуационные (20)</button>
+        <button class="btn-secondary btn-sm" onclick="filterQLib('salary')" id="qcat-salary">Переговоры (10)</button>
+        <button class="btn-secondary btn-sm" onclick="filterQLib('company')" id="qcat-company">О компании (15)</button>
+        <button class="btn-secondary btn-sm" onclick="filterQLib('technical')" id="qcat-technical">Технические (20)</button>
+      </div>
+      <div id="qlib-list" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- LinkedIn Import Modal -->
+<div class="modal-overlay" id="modal-linkedin-import" style="display:none;">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-title">💼 Импорт профиля LinkedIn</div>
+    <div style="display:flex;gap:0;background:var(--bg);border-radius:10px;padding:4px;margin-bottom:20px;">
+      <button id="litab-url" onclick="switchLiTab('url')" style="flex:1;padding:9px;border:none;background:var(--card2);color:var(--text);border-radius:8px;cursor:pointer;font-family:inherit;font-size:0.88rem;font-weight:600;">🔗 По URL</button>
+      <button id="litab-zip" onclick="switchLiTab('zip')" style="flex:1;padding:9px;border:none;background:none;color:var(--text-muted);border-radius:8px;cursor:pointer;font-family:inherit;font-size:0.88rem;">📦 Экспорт ZIP</button>
+    </div>
+
+    <!-- Tab: URL -->
+    <div id="lipane-url">
+      <div class="form-group">
+        <label>Ссылка на ваш LinkedIn профиль</label>
+        <input class="input" id="li-import-url" placeholder="https://linkedin.com/in/your-profile" />
+      </div>
+      <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:8px;padding:10px 12px;font-size:0.82rem;color:#f59e0b;margin-bottom:16px;">
+        ⚠️ LinkedIn может блокировать автоматический парсинг. Если не сработает — используйте вкладку «Экспорт ZIP».
+      </div>
+      <div class="modal-actions">
+        <button class="btn-primary" onclick="importLinkedInUrl()">Импортировать</button>
+        <button class="btn-secondary" onclick="closeModal('modal-linkedin-import')">Отмена</button>
+      </div>
+    </div>
+
+    <!-- Tab: ZIP -->
+    <div id="lipane-zip" style="display:none;">
+      <div style="background:rgba(37,99,235,0.08);border:1px solid rgba(37,99,235,0.2);border-radius:10px;padding:14px;margin-bottom:16px;font-size:0.85rem;line-height:1.6;color:var(--text-muted);">
+        <strong style="color:var(--text);">Как получить файл экспорта:</strong><br>
+        1. Откройте LinkedIn → Настройки → Конфиденциальность данных<br>
+        2. «Получить копию своих данных» → Выберите <strong>«Данные профиля»</strong><br>
+        3. Нажмите «Запросить архив» → дождитесь письма (~10 мин)<br>
+        4. Скачайте ZIP и загрузите ниже
+      </div>
+      <div class="form-group">
+        <label>Загрузить LinkedIn data export (ZIP)</label>
+        <input type="file" id="li-import-zip" class="input" accept=".zip" style="padding:8px;" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn-primary" onclick="importLinkedInZip()">Импортировать из ZIP</button>
+        <button class="btn-secondary" onclick="closeModal('modal-linkedin-import')">Отмена</button>
+      </div>
+    </div>
+
+    <!-- Result -->
+    <div id="li-import-result" style="display:none;margin-top:16px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:10px;padding:14px;">
+      <div style="font-size:0.85rem;font-weight:600;color:#10b981;margin-bottom:8px;">✅ Данные импортированы!</div>
+      <div id="li-import-summary" style="font-size:0.82rem;color:var(--text-muted);line-height:1.7;"></div>
+      <button class="btn-primary" style="margin-top:12px;" onclick="closeModal('modal-linkedin-import')">Готово</button>
+    </div>
+  </div>
+</div>
 
 <!-- LinkedIn Modal -->
 <div class="modal-overlay" id="modal-linkedin">
@@ -3054,6 +3218,354 @@
     .then(function(r){return r.json();}).then(function(d){addMsg('bot',d.answer||'Напишите нам: @resumeai_support');}).catch(function(){addMsg('bot','Напишите нам: @resumeai_support');}).finally(function(){snd.disabled=false;});
   }
   snd.onclick=ask;inp.onkeydown=function(e){if(e.key==='Enter')ask();};
+})();
+</script>
+
+<!-- ═══════════ LINKEDIN IMPORT JS ═══════════ -->
+<script>
+function openLinkedInModal() {
+  document.getElementById('modal-linkedin-import').style.display = 'flex';
+  document.getElementById('li-import-result').style.display = 'none';
+  switchLiTab('url');
+}
+
+function switchLiTab(tab) {
+  document.getElementById('lipane-url').style.display = tab==='url' ? 'block' : 'none';
+  document.getElementById('lipane-zip').style.display = tab==='zip' ? 'block' : 'none';
+  document.getElementById('litab-url').style.cssText = tab==='url'
+    ? 'flex:1;padding:9px;border:none;background:var(--card2);color:var(--text);border-radius:8px;cursor:pointer;font-family:inherit;font-size:0.88rem;font-weight:600;'
+    : 'flex:1;padding:9px;border:none;background:none;color:var(--text-muted);border-radius:8px;cursor:pointer;font-family:inherit;font-size:0.88rem;';
+  document.getElementById('litab-zip').style.cssText = tab==='zip'
+    ? 'flex:1;padding:9px;border:none;background:var(--card2);color:var(--text);border-radius:8px;cursor:pointer;font-family:inherit;font-size:0.88rem;font-weight:600;'
+    : 'flex:1;padding:9px;border:none;background:none;color:var(--text-muted);border-radius:8px;cursor:pointer;font-family:inherit;font-size:0.88rem;';
+}
+
+async function importLinkedInUrl() {
+  const url = document.getElementById('li-import-url').value.trim();
+  if (!url || !url.includes('linkedin.com')) { showToast('Введите корректную ссылку LinkedIn','error'); return; }
+  showToast('Импортирую профиль...','info');
+  const token = localStorage.getItem('aa_token');
+  try {
+    const r = await fetch('/api/resume/import-linkedin', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+      body: JSON.stringify({linkedin_url: url})
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail || 'Ошибка');
+    showLinkedInResult(data);
+  } catch(e) {
+    showToast('Не удалось импортировать: ' + e.message, 'error');
+  }
+}
+
+async function importLinkedInZip() {
+  const file = document.getElementById('li-import-zip').files[0];
+  if (!file) { showToast('Выберите ZIP файл','error'); return; }
+  showToast('Обрабатываю ZIP...','info');
+  const token = localStorage.getItem('aa_token');
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const r = await fetch('/api/resume/import-linkedin', {
+      method: 'POST',
+      headers: {'Authorization':`Bearer ${token}`},
+      body: fd
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail || 'Ошибка');
+    showLinkedInResult(data);
+  } catch(e) {
+    showToast('Ошибка обработки ZIP: ' + e.message, 'error');
+  }
+}
+
+function showLinkedInResult(data) {
+  const lines = [];
+  if (data.name) lines.push(`👤 Имя: ${data.name}`);
+  if (data.headline) lines.push(`💼 Должность: ${data.headline}`);
+  if (data.email) lines.push(`📧 Email: ${data.email}`);
+  if (data.experience?.length) lines.push(`🏢 Опыт: ${data.experience.length} позиций`);
+  if (data.education?.length) lines.push(`🎓 Образование: ${data.education.length} записей`);
+  if (data.skills?.length) lines.push(`⚡ Навыки: ${data.skills.slice(0,5).join(', ')}${data.skills.length>5?'...':''}`);
+  document.getElementById('li-import-summary').innerHTML = lines.join('<br>');
+  document.getElementById('lipane-url').style.display = 'none';
+  document.getElementById('lipane-zip').style.display = 'none';
+  document.getElementById('li-import-result').style.display = 'block';
+  // Store in localStorage for resume builder pre-fill
+  localStorage.setItem('linkedin_import', JSON.stringify(data));
+  showToast('LinkedIn профиль импортирован!', 'success');
+}
+</script>
+
+<!-- ═══════════ INTERVIEW PREP JS ═══════════ -->
+<script>
+const INTERVIEW_QUESTIONS = [
+  // Behavioral (20)
+  {cat:'behavioral', text:'Расскажите о ситуации, когда вам пришлось работать под жёстким дедлайном.'},
+  {cat:'behavioral', text:'Опишите случай, когда вы не согласились с решением руководителя.'},
+  {cat:'behavioral', text:'Расскажите о самом сложном проекте в вашей карьере.'},
+  {cat:'behavioral', text:'Приведите пример, когда вы допустили ошибку. Что вы сделали?'},
+  {cat:'behavioral', text:'Опишите ситуацию, когда вам пришлось быстро обучиться новому навыку.'},
+  {cat:'behavioral', text:'Расскажите о случае, когда вы взяли на себя инициативу без просьбы руководителя.'},
+  {cat:'behavioral', text:'Опишите конфликт с коллегой и как вы его разрешили.'},
+  {cat:'behavioral', text:'Приведите пример успешного проекта, которым вы гордитесь.'},
+  {cat:'behavioral', text:'Расскажите о ситуации, когда вам нужно было убедить команду.'},
+  {cat:'behavioral', text:'Опишите случай, когда приоритеты резко изменились. Как вы адаптировались?'},
+  {cat:'behavioral', text:'Расскажите о времени, когда вы работали с трудным клиентом или стейкхолдером.'},
+  {cat:'behavioral', text:'Приведите пример, когда ваша идея провалилась. Что вы вынесли из этого?'},
+  {cat:'behavioral', text:'Опишите ситуацию, когда вам пришлось принять решение с неполными данными.'},
+  {cat:'behavioral', text:'Расскажите о достижении, которое потребовало длительных усилий.'},
+  {cat:'behavioral', text:'Как вы справляетесь, когда несколько проектов требуют внимания одновременно?'},
+  {cat:'behavioral', text:'Опишите случай, когда вы помогли коллеге, который испытывал трудности.'},
+  {cat:'behavioral', text:'Расскажите о времени, когда вы внедрили процесс или инструмент, улучшивший работу команды.'},
+  {cat:'behavioral', text:'Приведите пример, когда вам пришлось работать с людьми из разных культур или функций.'},
+  {cat:'behavioral', text:'Опишите ситуацию, когда вы получили сложную обратную связь.'},
+  {cat:'behavioral', text:'Расскажите о случае, когда вам пришлось сказать «нет» важному запросу.'},
+  // Motivation (15)
+  {cat:'motivation', text:'Почему вы хотите работать именно в нашей компании?'},
+  {cat:'motivation', text:'Где вы видите себя через 5 лет?'},
+  {cat:'motivation', text:'Почему вы уходите с текущего места работы?'},
+  {cat:'motivation', text:'Что для вас важно в работе?'},
+  {cat:'motivation', text:'Почему вы выбрали именно эту сферу?'},
+  {cat:'motivation', text:'Что вас мотивирует каждый день приходить на работу?'},
+  {cat:'motivation', text:'Расскажите о своей идеальной рабочей среде.'},
+  {cat:'motivation', text:'Что вы ищете в следующей роли?'},
+  {cat:'motivation', text:'Почему мы должны выбрать вас среди других кандидатов?'},
+  {cat:'motivation', text:'Как вы поддерживаете work-life balance?'},
+  {cat:'motivation', text:'Какие профессиональные цели вы ставите на ближайший год?'},
+  {cat:'motivation', text:'Чем вас привлекает эта конкретная позиция?'},
+  {cat:'motivation', text:'Как ваш опыт соответствует нашим требованиям?'},
+  {cat:'motivation', text:'Какие ценности важны для вас в работодателе?'},
+  {cat:'motivation', text:'Расскажите о себе в трёх словах.'},
+  // Situational (20)
+  {cat:'situational', text:'Что бы вы сделали, если бы узнали, что коллега нарушает политику компании?'},
+  {cat:'situational', text:'Как бы вы поступили, если бы получили два срочных задания одновременно?'},
+  {cat:'situational', text:'Что бы вы сделали, если бы клиент был груб с вами?'},
+  {cat:'situational', text:'Как бы вы решили проблему, если бы команда не могла прийти к консенсусу?'},
+  {cat:'situational', text:'Представьте, что проект срывает дедлайн. Ваши действия?'},
+  {cat:'situational', text:'Что бы вы сделали, если бы руководитель поставил нереалистичную задачу?'},
+  {cat:'situational', text:'Как бы вы приоритизировали задачи при ограниченных ресурсах?'},
+  {cat:'situational', text:'Что бы вы сделали, если бы обнаружили ошибку в работе, уже сданной клиенту?'},
+  {cat:'situational', text:'Как бы вы вовлекли пассивного члена команды в проект?'},
+  {cat:'situational', text:'Что бы вы сделали в первые 90 дней на новой должности?'},
+  {cat:'situational', text:'Как бы вы объяснили сложную техническую концепцию нетехническому стейкхолдеру?'},
+  {cat:'situational', text:'Представьте, что ваш бюджет урезали на 30%. Как вы адаптируете план?'},
+  {cat:'situational', text:'Как вы бы выстраивали отношения с новой командой удалённо?'},
+  {cat:'situational', text:'Что бы вы сделали, если бы ключевой сотрудник неожиданно ушёл из проекта?'},
+  {cat:'situational', text:'Как бы вы управляли проектом без чёткого ТЗ?'},
+  {cat:'situational', text:'Что бы вы сделали, если бы конкурент выпустил аналогичный продукт?'},
+  {cat:'situational', text:'Как бы вы добились результата без прямых полномочий?'},
+  {cat:'situational', text:'Представьте разногласие между техническими и бизнес-требованиями. Как разрешите?'},
+  {cat:'situational', text:'Что бы вы сделали, если бы ваши данные противоречили интуиции руководства?'},
+  {cat:'situational', text:'Как бы вы управляли ожиданиями клиента при задержке проекта?'},
+  // Salary negotiation (10)
+  {cat:'salary', text:'Каковы ваши зарплатные ожидания?'},
+  {cat:'salary', text:'Почему вы считаете, что стоите именно столько?'},
+  {cat:'salary', text:'Наш бюджет ниже вашего запроса. Готовы ли вы обсудить?'},
+  {cat:'salary', text:'Какой у вас текущий доход?'},
+  {cat:'salary', text:'Рассматриваете ли вы другие офферы прямо сейчас?'},
+  {cat:'salary', text:'Что важнее: зарплата или карьерный рост?'},
+  {cat:'salary', text:'Готовы ли вы обсудить equity/опционы вместо части оклада?'},
+  {cat:'salary', text:'Каковы ваши ожидания по пересмотру зарплаты?'},
+  {cat:'salary', text:'Что помимо оклада важно в компенсационном пакете?'},
+  {cat:'salary', text:'Как вы пришли к этой цифре?'},
+  // Company (15)
+  {cat:'company', text:'Что вы знаете о нашей компании?'},
+  {cat:'company', text:'Как вы узнали о нашей вакансии?'},
+  {cat:'company', text:'Что вы думаете о нашем продукте/сервисе?'},
+  {cat:'company', text:'Как вы могли бы улучшить наш продукт?'},
+  {cat:'company', text:'Знакомы ли вы с нашими конкурентами?'},
+  {cat:'company', text:'Какие тренды в нашей отрасли вы считаете ключевыми?'},
+  {cat:'company', text:'Что бы вы изменили в нашей компании, если бы могли?'},
+  {cat:'company', text:'Как вы относитесь к нашей корпоративной культуре?'},
+  {cat:'company', text:'Есть ли у вас вопросы к нам?'},
+  {cat:'company', text:'Что вас привлекло именно в нашем объявлении?'},
+  {cat:'company', text:'Как вы видите развитие нашего рынка через 3 года?'},
+  {cat:'company', text:'Какую роль, по-вашему, играет эта позиция в достижении целей компании?'},
+  {cat:'company', text:'Что для вас означает успех на этой позиции?'},
+  {cat:'company', text:'Как бы ваши бывшие коллеги описали вас?'},
+  {cat:'company', text:'Расскажите, почему ваш профиль идеально подходит именно нам.'},
+  // Technical (20)
+  {cat:'technical', text:'Расскажите о стеке технологий в вашем последнем проекте.'},
+  {cat:'technical', text:'Как вы подходите к оптимизации производительности?'},
+  {cat:'technical', text:'Опишите ваш опыт с Agile/Scrum.'},
+  {cat:'technical', text:'Как вы обеспечиваете качество кода?'},
+  {cat:'technical', text:'Расскажите о самой сложной технической задаче, которую вы решили.'},
+  {cat:'technical', text:'Как вы остаётесь в курсе новых технологий?'},
+  {cat:'technical', text:'Опишите ваш подход к проектированию систем.'},
+  {cat:'technical', text:'Как вы работаете с техническим долгом?'},
+  {cat:'technical', text:'Расскажите о вашем опыте с CI/CD.'},
+  {cat:'technical', text:'Как вы обрабатываете ошибки и исключения в продакшене?'},
+  {cat:'technical', text:'Опишите ваш опыт с базами данных (SQL/NoSQL).'},
+  {cat:'technical', text:'Как вы подходите к написанию тестов?'},
+  {cat:'technical', text:'Расскажите о вашем опыте с облачными сервисами.'},
+  {cat:'technical', text:'Как вы проводите код-ревью?'},
+  {cat:'technical', text:'Опишите ваш опыт работы с API.'},
+  {cat:'technical', text:'Как вы решаете проблемы безопасности в коде?'},
+  {cat:'technical', text:'Расскажите о вашем опыте с микросервисами.'},
+  {cat:'technical', text:'Как вы документируете технические решения?'},
+  {cat:'technical', text:'Опишите ваш подход к рефакторингу.'},
+  {cat:'technical', text:'Как вы оцениваете трудозатраты на задачи?'},
+];
+
+let interviewSession = { questions: [], current: 0, jobTitle: '' };
+let interviewTabMode = 'mock';
+
+function switchInterviewTab(tab) {
+  interviewTabMode = tab;
+  document.getElementById('iTab-mock').style.cssText = tab==='mock' ? 'flex:1;padding:10px;border:none;background:var(--card2);color:var(--text);border-radius:8px;cursor:pointer;font-family:inherit;font-weight:600;' : 'flex:1;padding:10px;border:none;background:none;color:var(--text-muted);border-radius:8px;cursor:pointer;font-family:inherit;';
+  document.getElementById('iTab-library').style.cssText = tab==='library' ? 'flex:1;padding:10px;border:none;background:var(--card2);color:var(--text);border-radius:8px;cursor:pointer;font-family:inherit;font-weight:600;' : 'flex:1;padding:10px;border:none;background:none;color:var(--text-muted);border-radius:8px;cursor:pointer;font-family:inherit;';
+  document.getElementById('interview-mock').style.display = tab==='mock' ? 'block' : 'none';
+  document.getElementById('interview-library').style.display = tab==='library' ? 'block' : 'none';
+  if (tab === 'library') renderQLib(INTERVIEW_QUESTIONS);
+}
+
+function startMockInterview() {
+  const title = document.getElementById('interview-job-title').value.trim() || 'специалист';
+  interviewSession.jobTitle = title;
+  // Mix: 3 behavioral + 2 situational + 1 motivation + 1 salary
+  const pick = (cat, n) => INTERVIEW_QUESTIONS.filter(q=>q.cat===cat).sort(()=>Math.random()-0.5).slice(0,n);
+  interviewSession.questions = [...pick('behavioral',3),...pick('situational',2),...pick('motivation',1),...pick('salary',1)];
+  interviewSession.current = 0;
+  showInterviewQuestion();
+}
+
+function showInterviewQuestion() {
+  const q = interviewSession.questions[interviewSession.current];
+  if (!q) { showToast('Интервью завершено! Отличная работа! 🎉','success'); return; }
+  document.getElementById('interview-question-card').style.display = 'block';
+  document.getElementById('interview-eval-card').style.display = 'none';
+  document.getElementById('interview-q-counter').textContent = `Вопрос ${interviewSession.current+1} / ${interviewSession.questions.length}`;
+  const catNames = {behavioral:'Поведенческий',situational:'Ситуационный',motivation:'Мотивация',salary:'Переговоры о зарплате',company:'О компании',technical:'Технический'};
+  document.getElementById('interview-q-category').textContent = catNames[q.cat] || q.cat;
+  document.getElementById('interview-question-text').textContent = q.text;
+  document.getElementById('interview-answer').value = '';
+  document.getElementById('btn-next-q').style.display = 'none';
+  document.getElementById('btn-evaluate').style.display = 'inline-flex';
+}
+
+async function evaluateAnswer() {
+  const answer = document.getElementById('interview-answer').value.trim();
+  if (!answer || answer.length < 20) { showToast('Напишите более подробный ответ','error'); return; }
+  const q = interviewSession.questions[interviewSession.current];
+  const btn = document.getElementById('btn-evaluate');
+  btn.disabled = true; btn.textContent = '🤖 Оцениваю...';
+  try {
+    const result = await api('/interview/evaluate', 'POST', {
+      question: q.text, answer, job_title: interviewSession.jobTitle
+    });
+    if (!result) return;
+    document.getElementById('eval-score').textContent = result.score || '—';
+    const star = result.star_breakdown || {};
+    document.getElementById('eval-star-s').textContent = star.situation || '—';
+    document.getElementById('eval-star-t').textContent = star.task || '—';
+    document.getElementById('eval-star-a').textContent = star.action || '—';
+    document.getElementById('eval-star-r').textContent = star.result || '—';
+    const sEl = document.getElementById('eval-strengths');
+    sEl.innerHTML = (result.strengths||[]).map(s=>`<li>✓ ${s}</li>`).join('');
+    const iEl = document.getElementById('eval-improvements');
+    iEl.innerHTML = (result.improvements||[]).map(s=>`<li>→ ${s}</li>`).join('');
+    document.getElementById('eval-better').textContent = result.better_answer || '';
+    document.getElementById('interview-eval-card').style.display = 'block';
+    document.getElementById('btn-next-q').style.display = 'inline-flex';
+    btn.style.display = 'none';
+  } catch(e) {
+    showToast('Ошибка оценки. Попробуйте снова.','error');
+  } finally {
+    btn.disabled = false; btn.textContent = '🤖 Оценить ответ AI';
+  }
+}
+
+function nextInterviewQuestion() {
+  interviewSession.current++;
+  showInterviewQuestion();
+}
+
+let currentQLibFilter = 'all';
+function filterQLib(cat) {
+  currentQLibFilter = cat;
+  document.querySelectorAll('#qlib-cats button').forEach(b=>b.classList.remove('active'));
+  const btn = document.getElementById('qcat-'+cat);
+  if (btn) btn.classList.add('active');
+  const list = cat==='all' ? INTERVIEW_QUESTIONS : INTERVIEW_QUESTIONS.filter(q=>q.cat===cat);
+  renderQLib(list);
+}
+
+function renderQLib(list) {
+  const catNames = {behavioral:'Поведенческий',situational:'Ситуационный',motivation:'Мотивация',salary:'Переговоры',company:'О компании',technical:'Технический'};
+  document.getElementById('qlib-list').innerHTML = list.map((q,i) => `
+    <div class="card card-sm" style="cursor:pointer;" onclick="useQFromLib(${INTERVIEW_QUESTIONS.indexOf(q)})">
+      <div style="font-size:0.75rem;color:#a78bfa;font-weight:600;margin-bottom:6px;">${catNames[q.cat]||q.cat}</div>
+      <div style="font-size:0.88rem;line-height:1.5;">${q.text}</div>
+      <div style="margin-top:8px;font-size:0.78rem;color:var(--text-muted);">Нажмите, чтобы практиковаться →</div>
+    </div>
+  `).join('');
+}
+
+function useQFromLib(idx) {
+  const q = INTERVIEW_QUESTIONS[idx];
+  interviewSession.questions = [q];
+  interviewSession.current = 0;
+  interviewSession.jobTitle = document.getElementById('interview-job-title').value.trim() || 'специалист';
+  switchInterviewTab('mock');
+  showInterviewQuestion();
+}
+</script>
+
+<!-- ═══════════ i18n ═══════════ -->
+<script>
+(function(){
+  var T = {
+    ru: {
+      'nav.campaigns':    'Кампании',
+      'nav.applications': 'Заявки',
+      'nav.resume':       '📄 Резюме',
+      'nav.cover':        '✉️ Письма',
+      'nav.jobs':         '🔍 Вакансии',
+      'nav.tracker':      '📋 Трекер',
+      'nav.settings':     'Настройки',
+      'nav.billing':      '💳 Тарифы',
+      'nav.interview':    '🎯 Интервью',
+      'nav.logout':       'Выйти'
+    },
+    en: {
+      'nav.campaigns':    'Campaigns',
+      'nav.applications': 'Applications',
+      'nav.resume':       '📄 Resume',
+      'nav.cover':        '✉️ Cover Letters',
+      'nav.jobs':         '🔍 Jobs',
+      'nav.tracker':      '📋 Tracker',
+      'nav.settings':     'Settings',
+      'nav.billing':      '💳 Plans',
+      'nav.interview':    '🎯 Interview',
+      'nav.logout':       'Logout'
+    }
+  };
+
+  var currentLang = 'ru';
+
+  function applyLang(lang) {
+    currentLang = lang;
+    var dict = T[lang] || T.ru;
+    document.querySelectorAll('[data-i18n]').forEach(function(el) {
+      var key = el.getAttribute('data-i18n');
+      if (dict[key] !== undefined) el.textContent = dict[key];
+    });
+    var btn = document.getElementById('appLangBtn');
+    if (btn) btn.textContent = lang === 'ru' ? '🇷🇺' : '🇬🇧';
+    document.documentElement.lang = lang;
+    localStorage.setItem('resumeai_lang', lang);
+  }
+
+  window.toggleAppLang = function() {
+    applyLang(currentLang === 'ru' ? 'en' : 'ru');
+  };
+
+  var saved = localStorage.getItem('resumeai_lang');
+  var lang = (saved === 'en' || saved === 'ru') ? saved :
+    ((navigator.language || 'ru').toLowerCase().startsWith('ru') ? 'ru' : 'en');
+  applyLang(lang);
 })();
 </script>
 </body>
