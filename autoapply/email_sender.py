@@ -83,7 +83,7 @@ def _send_via_resend_api(to: str, subject: str, html: str, text: str) -> bool:
         from_addr = "noreply@resumeai-bot.ru"
 
     payload = json.dumps({
-        "from": f"АвтоОтклик <{from_addr}>",
+        "from": f"ResumeAI <{from_addr}>",
         "to": [to],
         "subject": subject,
         "html": html,
@@ -117,6 +117,10 @@ def _send_via_smtp(to: str, subject: str, html: str, text: str) -> bool:
     """Send via SMTP. Fallback if HTTP API fails."""
     if not SMTP_HOST or not SMTP_USER or not SMTP_PASSWORD:
         return False
+    # Defense-in-depth: validate MX even here so a direct call can't bypass it
+    if not validate_email_mx(to):
+        logger.warning("[email/smtp] MX validation failed for %s — skipping", to)
+        return False
 
     from_addr = SMTP_FROM
     if "resend.dev" in from_addr:
@@ -124,7 +128,7 @@ def _send_via_smtp(to: str, subject: str, html: str, text: str) -> bool:
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
-    msg["From"]    = f"АвтоОтклик <{from_addr}>"
+    msg["From"]    = f"ResumeAI <{from_addr}>"
     msg["To"]      = to
     msg.attach(MIMEText(text, "plain", "utf-8"))
     msg.attach(MIMEText(html, "html",  "utf-8"))

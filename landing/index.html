@@ -2120,38 +2120,361 @@
 <!-- ═══════════════ i18n / Language Toggle ═══════════════ -->
 <script>
 (function(){
+  // ── data-i18n keyed strings (nav + hero) ─────────────
   var T = {
     ru: {
-      'nav.features':   'Возможности',
-      'nav.pricing':    'Цены',
-      'nav.blog':       'Блог',
-      'nav.login':      'Войти',
-      'nav.start':      'Начать бесплатно',
-      'nav.start_arrow':'Начать бесплатно →',
-      'hero.badge':     '🤖 Работает прямо в Telegram и на Web',
-      'hero.h1':        'Получи в <span>3x Больше Интервью.</span> AI Создаёт Идеальное Резюме за 30 Секунд.',
-      'hero.sub':       'Вставь ссылку на вакансию. AI создаёт резюме, сопроводительное письмо и подготовку к интервью — мгновенно. Работает на Web и в Telegram.',
-      'hero.cta1':      'Создать Резюме Бесплатно →',
-      'hero.cta2':      '💬 Или Попробовать в Telegram',
-      'hero.trust':     'Без карты • 1 бесплатное резюме • Готово за 30 секунд'
+      'nav.features':    'Возможности',
+      'nav.pricing':     'Цены',
+      'nav.blog':        'Блог',
+      'nav.login':       'Войти',
+      'nav.start':       'Начать бесплатно',
+      'nav.start_arrow': 'Начать бесплатно →',
+      'hero.badge':      '🤖 Работает прямо в Telegram и на Web',
+      'hero.h1':         'Получи в <span>3x Больше Интервью.</span> AI Создаёт Идеальное Резюме за 30 Секунд.',
+      'hero.sub':        'Вставь ссылку на вакансию. AI создаёт резюме, сопроводительное письмо и подготовку к интервью — мгновенно. Работает на Web и в Telegram.',
+      'hero.cta1':       'Создать Резюме Бесплатно →',
+      'hero.cta2':       '💬 Или Попробовать в Telegram',
+      'hero.trust':      'Без карты • 1 бесплатное резюме • Готово за 30 секунд'
     },
     en: {
-      'nav.features':   'Features',
-      'nav.pricing':    'Pricing',
-      'nav.blog':       'Blog',
-      'nav.login':      'Sign In',
-      'nav.start':      'Start Free',
-      'nav.start_arrow':'Start Free →',
-      'hero.badge':     '🤖 Works in Telegram and on Web',
-      'hero.h1':        'Get <span>3x More Interviews.</span> AI Builds Your Perfect Resume in 30 Seconds.',
-      'hero.sub':       'Paste a job link. AI creates a tailored resume, cover letter, and interview prep — instantly. Works on Web and in Telegram.',
-      'hero.cta1':      'Build Resume Free →',
-      'hero.cta2':      '💬 Or Try in Telegram',
-      'hero.trust':     'No card needed • 1 free resume • Ready in 30 seconds'
+      'nav.features':    'Features',
+      'nav.pricing':     'Pricing',
+      'nav.blog':        'Blog',
+      'nav.login':       'Sign In',
+      'nav.start':       'Start Free',
+      'nav.start_arrow': 'Start Free →',
+      'hero.badge':      '🤖 Works in Telegram and on Web',
+      'hero.h1':         'Get <span>3x More Interviews.</span> AI Builds Your Perfect Resume in 30 Seconds.',
+      'hero.sub':        'Paste a job link. AI creates a tailored resume, cover letter, and interview prep — instantly. Works on Web and in Telegram.',
+      'hero.cta1':       'Build Resume Free →',
+      'hero.cta2':       '💬 Or Try in Telegram',
+      'hero.trust':      'No card needed • 1 free resume • Ready in 30 seconds'
     }
   };
 
+  // ── Comprehensive RU → EN text map (every visible string) ──
+  var RU_EN = {
+    // Animated hero demo
+    'Вставьте ссылку на вакансию': 'Paste the job link',
+    'Поддерживает hh.ru, LinkedIn, Indeed, SuperJob и другие платформы': 'Supports hh.ru, LinkedIn, Indeed, SuperJob and more',
+    'AI анализирует вакансию...': 'AI is analyzing the job…',
+    'Опыт': 'Experience',
+    'Навыки': 'Skills',
+    'Образование': 'Education',
+    'Проекты': 'Projects',
+    '✅ ATS Скор: 94/100': '✅ ATS Score: 94/100',
+    // Social proof bar
+    'Резюме создано': 'Resumes Created',
+    'Писем сгенерировано': 'Letters Generated',
+    'Вакансий проанализировано': 'Jobs Analyzed',
+    '% успешных собеседований': '% Interview Success Rate',
+    // Demo section
+    'Демо': 'Demo',
+    'Попробуй прямо сейчас — без регистрации': 'Try Right Now — No Registration Required',
+    'Вставь ссылку на вакансию — AI мгновенно покажет ATS-ключи, зарплату и красные флаги': 'Paste a job link — AI instantly shows ATS keys, salary, and red flags',
+    'Анализировать вакансию →': 'Analyze Job →',
+    'Или вставьте текст вакансии:': 'Or paste the job description:',
+    'ввести текст': 'enter text',
+    '💰 Зарплата': '💰 Salary',
+    '🔑 Ключевые навыки (ATS)': '🔑 Key Skills (ATS)',
+    '⚠️ Красные флаги': '⚠️ Red Flags',
+    'Создать идеальное резюме под эту вакансию →': 'Create the perfect resume for this job →',
+    // Features
+    'Возможности': 'Features',
+    'Всё для успешного поиска работы': 'Everything for a Successful Job Search',
+    'Мощные AI-инструменты, которые работают за вас 24/7': 'Powerful AI tools that work for you 24/7',
+    'AI Конструктор Резюме': 'AI Resume Builder',
+    'Под конкретную вакансию за 30 сек. Без клише. ATS-оптимизация.': 'Tailored to the job in 30 sec. No clichés. ATS-optimized.',
+    'Генератор Сопроводительных Писем': 'Cover Letter Generator',
+    'Персональные письма точно под требования вакансии': 'Personalized letters matched to each job's requirements',
+    'Подготовка к Интервью (STAR)': 'Interview Prep (STAR Method)',
+    'AI оценивает ответы по методу STAR, находит слабые места': 'AI evaluates answers using STAR method, finds weak spots',
+    'Анализ Вакансии': 'Job Analysis',
+    'Диапазон зарплат, красные флаги, ATS ключи — мгновенно': 'Salary range, red flags, ATS keywords — instantly',
+    'AI Карьерный Ассистент 24/7': 'AI Career Assistant 24/7',
+    'Любой карьерный вопрос, в любое время': 'Any career question, any time',
+    // Telegram banner
+    'Зачем Открывать Ещё Одно Приложение? Карьерный AI Уже в Telegram.': 'Why Open Another App? Career AI is Already in Telegram.',
+    'онлайн': 'online',
+    'Нужно резюме под вакансию Python разработчика': 'I need a resume for a Python developer role',
+    '✅ Готово! Резюме адаптировано под 8 требований вакансии. ATS-скор: 94%': '✅ Done! Resume adapted to 8 job requirements. ATS score: 94%',
+    '📄 Резюме под вакансию за 30 сек — без клише': '📄 Resume tailored to the job in 30 sec — no clichés',
+    '✉️ Сопроводительные письма — персональные, не шаблоны': '✉️ Cover letters — personal, not templates',
+    '🎯 Подготовка к интервью — STAR метод, слабые места': '🎯 Interview prep — STAR method, weak spots',
+    '🔍 Анализ вакансии — зарплата, риски, ATS ключи': '🔍 Job analysis — salary, risks, ATS keywords',
+    '💬 AI карьерный ассистент 24/7': '💬 AI career assistant 24/7',
+    '🧠 Помнит профиль — второе резюме в 1 клик': '🧠 Remembers your profile — second resume in 1 click',
+    '📬 Еженедельный дайджест по понедельникам': '📬 Weekly digest every Monday',
+    '🎁 Реферальная программа — приглашай друзей, получай резюме': '🎁 Referral program — invite friends, earn resumes',
+    'Открыть @topbestworkerbot в Telegram →': 'Open @topbestworkerbot in Telegram →',
+    'Бесплатно: 1 резюме + 1 письмо + 3 AI сообщения. Без карты. Без скачивания.': 'Free: 1 resume + 1 cover letter + 3 AI messages. No card. No download.',
+    // How it works
+    'Как это работает': 'How It Works',
+    'Три шага до оффера': 'Three Steps to an Offer',
+    'Начните искать работу с AI за 5 минут': 'Start your AI job search in 5 minutes',
+    'Загрузи резюме': 'Upload Your Resume',
+    'Загрузите ваше резюме в PDF или Word. AI проанализирует его и выявит ключевые навыки и опыт.': 'Upload your resume in PDF or Word. AI analyzes it and extracts key skills and experience.',
+    'Настрой фильтры': 'Set Up Filters',
+    'Укажите желаемые должности, зарплату, город, формат работы и другие параметры. AI будет искать только подходящие вакансии.': 'Set your desired roles, salary, city, work format and other parameters. AI will search only relevant jobs.',
+    'AI откликается за тебя': 'AI Applies for You',
+    'Сидите дома, а AI рассылает адаптированные резюме и сопроводительные письма на десятки вакансий каждый день.': 'Stay home while AI sends tailored resumes and cover letters to dozens of jobs every day.',
+    // Results
+    'Результаты': 'Results',
+    'Реальные результаты': 'Real Results',
+    'Данные на основе использования платформы': 'Based on platform usage data',
+    'Среднее улучшение ATS-скора': 'Average ATS Score Improvement',
+    'Резюме оптимизированные через AI проходят фильтры в 3x чаще': 'AI-optimized resumes pass filters 3x more often',
+    'Среднее время создания резюме': 'Average Resume Creation Time',
+    'Против 3-4 часов при ручном написании': 'vs. 3–4 hours of manual writing',
+    'Больше приглашений на интервью': 'More Interview Invitations',
+    'У пользователей с AI-оптимизированным резюме': 'For users with AI-optimized resumes',
+    'Средний ATS-скор после оптимизации': 'Average ATS Score After Optimization',
+    'Большинство работодателей отсеивают ниже 60%': 'Most employers filter out below 60%',
+    // Security badges
+    'Шифрование данных': 'Data Encryption',
+    'Ваши данные защищены': 'Your data is protected',
+    'Данные не продаются': 'Data is never sold',
+    'Никогда третьим лицам': 'Never to third parties',
+    'Безопасная оплата': 'Secure payments',
+    'Сделано в России': 'Made in Russia',
+    'Поддержка на русском': 'Russian language support',
+    // Testimonials
+    'Отзывы': 'Reviews',
+    'Что говорят пользователи': 'What Our Users Say',
+    'Реальные отзывы от людей которые нашли работу с ResumeAI': 'Real reviews from people who found jobs with ResumeAI',
+    '«Загрузил резюме, AI исправил 12 ошибок за 30 секунд. Через 3 дня — первый оффер за полгода поиска»': '"Uploaded my resume, AI fixed 12 issues in 30 seconds. After 3 days — my first offer in 6 months of searching"',
+    '— Алексей К., Python Developer': '— Alexey K., Python Developer',
+    '«ATS-скор поднялся с 43 до 91. Рекрутер спросила как я так идеально попал под требования — я не говорил про AI 😄»': '"ATS score went from 43 to 91. The recruiter asked how I matched the requirements so perfectly — I didn\'t mention AI 😄"',
+    '— Мария Р., Project Manager': '— Maria R., Project Manager',
+    '«Авто-отклики работают пока я сплю. За первую неделю — 47 откликов, 4 собеседования. Раньше тратил часы на каждое письмо»': '"Auto-applications work while I sleep. First week — 47 applications, 4 interviews. I used to spend hours on each letter"',
+    '— Дмитрий В., DevOps Engineer': '— Dmitry V., DevOps Engineer',
+    'Оставить отзыв →': 'Leave a Review →',
+    // Pricing
+    'Тарифы': 'Plans',
+    'Простые и прозрачные цены': 'Simple & Transparent Pricing',
+    'Начните бесплатно, обновите когда нужно': 'Start free, upgrade when ready',
+    '🔥 Популярный': '🔥 Popular',
+    'ПРО': 'PRO',
+    'БЕЗЛИМИТ': 'UNLIMITED',
+    '/месяц навсегда': '/ month forever',
+    '/месяц': '/ month',
+    '5 откликов в день': '5 applications per day',
+    '1 версия резюме': '1 resume version',
+    'Трекер заявок': 'Application Tracker',
+    'Telegram-бот базовый': 'Basic Telegram bot',
+    'Начать бесплатно': 'Start Free',
+    '50 откликов в день': '50 applications per day',
+    'Безлимит резюме': 'Unlimited resumes',
+    'Сопроводительные письма': 'Cover letters',
+    'Email-дайджест': 'Email digest',
+    'Приоритетный ATS': 'Priority ATS',
+    'Начать с ПРО': 'Start with PRO',
+    'Отмена в любое время': 'Cancel anytime',
+    'Безлимит откликов': 'Unlimited applications',
+    'Всё из ПРО': 'Everything in PRO',
+    'AI интервью-подготовка': 'AI interview preparation',
+    'Приоритетная поддержка 24ч': 'Priority support 24h',
+    'Начать с Безлимит': 'Start Unlimited',
+    'скидка 20%': '20% discount',
+    '💡 Годовые планы:': '💡 Annual plans:',
+    '— платите за 10 месяцев, пользуетесь 12': '— pay for 10 months, use for 12',
+    // FAQ questions
+    'Частые вопросы': 'Frequently Asked Questions',
+    'Как работает AI-отклик?': 'How does the AI application work?',
+    'На какие платформы отправляются отклики?': 'Which platforms does it apply to?',
+    'Что мне нужно делать?': 'What do I need to do?',
+    'Как AI адаптирует резюме под каждую вакансию?': 'How does AI adapt my resume for each job?',
+    'Безопасны ли мои данные?': 'Is my data safe?',
+    'Можно ли отменить подписку?': 'Can I cancel my subscription?',
+    'Что такое ATS и почему это важно?': 'What is ATS and why does it matter?',
+    'Сколько откликов в день отправляет AI?': 'How many applications per day does AI send?',
+    // FAQ answers
+    'AI анализирует описание вакансии, сравнивает с вашим резюме и автоматически адаптирует его под требования. Затем отправляет отклик с персонализированным сопроводительным письмом. Всё происходит без вашего участия — вы лишь получаете уведомления о приглашениях на интервью.': 'AI analyzes the job description, compares it with your resume, and automatically adapts it to the requirements. It then sends your application with a personalized cover letter. Everything happens without your involvement — you only receive notifications about interview invitations.',
+    'Мы поддерживаем hh.ru, LinkedIn, SuperJob, Glassdoor, Indeed, Workday и другие крупные платформы по поиску работы. Список площадок постоянно расширяется.': 'We support hh.ru, LinkedIn, SuperJob, Glassdoor, Indeed, Workday, and other major job platforms. The list of platforms is constantly expanding.',
+    'Только три действия: загрузить резюме, настроить фильтры (желаемая должность, зарплата, город, формат работы) и нажать «Запустить». Дальше AI всё делает сам. Вы получаете уведомления только о важных событиях — приглашениях и офферах.': 'Just three actions: upload your resume, set filters (desired role, salary, city, work format) and click "Launch". AI does everything else. You only receive notifications about important events — invitations and offers.',
+    'AI использует GPT-4 для анализа ключевых слов и требований вакансии. Он перефразирует ваш опыт, акцентирует нужные навыки и оптимизирует форматирование для ATS-систем конкретного работодателя. Каждое резюме уникально.': 'AI uses GPT-4 to analyze keywords and job requirements. It rephrases your experience, emphasizes the right skills, and optimizes formatting for the employer\'s specific ATS system. Each resume is unique.',
+    'Да. Все данные передаются по HTTPS и хранятся в зашифрованном виде. Мы не продаём ваши данные третьим лицам. Резюме и личная информация используются исключительно для отправки откликов. Подробнее в нашей': 'Yes. All data is transmitted over HTTPS and stored encrypted. We do not sell your data to third parties. Resumes and personal information are used exclusively for sending applications. Read more in our',
+    'Политике конфиденциальности': 'Privacy Policy',
+    'Да, вы можете отменить подписку в любое время в настройках аккаунта. После отмены вы сохраняете доступ до конца оплаченного периода. Для годовых планов действует 7-дневная гарантия возврата средств.': 'Yes, you can cancel your subscription at any time in account settings. After cancellation, you retain access until the end of the paid period. Annual plans have a 7-day money-back guarantee.',
+    'ATS (Applicant Tracking System) — это программы, которые компании используют для автоматической фильтрации резюме. По статистике, 75% резюме отсеиваются ATS прежде чем их увидит рекрутер. Наш AI оптимизирует резюме так, чтобы оно проходило эти фильтры с высоким скором.': 'ATS (Applicant Tracking System) are programs companies use to automatically filter resumes. Studies show 75% of resumes are rejected by ATS before a recruiter sees them. Our AI optimizes your resume to pass these filters with a high score.',
+    'На тарифе FREE — 5 откликов в день. На тарифе ПРО — до 50 откликов в день. На тарифе БЕЗЛИМИТ — неограниченное количество. Это достаточно, чтобы за месяц охватить сотни подходящих вакансий и значительно ускорить поиск работы.': 'On the FREE plan — 5 applications per day. On the PRO plan — up to 50 per day. On the UNLIMITED plan — unlimited. This is enough to cover hundreds of relevant jobs per month and significantly speed up your job search.',
+    // Telegram callout
+    '🤖 ЕДИНСТВЕННЫЙ AI для поиска работы в Telegram': '🤖 THE ONLY Job Search AI in Telegram',
+    'Ни Simplify.jobs, ни Sonara.ai — никто не даёт вам это прямо в мессенджере, который вы уже используете каждый день': 'Neither Simplify.jobs nor Sonara.ai — nobody gives you this right in the messenger you already use every day',
+    '✓ Работает в Telegram': '✓ Works in Telegram',
+    '✓ Резюме за 30 секунд': '✓ Resume in 30 seconds',
+    '✓ Авто-отклик 24/7': '✓ Auto-apply 24/7',
+    '✓ Без установки приложений': '✓ No app installation',
+    'Открыть @topbestworkerbot →': 'Open @topbestworkerbot →',
+    // Chrome section
+    'Скоро': 'Coming Soon',
+    'Chrome-расширение для ещё более быстрых откликов': 'Chrome Extension for Even Faster Applications',
+    'Одно нажатие прямо на странице вакансии — и AI мгновенно откликается. Оставьте email и мы сообщим о запуске.': 'One click right on the job page — and AI applies instantly. Leave your email and we\'ll notify you at launch.',
+    'Уведомить': 'Notify Me',
+    '✓ Отлично! Мы сообщим вам о запуске.': '✓ Great! We\'ll notify you when it launches.',
+    // Footer
+    'AI-карьерный помощник нового поколения. Резюме, письма, подготовка к интервью — прямо в Telegram.': 'Next-generation AI career assistant. Resumes, cover letters, interview prep — right in Telegram.',
+    'Продукт': 'Product',
+    'Конструктор резюме': 'Resume Builder',
+    'Авто-отклик': 'Auto-Apply',
+    'АвтоОтклик': 'AutoApply',
+    'Трекер заявок': 'Job Tracker',
+    'Telegram бот': 'Telegram Bot',
+    'Ресурсы': 'Resources',
+    'API статус': 'API Status',
+    'Контакт': 'Contact',
+    'Правовые': 'Legal',
+    'Условия использования': 'Terms of Service',
+    'Политика возврата': 'Refund Policy',
+    '© 2026 РезюмеАИ. Все права защищены.': '© 2026 ResumeAI. All rights reserved.',
+    '🔒 Ваши данные зашифрованы и никогда не передаются третьим лицам': '🔒 Your data is encrypted and never shared with third parties',
+    // Mobile nav extras
+    '✈ Telegram — попробовать бота': '✈ Telegram — try the bot',
+    // Help widget
+    '❓ Помощь': '❓ Help',
+    'Привет! Чем могу помочь? Спросите о тарифах, функциях или технических проблемах.': 'Hi! How can I help? Ask about pricing, features, or technical issues.',
+    // Exit popup
+    'Подождите! Бесплатный чек-лист': 'Wait! Free Checklist',
+    'Получите список из 10 ошибок, которые убивают ваше резюме': 'Get the list of 10 mistakes that are killing your resume',
+    'Получить бесплатный чек-лист →': 'Get the free checklist →',
+    '✅ Отправлено! Проверьте вашу почту.': '✅ Sent! Check your email.',
+    'Никакого спама. Только полезный контент. Отписаться в 1 клик.': 'No spam. Useful content only. Unsubscribe in 1 click.',
+  };
+
   var currentLang = 'ru';
+
+  // ── Selectors for all visible text-bearing elements ──
+  var TEXT_SEL = [
+    'h2','h3','h4',
+    '.section-label','.section-sub','.section-subtitle',
+    '.hero-trust',
+    '.proof-item .label',
+    '.result-label','.result-desc',
+    '.feature-card p',
+    '.step-card p',
+    '.tg-feature-list li','.tg-feature',
+    '.tg-bubble-user div','.tg-bubble-bot div',
+    '.tg-chat-status',
+    '.btn-tg-white',
+    '[class*="tg-banner"] p',
+    '.pricing-name','.pricing-period','.pricing-cancel','.popular-badge',
+    '.pricing-features li',
+    '.faq-question','.faq-answer',
+    '.pricing-annual',
+    '.chrome-badge','.chrome-inner p','.chrome-success',
+    '.footer-tagline','.footer-col-title','.footer-link','.footer-bottom span',
+    '.t-text','.t-author',
+    '.demo-section-label','.btn-cta-demo',
+    'button.demo-btn',
+    '.ds1-label','.ds1-hint','.ds2-text',
+    '.ds3-ats','.ds3-section-tag',
+    '.tg-callout p',
+    '#help-bubble [style*="font-weight:600"]',
+    '#exit-popup h3','#exit-popup p','#exit-popup button[onclick*="exitPopupSubmit"]'
+  ].join(',');
+
+  // Walk all text nodes inside an element (skipping scripts/styles)
+  function getTextNodes(el) {
+    var nodes = [];
+    var w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
+      acceptNode: function(n) {
+        var tag = n.parentNode && n.parentNode.tagName;
+        return (tag === 'SCRIPT' || tag === 'STYLE') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+      }
+    }, false);
+    var n;
+    while ((n = w.nextNode())) nodes.push(n);
+    return nodes;
+  }
+
+  function _applyFullPage(toEn) {
+    var map = toEn ? RU_EN : null;
+
+    document.querySelectorAll(TEXT_SEL).forEach(function(el) {
+      // Skip nav/hero — handled by data-i18n
+      if (el.hasAttribute('data-i18n') || el.hasAttribute('data-i18n-html')) return;
+
+      if (toEn) {
+        // Already translated this pass — skip
+        if (el.hasAttribute('data-ru-html')) return;
+        var origHTML = el.innerHTML;
+        var changed = false;
+
+        // Simple case: no child elements
+        if (el.children.length === 0) {
+          var t = el.textContent.trim();
+          if (map[t]) {
+            el.setAttribute('data-ru-html', origHTML);
+            el.textContent = map[t];
+            return;
+          }
+        }
+
+        // Complex case: element has children (FAQ answers with links, pricing-annual with <strong>, etc.)
+        var textNodes = getTextNodes(el);
+        textNodes.forEach(function(node) {
+          var t = node.nodeValue.trim();
+          if (!t) return;
+          if (map[t]) {
+            node.nodeValue = node.nodeValue.replace(t, map[t]);
+            changed = true;
+          } else {
+            // Partial substring match (e.g. text node before a <a> link)
+            Object.keys(map).forEach(function(src) {
+              if (src.length > 3 && node.nodeValue.indexOf(src) !== -1) {
+                node.nodeValue = node.nodeValue.split(src).join(map[src]);
+                changed = true;
+              }
+            });
+          }
+        });
+        if (changed) el.setAttribute('data-ru-html', origHTML);
+
+      } else {
+        // Restore from saved innerHTML
+        if (el.hasAttribute('data-ru-html')) {
+          el.innerHTML = el.getAttribute('data-ru-html');
+          el.removeAttribute('data-ru-html');
+        }
+      }
+    });
+
+    // Placeholders
+    var PH = {
+      'demo-url':    { ru: 'https://hh.ru/vacancy/... или LinkedIn, Indeed...', en: 'https://hh.ru/vacancy/... or LinkedIn, Indeed...' },
+      'demo-text':   { ru: 'Вставьте описание вакансии сюда...', en: 'Paste the job description here...' },
+      'chromeEmail': { ru: 'ваш@email.ru', en: 'your@email.com' },
+      'exit-email':  { ru: 'Ваш email', en: 'Your email' },
+      'help-input':  { ru: 'Задайте вопрос…', en: 'Ask a question…' }
+    };
+    var lang = toEn ? 'en' : 'ru';
+    Object.keys(PH).forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.placeholder = PH[id][lang];
+    });
+
+    // Document title
+    if (toEn) {
+      document.title = 'ResumeAI — Send Your Resume to 500 Companies in 1 Day | AutoApply';
+    } else {
+      document.title = 'ResumeAI — Отправь резюме в 500 компаний за 1 день | АвтоОтклик';
+    }
+
+    // Social toast messages
+    window._toastMessages_en = [
+      "🎉 Anna from Moscow just created her resume",
+      "✅ Dmitry received an ATS score of 92/100",
+      "📄 Maria generated a cover letter",
+      "🚀 Alexey from SPb applied to 12 jobs",
+      "🎯 Olga prepared for her Yandex interview",
+      "✉️ Ivan created a cover letter for Google",
+      "📊 Ekaterina analyzed 5 job postings",
+      "🎉 Mikhail from Kazan found a job in 2 weeks",
+      "✅ Natalia received an offer from Sber",
+      "🤖 Sergey set up auto-apply on hh.ru",
+    ];
+    window._i18nLang = lang;
+  }
 
   function detectLang() {
     var saved = localStorage.getItem('resumeai_lang');
@@ -2160,86 +2483,10 @@
     return nav.startsWith('ru') ? 'ru' : 'en';
   }
 
-  // Full-page section text map: Russian → English for every visible heading/text
-  var PAGE_EN = {
-    // Demo/try section
-    'Попробуй прямо сейчас — без регистрации': 'Try Right Now — No Registration Required',
-    // Features section
-    'Всё для успешного поиска работы': 'Everything for a Successful Job Search',
-    'AI Конструктор Резюме': 'AI Resume Builder',
-    'Генератор Сопроводительных Писем': 'Cover Letter Generator',
-    'Подготовка к Интервью (STAR)': 'Interview Prep (STAR Method)',
-    'Анализ Вакансии': 'Job Analysis',
-    'AI Карьерный Ассистент 24/7': 'AI Career Assistant 24/7',
-    // Telegram CTA
-    'Зачем Открывать Ещё Одно Приложение? Карьерный AI Уже в Telegram.': 'Why Open Another App? Career AI is Already in Telegram.',
-    // How it works
-    'Три шага до оффера': 'Three Steps to an Offer',
-    'Загрузи резюме': 'Upload Your Resume',
-    'Настрой фильтры': 'Set Up Filters',
-    'AI откликается за тебя': 'AI Applies for You',
-    // Results
-    'Реальные результаты': 'Real Results',
-    // Testimonials
-    'Что говорят пользователи': 'What Our Users Say',
-    // Pricing
-    'Простые и прозрачные цены': 'Simple & Transparent Pricing',
-    'Бесплатно': 'Free',
-    'Старт': 'Starter',
-    'Про': 'Pro',
-    'Безлимит': 'Unlimited',
-    'навсегда': 'forever',
-    'в месяц': '/ month',
-    // FAQ
-    'Частые вопросы': 'Frequently Asked Questions',
-    // CTA sections
-    '🤖 ЕДИНСТВЕННЫЙ AI для поиска работы в Telegram': '🤖 THE ONLY Job Search AI in Telegram',
-    'Chrome-расширение для ещё более быстрых откликов': 'Chrome Extension for Even Faster Applications',
-    // Feature descriptions
-    'Создай резюме под каждую вакансию за 30 секунд': 'Create a tailored resume for every job in 30 seconds',
-    'Персонализированное письмо к каждой заявке': 'Personalized cover letter for every application',
-    'STAR-метод, разбор типичных вопросов': 'STAR method, common interview questions',
-    'Совместимость с ATS, ключевые слова': 'ATS compatibility, keyword optimization',
-    'Резюме, карьера, зарплата — круглосуточно': 'Resume, career, salary — around the clock',
-    // How-it-works descriptions
-    'Загрузи существующее или создай с нуля': 'Upload existing or build from scratch',
-    'Должность, город, зарплата, платформы': 'Job title, city, salary, platforms',
-    'Рассылает уникальные заявки 24/7': 'Sends unique applications 24/7',
-    // Footer / extra CTAs
-    'Начать бесплатно': 'Start Free',
-    'Попробовать в Telegram': 'Try in Telegram',
-    'Войти в аккаунт': 'Sign In',
-    'Попробовать бесплатно': 'Try for Free',
-    'Создать резюме': 'Create Resume',
-  };
-  var _pageCache = null;
-
-  function _buildPageCache() {
-    _pageCache = {};
-    document.querySelectorAll('h1,h2,h3,h4,.pricing-name,.pricing-period').forEach(function(el) {
-      var t = el.textContent.trim();
-      if (PAGE_EN[t]) _pageCache[t] = el;
-    });
-  }
-
-  function _applyFullPage(lang) {
-    if (!_pageCache) _buildPageCache();
-    if (lang === 'en') {
-      Object.keys(PAGE_EN).forEach(function(ru) {
-        var el = _pageCache[ru];
-        if (el) { el.setAttribute('data-ru', ru); el.textContent = PAGE_EN[ru]; }
-      });
-    } else {
-      document.querySelectorAll('[data-ru]').forEach(function(el) {
-        el.textContent = el.getAttribute('data-ru');
-      });
-    }
-  }
-
   function applyLang(lang) {
     currentLang = lang;
     var dict = T[lang] || T.ru;
-    // data-i18n keyed elements (nav, hero)
+    // data-i18n keyed elements (nav + hero)
     document.querySelectorAll('[data-i18n]').forEach(function(el) {
       var key = el.getAttribute('data-i18n');
       if (dict[key] !== undefined) el.textContent = dict[key];
@@ -2248,9 +2495,9 @@
       var key = el.getAttribute('data-i18n-html');
       if (dict[key] !== undefined) el.innerHTML = dict[key];
     });
-    // full-page text-map swap (all section headings)
-    _applyFullPage(lang);
-    // toggle buttons
+    // Full-page sweep
+    _applyFullPage(lang === 'en');
+    // Toggle buttons
     var btn = document.getElementById('langToggle');
     var btnM = document.getElementById('langToggleMobile');
     if (btn) btn.textContent = lang === 'ru' ? '🇷🇺' : '🇬🇧';
