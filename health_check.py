@@ -7,8 +7,11 @@ Checks all services and sends Telegram alerts on failure.
 import asyncio
 import aiohttp
 import aiosqlite
+import email.mime.multipart
+import email.mime.text
 import logging
 import os
+import smtplib
 import sys
 import shutil
 import subprocess
@@ -19,6 +22,17 @@ BOT_TOKEN     = os.getenv("BOT_TOKEN", "")
 BOT_DB        = os.getenv("BOT_DB", "/opt/resumeaibot/bot.db")
 AUTOAPPLY_DB  = os.getenv("AUTOAPPLY_DB", "/opt/resumeaibot/autoapply.db")
 LOGS_DIR      = os.getenv("LOGS_DIR", "/opt/resumeaibot/logs")
+
+# Admin email for critical alerts (service down, disk full, credits exhausted)
+ADMIN_EMAIL   = os.getenv("ADMIN_EMAIL", "max737books@gmail.com")
+SMTP_HOST     = os.getenv("SMTP_HOST", "")
+SMTP_PORT     = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER     = os.getenv("SMTP_USER", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+SMTP_FROM     = os.getenv("SMTP_FROM", SMTP_USER)
+
+# Failures that warrant an email (not just Telegram) — service names
+CRITICAL_CHECKS = {"bot_service", "autoapply_api", "worker", "disk_space"}
 
 logging.basicConfig(
     level=logging.INFO,
@@ -194,6 +208,34 @@ async def send_alert(message: str) -> None:
         log.error("Failed to send Telegram alert: %s", e)
 
 
+def send_critical_email(subject: str, body: str) -> None:
+    """Send an email to the admin for critical (unrecovered) failures.
+    Only fires when SMTP credentials are configured and ADMIN_EMAIL is set.
+    Runs synchronously — call from asyncio via run_in_executor if needed.
+    """
+    if not SMTP_HOST or not SMTP_USER or not SMTP_PASSWORD or not ADMIN_EMAIL:
+        log.warning("SMTP not configured — critical email skipped (check SMTP_* env vars)")
+        return
+    try:
+        msg = email.mime.multipart.MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = f"ResumeAI Monitor <{SMTP_FROM or SMTP_USER}>"
+        msg["To"] = ADMIN_EMAIL
+        msg.attach(email.mime.text.MIMEText(body, "plain", "utf-8"))
+
+        if SMTP_PORT == 465:
+            ctx = smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=15)
+        else:
+            ctx = smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15)
+            ctx.starttls()
+        with ctx as smtp:
+            smtp.login(SMTP_USER, SMTP_PASSWORD)
+            smtp.sendmail(SMTP_FROM or SMTP_USER, ADMIN_EMAIL, msg.as_bytes())
+        log.info("Critical email sent to %s — %s", ADMIN_EMAIL, subject)
+    except Exception as e:
+        log.error("Failed to send critical email: %s", e)
+
+
 async def attempt_restart_and_recheck(
     service_name: str,
     recheck_fn,
@@ -297,6 +339,33 @@ async def main() -> None:
     alert_text = "\n".join(lines)
     log.warning("Sending alert:\n%s", alert_text)
     await send_alert(alert_text)
+
+    # Send email ONLY for critical unrecovered failures (service down, disk full)
+    critical_failures = {k: v for k, v in failures.items() if k in CRITICAL_CHECKS}
+    if critical_failures:
+        email_lines = [
+            "ResumeAI critical alert — action required.",
+            f"Time: {ts}",
+            "",
+            "Critical failures:",
+        ]
+        for name, msg_txt in critical_failures.items():
+            email_lines.append(f"  • {name}: {msg_txt}")
+        if restart_reports:
+            email_lines.append("")
+            email_lines.append("Auto-restart attempts:")
+            for rpt in restart_reports:
+                email_lines.append(f"  • {rpt}")
+        email_lines += [
+            "",
+            "Server: 72.56.250.53",
+            "Check: ssh root@72.56.250.53",
+        ]
+        loop = asyncio.get_event_loop()
+        subject = f"[ResumeAI] CRITICAL: {', '.join(critical_failures.keys())} down"
+        await loop.run_in_executor(
+            None, send_critical_email, subject, "\n".join(email_lines)
+        )
 
     # Exit with error code so systemd timer can track failures
     if failures:
