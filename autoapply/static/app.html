@@ -704,7 +704,12 @@
       <div class="form-row">
         <div class="form-group">
           <label>Должность</label>
-          <input type="text" class="input" id="camp-title" placeholder="Python разработчик, UX дизайнер..." oninput="updatePreview()" />
+          <input type="text" class="input" id="camp-title" placeholder="Python разработчик, UX дизайнер..." oninput="updatePreview(); debounceSalaryHint(this.value)" />
+          <div id="salary-hint" style="display:none;margin-top:6px;">
+            <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(167,139,250,0.12);border:1px solid rgba(167,139,250,0.3);border-radius:20px;padding:3px 10px;font-size:0.78rem;color:var(--text-muted);">
+              <span id="salary-hint-text">💰 Загружаю...</span>
+            </span>
+          </div>
         </div>
         <div class="form-group">
           <label>Город</label>
@@ -1881,6 +1886,28 @@
       document.getElementById('li-badge').style.display = 'inline-flex';
       document.getElementById('li-connect-btn').style.display = 'none';
     }
+  }
+
+  let _salaryTimer = null;
+  function debounceSalaryHint(value) {
+    clearTimeout(_salaryTimer);
+    const hint = document.getElementById('salary-hint');
+    const text = document.getElementById('salary-hint-text');
+    if (!value || value.trim().length < 2) { hint.style.display = 'none'; return; }
+    hint.style.display = 'block';
+    text.textContent = '💰 Загружаю...';
+    _salaryTimer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/salary/insights?title=${encodeURIComponent(value.trim())}`);
+        const d = await res.json();
+        if (d.sample_size === 0) {
+          text.textContent = '💰 Данные о зарплате не найдены';
+        } else {
+          const fmt = n => n.toLocaleString('ru-RU');
+          text.textContent = `💰 Средняя зарплата: ${fmt(d.median)} ₽ (от ${fmt(d.min)} до ${fmt(d.max)} ₽, ${d.sample_size} вакансий)`;
+        }
+      } catch(e) { hint.style.display = 'none'; }
+    }, 800);
   }
 
   function updatePreview() {

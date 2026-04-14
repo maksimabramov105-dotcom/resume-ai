@@ -1633,6 +1633,53 @@ async def serve_template_preview(template_id: str):
     return Response(content=html_ready, media_type="text/html")
 
 
+@app.get("/api/salary/insights", summary="Salary insights from hh.ru public data")
+async def salary_insights(title: str = Query(..., min_length=2), area: int = Query(1)):
+    """Returns min/max/median salary for a job title using hh.ru vacancy data."""
+    import httpx, statistics
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(
+                "https://api.hh.ru/vacancies",
+                params={"text": title, "area": area, "per_page": 100, "only_with_salary": True},
+                headers={"User-Agent": "ResumeAI/1.0 (resumeai-bot.ru)"},
+            )
+            data = resp.json()
+        items = data.get("items", [])
+        salaries = []
+        for item in items:
+            s = item.get("salary")
+            if not s:
+                continue
+            currency = s.get("currency", "RUR")
+            if currency not in ("RUR", "RUB"):
+                continue
+            low = s.get("from")
+            high = s.get("to")
+            if low and high:
+                salaries.append((low + high) / 2)
+            elif low:
+                salaries.append(low)
+            elif high:
+                salaries.append(high)
+
+        if not salaries:
+            return {"title": title, "area": area, "sample_size": 0, "message": "Данные о зарплате не найдены"}
+
+        return {
+            "title": title,
+            "area": area,
+            "currency": "RUB",
+            "min": int(min(salaries)),
+            "max": int(max(salaries)),
+            "median": int(statistics.median(salaries)),
+            "average": int(statistics.mean(salaries)),
+            "sample_size": len(salaries),
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"hh.ru API error: {exc}")
+
+
 # ── SPA fallback ──────────────────────────────────────────────────────────────
 @app.get("/app", include_in_schema=False)
 @app.get("/app/{path:path}", include_in_schema=False)
