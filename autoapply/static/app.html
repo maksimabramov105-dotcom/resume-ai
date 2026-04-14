@@ -1499,6 +1499,9 @@
       return;
     }
 
+    // Stop live pollers when leaving dashboard
+    if (hash !== '#dashboard') stopAllPollers();
+
     // Load data for pages
     if (hash === '#dashboard') loadDashboard();
     if (hash === '#applications') loadApplications();
@@ -1735,8 +1738,51 @@
     badge.className = 'plan-badge ' + (classes[plan] || 'plan-free');
   }
 
+  // Live campaign polling
+  var _livePollers = {};
+  function stopAllPollers() { Object.keys(_livePollers).forEach(id => { clearInterval(_livePollers[id]); delete _livePollers[id]; }); }
+
+  function startLivePoller(campaignId) {
+    if (_livePollers[campaignId]) return;
+    _livePollers[campaignId] = setInterval(() => refreshCampaignFeed(campaignId), 30000);
+  }
+
+  async function refreshCampaignFeed(campaignId) {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+      const r = await fetch(`/api/campaign/${campaignId}/status`, { headers: { Authorization: 'Bearer ' + token } });
+      if (!r.ok) return;
+      const data = await r.json();
+      renderCampaignFeed(campaignId, data);
+    } catch(e) {}
+  }
+
+  function renderCampaignFeed(campaignId, data) {
+    const feedEl = document.getElementById(`feed-${campaignId}`);
+    if (!feedEl) return;
+    const apps = data.last_applications || [];
+    const statusIcon = { applied: '✅', pending: '⏳', failed: '❌', response: '🎉', interview: '🤝' };
+    if (!apps.length) { feedEl.innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem;padding:8px 0;">Заявок пока нет</div>'; return; }
+    feedEl.innerHTML = apps.slice(0,5).map(a => {
+      const icon = statusIcon[a.status] || '📋';
+      const time = a.sent_at ? new Date(a.sent_at).toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'}) : '';
+      const company = esc(a.company_name || a.company || '—');
+      const title = esc(a.vacancy_title || a.job_title || '—');
+      return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:0.8rem;">
+        <span style="flex-shrink:0;">${icon}</span>
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${company} — ${title}</span>
+        <span style="color:var(--text-muted);flex-shrink:0;">${time}</span>
+      </div>`;
+    }).join('');
+    // update counters
+    const todayEl = document.getElementById(`today-${campaignId}`);
+    if (todayEl) todayEl.textContent = data.applications_sent || 0;
+  }
+
   function renderCampaigns(campaigns) {
     const grid = document.getElementById('campaigns-grid');
+    stopAllPollers();
     if (!campaigns.length) {
       grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">
         <div class="empty-icon">🚀</div>
@@ -1745,28 +1791,47 @@
       </div>`;
       return;
     }
+    const statusMap = { active: 'badge-active', paused: 'badge-paused', completed: 'badge-completed' };
+    const statusLabel = { active: 'Активна', paused: 'Пауза', completed: 'Завершена' };
     grid.innerHTML = campaigns.map(c => {
-      const pct = c.daily_limit > 0 ? Math.round((c.applications_sent / c.daily_limit) * 100) : 0;
-      const statusMap = { active: 'badge-active', paused: 'badge-paused', completed: 'badge-completed' };
-      const statusLabel = { active: 'Активна', paused: 'Пауза', completed: 'Завершена' };
-      return `<div class="campaign-card">
+      const pct = c.daily_limit > 0 ? Math.min(100, Math.round((c.applications_sent / c.daily_limit) * 100)) : 0;
+      const failed = c.failed_today || 0;
+      const pending = c.pending_today || 0;
+      return `<div class="campaign-card" style="display:flex;flex-direction:column;gap:0;">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
           <div class="campaign-title">${esc(c.job_title)}</div>
           <span class="badge ${statusMap[c.status] || 'badge-paused'}">${statusLabel[c.status] || c.status}</span>
         </div>
         <div class="campaign-loc">📍 ${esc(c.location || '—')}</div>
-        <div class="progress-wrap">
-          <div class="progress-label"><span>Заявок сегодня</span><span>${c.applications_sent || 0} / ${c.daily_limit || 0}</span></div>
+        <div class="progress-wrap" style="margin:8px 0;">
+          <div class="progress-label">
+            <span>Сегодня: <b id="today-${c.id}">${c.applications_sent || 0}</b> / ${c.daily_limit || 0}</span>
+            <span style="font-size:0.78rem;color:var(--text-muted);">${failed ? '❌ '+failed+' ошибок' : ''}</span>
+          </div>
           <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+        </div>
+        <!-- Live feed -->
+        <div style="background:var(--bg2);border-radius:8px;padding:8px 10px;margin-bottom:10px;min-height:40px;">
+          <div style="font-size:0.75rem;font-weight:600;color:var(--text-muted);margin-bottom:4px;display:flex;justify-content:space-between;">
+            <span>📡 Последние отклики</span>
+            <span style="cursor:pointer;color:var(--accent1);" onclick="refreshCampaignFeed(${c.id})">↻</span>
+          </div>
+          <div id="feed-${c.id}"><div style="color:var(--text-muted);font-size:0.8rem;">Загрузка...</div></div>
         </div>
         <div class="campaign-actions">
           <button class="btn-secondary btn-sm" onclick="toggleCampaign('${c.id}', '${c.status}')">
             ${c.status === 'active' ? '⏸ Пауза' : '▶ Продолжить'}
           </button>
-          <button class="btn-secondary btn-sm" onclick="navigate('#applications')">📊 Статистика</button>
+          <button class="btn-secondary btn-sm" onclick="navigate('#applications')">📊 Все заявки</button>
         </div>
       </div>`;
     }).join('');
+
+    // Load feeds and start pollers for active campaigns
+    campaigns.forEach(c => {
+      refreshCampaignFeed(c.id);
+      if (c.status === 'active') startLivePoller(c.id);
+    });
   }
 
   function renderRecentApps(apps) {
