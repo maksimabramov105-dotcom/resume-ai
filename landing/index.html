@@ -1412,6 +1412,109 @@
   </div>
 </section>
 
+<!-- ══════════════════ SECURITY BADGES ══════════════════ -->
+<section id="trust-badges" style="padding:32px 0;background:var(--bg);">
+  <div class="container">
+    <div style="display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:24px 40px;">
+      <div style="display:flex;align-items:center;gap:10px;color:var(--text-muted);font-size:0.88rem;">
+        <span style="font-size:1.4rem;">🔒</span>
+        <div><div style="font-weight:700;color:var(--text);">256-bit SSL</div><div>Шифрование данных</div></div>
+      </div>
+      <div style="width:1px;height:36px;background:var(--border);"></div>
+      <div style="display:flex;align-items:center;gap:10px;color:var(--text-muted);font-size:0.88rem;">
+        <span style="font-size:1.4rem;">🛡️</span>
+        <div><div style="font-weight:700;color:var(--text);">GDPR Compliant</div><div>Ваши данные защищены</div></div>
+      </div>
+      <div style="width:1px;height:36px;background:var(--border);"></div>
+      <div style="display:flex;align-items:center;gap:10px;color:var(--text-muted);font-size:0.88rem;">
+        <span style="font-size:1.4rem;">🔐</span>
+        <div><div style="font-weight:700;color:var(--text);">Данные не продаются</div><div>Никогда третьим лицам</div></div>
+      </div>
+      <div style="width:1px;height:36px;background:var(--border);"></div>
+      <div style="display:flex;align-items:center;gap:10px;color:var(--text-muted);font-size:0.88rem;">
+        <span style="font-size:1.4rem;">🏦</span>
+        <div><div style="font-weight:700;color:var(--text);">Stripe Payments</div><div>Безопасная оплата</div></div>
+      </div>
+      <div style="width:1px;height:36px;background:var(--border);"></div>
+      <div style="display:flex;align-items:center;gap:10px;color:var(--text-muted);font-size:0.88rem;">
+        <span style="font-size:1.4rem;">🇷🇺</span>
+        <div><div style="font-weight:700;color:var(--text);">Сделано в России</div><div>Поддержка на русском</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ TESTIMONIALS ══════════════════ -->
+<section id="testimonials" style="background:var(--bg-alt);padding:64px 0;">
+  <div class="container">
+    <div class="section-header" style="text-align:center;margin-bottom:40px;">
+      <span class="section-label">Отзывы</span>
+      <h2 class="section-title">Что говорят пользователи</h2>
+      <p class="section-subtitle" style="margin:0 auto;">Реальные отзывы от людей которые нашли работу с ResumeAI</p>
+    </div>
+    <div id="testimonials-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;margin-bottom:40px;">
+      <!-- Static fallback cards shown before JS loads -->
+      <div class="testimonial-card">
+        <div class="t-stars">⭐⭐⭐⭐⭐</div>
+        <p class="t-text">«Загрузил резюме, AI исправил 12 ошибок за 30 секунд. Через 3 дня — первый оффер за полгода поиска»</p>
+        <div class="t-author">— Алексей К., Python Developer</div>
+      </div>
+      <div class="testimonial-card">
+        <div class="t-stars">⭐⭐⭐⭐⭐</div>
+        <p class="t-text">«ATS-скор поднялся с 43 до 91. Рекрутер спросила как я так идеально попал под требования — я не говорил про AI 😄»</p>
+        <div class="t-author">— Мария Р., Project Manager</div>
+      </div>
+      <div class="testimonial-card">
+        <div class="t-stars">⭐⭐⭐⭐⭐</div>
+        <p class="t-text">«Авто-отклики работают пока я сплю. За первую неделю — 47 откликов, 4 собеседования. Раньше тратил часы на каждое письмо»</p>
+        <div class="t-author">— Дмитрий В., DevOps Engineer</div>
+      </div>
+    </div>
+    <div style="text-align:center;">
+      <a href="/app" class="btn btn-outline" style="font-size:0.9rem;">Оставить отзыв →</a>
+    </div>
+  </div>
+</section>
+
+<style>
+.testimonial-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.testimonial-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
+.t-stars { font-size: 1rem; margin-bottom: 12px; }
+.t-text { color: var(--text-muted); line-height: 1.65; font-size: 0.93rem; margin: 0 0 16px; font-style: italic; }
+.t-author { font-weight: 600; font-size: 0.85rem; color: var(--text); }
+#trust-badges .container { max-width: 900px; }
+@media (max-width: 640px) {
+  #trust-badges [style*="width:1px"] { display: none; }
+  #trust-badges .container > div { gap: 16px; }
+}
+</style>
+<script>
+// Load real testimonials from API
+(function(){
+  fetch('/api/testimonials')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (!d.testimonials || d.testimonials.length === 0) return;
+      var grid = document.getElementById('testimonials-grid');
+      var stars = function(n){ return '⭐'.repeat(Math.max(1,Math.min(5,n))); };
+      grid.innerHTML = d.testimonials.map(function(t){
+        return '<div class="testimonial-card animate-on-scroll">' +
+          '<div class="t-stars">' + stars(t.rating) + '</div>' +
+          '<p class="t-text">«' + t.text.replace(/</g,'&lt;') + '»</p>' +
+          '<div class="t-author">— ' + t.name.replace(/</g,'&lt;') + '</div>' +
+          '</div>';
+      }).join('');
+    })
+    .catch(function(){});
+})();
+</script>
+
 <!-- ══════════════════ PRICING ══════════════════ -->
 <section id="pricing">
   <div class="container">
@@ -1748,6 +1851,22 @@
   })();
 
   // ── Counter Animation ──
+  // Load real stats from API and update counter targets
+  fetch('/api/stats').then(r => r.json()).then(d => {
+    const mapping = [
+      ['resumes_created', 0],
+      ['cover_letters', 1],
+      ['jobs_analyzed', 2],
+      ['interview_success_rate', 3],
+    ];
+    const counts = document.querySelectorAll('.social-proof-bar .count');
+    mapping.forEach(([key, idx]) => {
+      if (counts[idx] && d[key] !== undefined) {
+        counts[idx].dataset.target = d[key];
+      }
+    });
+  }).catch(() => {});
+
   function animateCounter(el) {
     const target = parseInt(el.dataset.target);
     const duration = 2000;

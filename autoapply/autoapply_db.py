@@ -114,6 +114,18 @@ CREATE TABLE IF NOT EXISTS email_drip (
 )
 """
 
+_CREATE_TESTIMONIALS = """
+CREATE TABLE IF NOT EXISTS testimonials (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER,
+    name        TEXT    NOT NULL,
+    text        TEXT    NOT NULL,
+    rating      INTEGER NOT NULL DEFAULT 5,
+    approved    INTEGER NOT NULL DEFAULT 0,
+    created_at  TEXT    DEFAULT (datetime('now'))
+)
+"""
+
 _CREATE_WEB_GENERATIONS = """
 CREATE TABLE IF NOT EXISTS web_generations (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -135,6 +147,7 @@ async def init_db(db_path: str = AUTOAPPLY_DB) -> None:
             await db.execute(_CREATE_VACANCIES_CACHE)
             await db.execute(_CREATE_EMAIL_TOKENS)
             await db.execute(_CREATE_EMAIL_DRIP)
+            await db.execute(_CREATE_TESTIMONIALS)
             await db.execute(_CREATE_WEB_GENERATIONS)
             # Migration: add is_verified if column doesn't exist yet
             try:

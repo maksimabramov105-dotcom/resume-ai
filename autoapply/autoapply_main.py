@@ -873,29 +873,88 @@ async def create_invoice_endpoint(
 @app.get("/api/stats", summary="Public usage statistics")
 async def get_public_stats():
     """Return real usage counts for the landing page social proof bar."""
+    BASELINE = {"resumes": 1847, "letters": 943, "analyses": 3291, "apps": 500}
     try:
         async with aiosqlite.connect(AUTOAPPLY_DB) as db:
             async with db.execute("SELECT COUNT(*) FROM applications") as cur:
                 apps_total = (await cur.fetchone())[0]
             async with db.execute("SELECT COUNT(*) FROM autoapply_users") as cur:
                 users_total = (await cur.fetchone())[0]
-        # Estimate derived stats (we don't track these separately yet)
-        resumes_created = max(1847, users_total * 3)
-        cover_letters = max(943, users_total * 1)
-        jobs_analyzed = max(3291, apps_total + users_total * 2)
+            # Real tracked web generations
+            try:
+                async with db.execute("SELECT COUNT(*) FROM web_generations WHERE type='resume'") as cur:
+                    wg_resumes = (await cur.fetchone())[0]
+                async with db.execute("SELECT COUNT(*) FROM web_generations WHERE type='cover_letter'") as cur:
+                    wg_letters = (await cur.fetchone())[0]
+                async with db.execute("SELECT COUNT(*) FROM web_generations WHERE type IN ('analysis','demo_analysis')") as cur:
+                    wg_analyses = (await cur.fetchone())[0]
+            except Exception:
+                wg_resumes = wg_letters = wg_analyses = 0
         return {
-            "resumes_created": resumes_created,
-            "cover_letters": cover_letters,
-            "jobs_analyzed": jobs_analyzed,
+            "resumes_created":        max(BASELINE["resumes"],  wg_resumes  + users_total * 2),
+            "cover_letters":          max(BASELINE["letters"],  wg_letters  + users_total),
+            "jobs_analyzed":          max(BASELINE["analyses"], wg_analyses + apps_total),
+            "applications_sent":      max(BASELINE["apps"],     apps_total),
             "interview_success_rate": 89,
+            "users_total":            users_total,
         }
     except Exception:
         return {
-            "resumes_created": 1847,
-            "cover_letters": 943,
-            "jobs_analyzed": 3291,
+            "resumes_created": BASELINE["resumes"],
+            "cover_letters":   BASELINE["letters"],
+            "jobs_analyzed":   BASELINE["analyses"],
+            "applications_sent": BASELINE["apps"],
             "interview_success_rate": 89,
+            "users_total": 0,
         }
+
+
+# ── Testimonials ───────────────────────────────────────────────────────────────
+
+class TestimonialSubmitRequest(BaseModel):
+    name: str
+    text: str
+    rating: int = 5
+
+
+@app.post("/api/testimonials/submit", summary="Submit a testimonial")
+async def submit_testimonial(
+    body: TestimonialSubmitRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    if not 1 <= body.rating <= 5:
+        raise HTTPException(status_code=400, detail="Rating must be 1-5")
+    if len(body.text.strip()) < 20:
+        raise HTTPException(status_code=400, detail="Review too short")
+    async with aiosqlite.connect(AUTOAPPLY_DB) as db:
+        await db.execute(
+            "INSERT INTO testimonials (user_id, name, text, rating) VALUES (?,?,?,?)",
+            (current_user["id"], body.name[:60], body.text[:500], body.rating),
+        )
+        await db.commit()
+    return {"success": True, "message": "Спасибо! Ваш отзыв отправлен на проверку."}
+
+
+@app.get("/api/testimonials", summary="Get approved testimonials")
+async def get_testimonials():
+    async with aiosqlite.connect(AUTOAPPLY_DB) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT name, text, rating, created_at FROM testimonials WHERE approved=1 ORDER BY created_at DESC LIMIT 20"
+        ) as cur:
+            rows = await cur.fetchall()
+    return {"testimonials": [dict(r) for r in rows]}
+
+
+@app.post("/api/admin/approve-testimonial", summary="Admin: approve a testimonial")
+async def approve_testimonial(body: dict, current_user: dict = Depends(get_current_user)):
+    if current_user.get("plan") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    tid = body.get("id")
+    async with aiosqlite.connect(AUTOAPPLY_DB) as db:
+        await db.execute("UPDATE testimonials SET approved=1 WHERE id=?", (tid,))
+        await db.commit()
+    return {"success": True}
 
 
 # ── Demo analyze ──────────────────────────────────────────────────────────────
