@@ -8,6 +8,7 @@ import hmac
 import logging
 import os
 import sys
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Optional
@@ -153,11 +154,67 @@ def _verify_password(password: str, hashed: str) -> bool:
     except Exception:
         return False
 
+# ── SQLite optimisation: set WAL mode + pragmas once at startup ───────────────
+async def _apply_db_pragmas(db_path: str) -> None:
+    """Enable WAL journal + memory-friendly pragmas.
+    These settings persist in the DB file so every subsequent aiosqlite.connect()
+    inherits them — eliminates the overhead of 15+ cold connects per request.
+    """
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            await db.execute("PRAGMA journal_mode=WAL")
+            await db.execute("PRAGMA synchronous=NORMAL")   # fsync only on checkpoint
+            await db.execute("PRAGMA cache_size=-32000")    # 32 MB page cache
+            await db.execute("PRAGMA temp_store=MEMORY")    # temp tables in RAM
+            await db.execute("PRAGMA mmap_size=134217728")  # 128 MB memory-mapped I/O
+            await db.commit()
+        logger.info("[startup] SQLite pragmas applied to %s", db_path)
+    except Exception as exc:
+        logger.warning("[startup] pragma apply failed for %s: %s", db_path, exc)
+
+
+async def _rate_limit_cleanup_loop() -> None:
+    """Delete stale rate-limit rows daily to keep the table lean."""
+    while True:
+        await asyncio.sleep(86400)
+        await cleanup_rate_limits()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # ── Startup ───────────────────────────────────────────────────────────────
+    logger.info("[autoapply_main] Starting up — initialising DB at %s", AUTOAPPLY_DB)
+    await init_db(AUTOAPPLY_DB)
+    # Apply WAL + pragmas to both databases (autoapply + bot read-only queries)
+    await _apply_db_pragmas(AUTOAPPLY_DB)
+    await _apply_db_pragmas(BOT_DB)
+    logger.info("[autoapply_main] DB ready")
+    # Background tasks
+    asyncio.create_task(process_email_drip())
+    asyncio.create_task(_rate_limit_cleanup_loop())
+    # Marketing scheduler
+    try:
+        from apscheduler.schedulers.asyncio import AsyncIOScheduler
+        from marketing_cron import setup_marketing_scheduler
+        _scheduler = AsyncIOScheduler(timezone="UTC")
+        setup_marketing_scheduler(_scheduler)
+        _scheduler.start()
+        logger.info("[autoapply_main] marketing scheduler started")
+    except Exception as _e:
+        logger.warning("[autoapply_main] marketing scheduler not started: %s", _e)
+
+    yield  # ── app is running ─────────────────────────────────────────────────
+
+    # ── Shutdown ──────────────────────────────────────────────────────────────
+    logger.info("[autoapply_main] Shutting down")
+
+
 # ── FastAPI app ───────────────────────────────────────────────────────────────
 app = FastAPI(
     title="AutoApply API",
     description="АвтоОтклик — automated job application service",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -234,24 +291,6 @@ async def process_email_drip():
 
 
 # ── Startup ───────────────────────────────────────────────────────────────────
-@app.on_event("startup")
-async def on_startup():
-    logger.info("[autoapply_main] Starting up — initialising DB at %s", AUTOAPPLY_DB)
-    await init_db(AUTOAPPLY_DB)
-    logger.info("[autoapply_main] DB ready")
-    asyncio.create_task(process_email_drip())
-    # Schedule daily marketing posts (9 AM Moscow / 6 AM UTC)
-    try:
-        from apscheduler.schedulers.asyncio import AsyncIOScheduler
-        from marketing_cron import setup_marketing_scheduler
-        _scheduler = AsyncIOScheduler(timezone="UTC")
-        setup_marketing_scheduler(_scheduler)
-        _scheduler.start()
-        logger.info("[autoapply_main] marketing scheduler started")
-    except Exception as _e:
-        logger.warning("[autoapply_main] marketing scheduler not started: %s", _e)
-
-
 # ── Pydantic models ───────────────────────────────────────────────────────────
 class RegisterRequest(BaseModel):
     email: str
