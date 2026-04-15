@@ -145,6 +145,13 @@ CREATE TABLE IF NOT EXISTS page_views (
 )
 """
 
+_CREATE_RATE_LIMITS = """
+CREATE TABLE IF NOT EXISTS rate_limits (
+    key        TEXT PRIMARY KEY,
+    last_hit   REAL NOT NULL
+)
+"""
+
 # ── Indexes ───────────────────────────────────────────────────────────────────
 
 _CREATE_INDEXES = [
@@ -170,6 +177,8 @@ _CREATE_INDEXES = [
     # Page views — daily/24h analytics queries
     "CREATE INDEX IF NOT EXISTS idx_page_views_created_at ON page_views(created_at)",
     "CREATE INDEX IF NOT EXISTS idx_page_views_ip_hash ON page_views(ip_hash)",
+    # Rate limits — keyed by "type:ip", cleaned up periodically
+    "CREATE INDEX IF NOT EXISTS idx_rate_limits_last_hit ON rate_limits(last_hit)",
 ]
 
 # ── Init ─────────────────────────────────────────────────────────────────────
@@ -187,6 +196,7 @@ async def init_db(db_path: str = AUTOAPPLY_DB) -> None:
             await db.execute(_CREATE_TESTIMONIALS)
             await db.execute(_CREATE_WEB_GENERATIONS)
             await db.execute(_CREATE_PAGE_VIEWS)
+            await db.execute(_CREATE_RATE_LIMITS)
             # Indexes
             for _idx_sql in _CREATE_INDEXES:
                 try:
@@ -854,3 +864,44 @@ async def log_web_generation(gen_type: str, user_id: int = None, db_path: str = 
             await db.commit()
     except Exception as exc:
         logger.warning("[autoapply_db] log_web_generation error: %s", exc)
+
+
+# ── Rate limiting ─────────────────────────────────────────────────────────────
+
+import time as _rl_time
+
+async def check_and_update_rate_limit(
+    key: str, window_seconds: float, db_path: str = AUTOAPPLY_DB
+) -> bool:
+    """Return True (allowed) or False (blocked). Persists across restarts.
+    `key` should be namespaced, e.g. 'demo:192.168.1.1'.
+    """
+    now = _rl_time.time()
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            async with db.execute(
+                "SELECT last_hit FROM rate_limits WHERE key=?", (key,)
+            ) as cur:
+                row = await cur.fetchone()
+            if row and (now - row[0]) < window_seconds:
+                return False  # still within cooldown window
+            await db.execute(
+                "INSERT OR REPLACE INTO rate_limits (key, last_hit) VALUES (?, ?)",
+                (key, now),
+            )
+            await db.commit()
+        return True
+    except Exception as exc:
+        logger.warning("[rate_limit] DB error — allowing request: %s", exc)
+        return True  # fail open so a DB hiccup doesn't block users
+
+
+async def cleanup_rate_limits(older_than_seconds: float = 86400, db_path: str = AUTOAPPLY_DB) -> None:
+    """Delete stale rate-limit rows (default: older than 24 h)."""
+    cutoff = _rl_time.time() - older_than_seconds
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            await db.execute("DELETE FROM rate_limits WHERE last_hit < ?", (cutoff,))
+            await db.commit()
+    except Exception as exc:
+        logger.warning("[rate_limit] cleanup error: %s", exc)

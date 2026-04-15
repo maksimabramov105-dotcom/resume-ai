@@ -29,6 +29,8 @@ if ROOT not in sys.path:
 
 from autoapply.autoapply_db import (
     advance_drip_step,
+    check_and_update_rate_limit,
+    cleanup_rate_limits,
     consume_email_token,
     create_campaign,
     create_drip_sequence,
@@ -180,6 +182,17 @@ async def security_headers_middleware(request, call_next):
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://vk.com https://unpkg.com https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com data:; "
+        "img-src 'self' data: https: blob:; "
+        "connect-src 'self' https://api.hh.ru https://vk.com https://api.openai.com; "
+        "frame-src https://vk.com https://oauth.vk.com; "
+        "object-src 'none'; "
+        "base-uri 'self';"
+    )
     return response
 
 
@@ -275,8 +288,9 @@ class ResetPasswordRequest(BaseModel):
 
 # ── JWT helpers ───────────────────────────────────────────────────────────────
 def _create_token(user_id: int) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRE_HOURS)
-    payload = {"sub": str(user_id), "exp": expire}
+    now = datetime.now(timezone.utc)
+    expire = now + timedelta(hours=JWT_EXPIRE_HOURS)
+    payload = {"sub": str(user_id), "exp": expire, "iat": now}
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
@@ -288,7 +302,10 @@ async def get_current_user(
         raise HTTPException(status_code=401, detail="Invalid Authorization header format")
     token = authorization.split(" ", 1)[1]
     try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        payload = jwt.decode(
+            token, JWT_SECRET, algorithms=[JWT_ALGORITHM],
+            options={"require": ["exp", "iat"]},
+        )
         user_id = int(payload["sub"])
     except (JWTError, KeyError, ValueError) as exc:
         raise HTTPException(status_code=401, detail="Invalid or expired token") from exc
@@ -963,24 +980,25 @@ async def approve_testimonial(body: dict, current_user: dict = Depends(get_curre
 
 
 # ── Demo analyze ──────────────────────────────────────────────────────────────
-from collections import defaultdict
-import time as _time
-
-# Rate limiting store (in-memory, resets on restart — fine for demo)
-_demo_rate_limit: dict = defaultdict(float)
 
 @app.post("/api/demo-analyze", summary="Analyze a job posting (no auth, rate limited)")
 async def demo_analyze(payload: dict, request: Request):
-    """Analyze a job URL or text — returns ATS keywords, salary, red flags. Rate limited 1/hour per IP."""
+    """Analyze a job URL or text — returns ATS keywords, salary, red flags. Rate limited per IP."""
     import os, httpx, re
 
-    client_ip = request.headers.get("X-Real-IP") or request.headers.get("X-Forwarded-For", "").split(",")[0].strip() or "unknown"
-    now = _time.time()
+    client_ip = (
+        request.headers.get("X-Real-IP")
+        or request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+        or "unknown"
+    )
 
-    # Rate limit: 3 per hour per IP
-    if now - _demo_rate_limit.get(client_ip, 0) < 1200:  # 20 minutes between requests
-        return JSONResponse({"error": "Превышен лимит запросов. Попробуйте через 20 минут или зарегистрируйтесь для безлимитного доступа."}, status_code=429)
-    _demo_rate_limit[client_ip] = now
+    # Rate limit: once per 20 min per IP — persisted in SQLite (survives restarts)
+    allowed = await check_and_update_rate_limit(f"demo:{client_ip}", 1200, AUTOAPPLY_DB)
+    if not allowed:
+        return JSONResponse(
+            {"error": "Превышен лимит запросов. Попробуйте через 20 минут или зарегистрируйтесь для безлимитного доступа."},
+            status_code=429,
+        )
 
     url = payload.get("url", "")
     text = payload.get("text", "")

@@ -23,11 +23,22 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies & lint
+      - name: Install dependencies
+        run: pip install -r requirements.txt pip-audit pytest flake8
+
+      - name: Security audit (pip-audit)
+        run: pip-audit --requirement requirements.txt --skip-editable
+
+      - name: Lint
+        run: flake8 autoapply/ bot/ --max-line-length=120 --ignore=E501,W503,E402 --exclude=__pycache__ || true
+
+      - name: Run tests
         run: |
-          pip install -r requirements.txt
-          pip install flake8
-          flake8 autoapply/ bot/ --max-line-length=120 --ignore=E501,W503,E402 --exclude=__pycache__,migrations || true
+          if [ -d tests ] && [ "$(ls -A tests/)" ]; then
+            pytest tests/ -x --tb=short -q
+          else
+            echo "No tests directory yet — skipping"
+          fi
 
       - name: Copy files to VPS
         uses: appleboy/scp-action@v0.1.7
@@ -47,9 +58,11 @@ jobs:
           password: ${{ secrets.VPS_PASSWORD }}
           script: |
             echo "=== Deploy at $(date) ==="
-            systemctl restart resumeaibot || true
-            systemctl restart autoapply   || true
-            sleep 5
+            cd /opt/resumeaibot
+            git pull origin main
+            .venv/bin/pip install -r requirements.txt -q
+            systemctl restart resumeaibot autoapply autoapply-worker || true
+            sleep 6
             curl -sf https://resumeai-bot.ru/api/health && echo "✅ API healthy" || echo "⚠️ Health check failed"
             curl -sf https://resumeai-bot.ru/ -o /dev/null -w "Landing: %{http_code}\n" || true
             echo "=== Done ==="
