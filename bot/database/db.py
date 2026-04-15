@@ -17,12 +17,17 @@ AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    # Migrate: add specialty column if missing
-    try:
-        async with engine.begin() as conn:
-            await conn.execute(text("ALTER TABLE users ADD COLUMN specialty VARCHAR"))
-    except Exception:
-        pass  # Column already exists
+    # Migrations: add columns that may not exist in older DBs
+    _migrations = [
+        "ALTER TABLE users ADD COLUMN specialty VARCHAR",
+        "ALTER TABLE users ADD COLUMN checkin_sent_at DATETIME",
+    ]
+    for _sql in _migrations:
+        try:
+            async with engine.begin() as conn:
+                await conn.execute(text(_sql))
+        except Exception:
+            pass  # column already exists
 
 
 @asynccontextmanager

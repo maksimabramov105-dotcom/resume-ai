@@ -3235,7 +3235,13 @@
 <div id="help-widget" style="position:fixed;bottom:24px;right:24px;z-index:9999;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <div id="help-bubble" style="display:none;width:320px;background:#1a1a1a;border:1px solid #333;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.6);overflow:hidden;margin-bottom:12px;">
     <div style="background:#7c3aed;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;">
-      <span style="color:#fff;font-weight:600;font-size:14px;">❓ Помощь</span>
+      <div style="display:flex;flex-direction:column;gap:2px;">
+        <span style="color:#fff;font-weight:600;font-size:14px;">❓ Помощь</span>
+        <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.85);">
+          <span style="width:6px;height:6px;border-radius:50%;background:#10b981;display:inline-block;flex-shrink:0;"></span>
+          Основатель отвечает за&nbsp;&lt;&nbsp;1&nbsp;час
+        </span>
+      </div>
       <span id="help-close" style="color:#fff;cursor:pointer;font-size:18px;line-height:1;">×</span>
     </div>
     <div id="help-messages" style="padding:14px;max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;"></div>

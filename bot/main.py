@@ -13,7 +13,8 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from config import BOT_TOKEN
 from database.db import init_db
-from handlers import start, resume, cover_letter, interview, vacancy_analysis, ai_assistant, payment, profile, support
+from handlers import start, resume, cover_letter, interview, vacancy_analysis, ai_assistant, payment, profile, support, checkin
+from handlers.checkin import checkin_loop
 from utils.texts import BOT_DESCRIPTION, BOT_SHORT_DESCRIPTION
 
 logging.basicConfig(
@@ -43,6 +44,7 @@ async def main():
     dp.include_router(payment.router)
     dp.include_router(profile.router)
     dp.include_router(support.router)
+    dp.include_router(checkin.router)
 
     # Set bot description visible to users before pressing /start
     try:
@@ -53,6 +55,7 @@ async def main():
         logger.warning("Could not set bot description: %s", e)
 
     logger.info("Bot started.")
+    asyncio.create_task(checkin_loop(bot))  # T+24h onboarding check-in background task
     await dp.start_polling(bot)
 
 
