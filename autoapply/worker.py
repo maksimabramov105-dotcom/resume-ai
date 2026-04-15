@@ -115,6 +115,9 @@ async def _fetch_vacancies(
             logger.warning("[worker] unknown platform=%s, skipping", platform)
             return []
 
+        # Filter out any non-dict items returned by the scraper (e.g. error strings)
+        vacancies = [v for v in vacancies if isinstance(v, dict)]
+
         # Cache fetched vacancies
         for v in vacancies:
             await cache_vacancy(
@@ -249,6 +252,10 @@ async def process_campaign(campaign: dict) -> int:
         for vacancy in vacancies:
             if sent_count >= remaining or _shutdown:
                 break
+
+            if not isinstance(vacancy, dict):
+                logger.warning("[worker] skipping non-dict vacancy item: %r", type(vacancy))
+                continue
 
             vacancy_id = str(vacancy.get("id") or vacancy.get("vacancy_id", ""))
             if not vacancy_id:
