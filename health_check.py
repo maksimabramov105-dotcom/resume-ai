@@ -260,22 +260,30 @@ async def attempt_restart_and_recheck(
 async def main() -> None:
     log.info("=== Health check started at %s ===", datetime.now().isoformat())
 
+    # Critical checks: failure triggers Telegram + email alerts
     checks = [
         ("bot_db",        check_bot_db),
         ("autoapply_db",  check_autoapply_db),
         ("autoapply_api", check_autoapply_api),
-        ("hh_api",        check_hh_api),
         ("bot_service",   check_bot_service),
         ("dashboard",     check_dashboard),
         ("disk_space",    check_disk_space),
         ("worker",        check_worker),
     ]
 
+    # Informational checks: logged but never trigger alerts
+    # (external APIs outside our control — their downtime ≠ our failure)
+    info_checks = [
+        ("hh_api", check_hh_api),
+    ]
+
     # Run all checks concurrently
-    results_raw = await asyncio.gather(*[fn() for _, fn in checks], return_exceptions=True)
+    all_fns = [fn() for _, fn in checks] + [fn() for _, fn in info_checks]
+    all_names = [name for name, _ in checks] + [name for name, _ in info_checks]
+    results_raw = await asyncio.gather(*all_fns, return_exceptions=True)
 
     results: dict[str, tuple[bool, str]] = {}
-    for (name, _), raw in zip(checks, results_raw):
+    for name, raw in zip(all_names, results_raw):
         if isinstance(raw, Exception):
             results[name] = (False, f"Unexpected exception: {raw}")
         else:
@@ -284,7 +292,9 @@ async def main() -> None:
         level = log.info if ok else log.warning
         level("[%s] %s", name, msg)
 
-    failures = {name: msg for name, (ok, msg) in results.items() if not ok}
+    # Only critical checks count as failures worth alerting on
+    failures = {name: msg for name, (ok, msg) in results.items()
+                if not ok and name not in {n for n, _ in info_checks}}
 
     if not failures:
         log.info("All checks passed — system healthy.")
