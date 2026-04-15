@@ -163,8 +163,11 @@ async def run_daily_marketing() -> None:
 # ── APScheduler integration ───────────────────────────────────────────────────
 def setup_marketing_scheduler(scheduler) -> None:
     """Add daily 9 AM Moscow (6 AM UTC) job to an existing APScheduler instance."""
+    # Pass the coroutine function directly — AsyncIOScheduler schedules async
+    # jobs on its own event loop. Using asyncio.create_task() from a lambda
+    # crashes at fire-time because APScheduler threads have no running loop.
     scheduler.add_job(
-        lambda: asyncio.create_task(run_daily_marketing()),
+        run_daily_marketing,
         trigger="cron",
         hour=6,
         minute=0,
