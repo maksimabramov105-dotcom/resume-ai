@@ -1132,18 +1132,58 @@ Job posting:
 # ── Health check ──────────────────────────────────────────────────────────────
 @app.get("/api/health", summary="Health check (no auth)")
 async def health():
-    db_status = "ok"
+    ts = datetime.utcnow().isoformat() + "Z"
+    checks: dict = {}
+
+    # ── AutoApply DB ──────────────────────────────────────────────────────────
     try:
         async with aiosqlite.connect(AUTOAPPLY_DB) as db:
-            await db.execute("SELECT 1")
+            async with db.execute("SELECT count(*) FROM users") as cur:
+                row = await cur.fetchone()
+            checks["db_autoapply"] = {"status": "ok", "users": row[0] if row else 0}
     except Exception as exc:
-        logger.error("[api/health] DB check failed: %s", exc)
-        db_status = "error"
+        logger.error("[api/health] AutoApply DB check failed: %s", exc)
+        checks["db_autoapply"] = {"status": "error", "detail": str(exc)}
+
+    # ── Bot DB (read-only, may not be co-located) ─────────────────────────────
+    bot_db = os.path.join(os.path.dirname(os.path.dirname(__file__)), "bot.db")
+    if os.path.exists(bot_db):
+        try:
+            async with aiosqlite.connect(bot_db) as db:
+                async with db.execute("SELECT count(*) FROM users") as cur:
+                    row = await cur.fetchone()
+            checks["db_bot"] = {"status": "ok", "users": row[0] if row else 0}
+        except Exception as exc:
+            checks["db_bot"] = {"status": "error", "detail": str(exc)}
+    else:
+        checks["db_bot"] = {"status": "not_found"}
+
+    # ── AI API key present ────────────────────────────────────────────────────
+    api_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY")
+    checks["ai_key"] = "present" if api_key else "missing"
+
+    # ── Last resume generation ────────────────────────────────────────────────
+    try:
+        if os.path.exists(bot_db):
+            async with aiosqlite.connect(bot_db) as db:
+                async with db.execute(
+                    "SELECT created_at FROM generation_logs WHERE type='resume' "
+                    "ORDER BY created_at DESC LIMIT 1"
+                ) as cur:
+                    row = await cur.fetchone()
+            checks["last_resume"] = row[0] if row else None
+    except Exception:
+        checks["last_resume"] = None
+
+    overall = "ok" if all(
+        v.get("status") == "ok" if isinstance(v, dict) else True
+        for v in checks.values()
+    ) else "degraded"
 
     return {
-        "status": "ok",
-        "db": db_status,
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "status": overall,
+        "timestamp": ts,
+        "checks": checks,
     }
 
 

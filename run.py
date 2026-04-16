@@ -27,7 +27,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from config import BOT_TOKEN  # flat import (bot/ is in sys.path)
 from database.db import init_db
-from handlers import start, resume, cover_letter, interview, vacancy_analysis, ai_assistant, payment, profile, support
+from handlers import start, resume, cover_letter, interview, vacancy_analysis, ai_assistant, payment, profile, support, language
 from utils.texts import BOT_DESCRIPTION, BOT_SHORT_DESCRIPTION
 
 # Analytics system — project root is already in sys.path
@@ -71,14 +71,15 @@ async def run_bot() -> None:
     try:
         from aiogram.types import BotCommand
         await bot.set_my_commands([
-            BotCommand(command="start",      description="🏠 Главное меню"),
-            BotCommand(command="resume",     description="📄 Создать резюме"),
-            BotCommand(command="cover",      description="✉️ Сопроводительное письмо"),
-            BotCommand(command="interview",  description="🎤 Подготовка к собеседованию"),
-            BotCommand(command="vacancy",    description="🔍 Анализ вакансии"),
-            BotCommand(command="assistant",  description="🤖 AI-ассистент"),
-            BotCommand(command="upgrade",    description="💎 Тарифы и оплата"),
-            BotCommand(command="profile",    description="👤 Мой профиль"),
+            BotCommand(command="start",      description="🏠 Main menu / Главное меню"),
+            BotCommand(command="resume",     description="📄 Build resume / Создать резюме"),
+            BotCommand(command="cover",      description="✉️ Cover letter / Сопроводительное письмо"),
+            BotCommand(command="interview",  description="🎤 Mock interview / Подготовка к собеседованию"),
+            BotCommand(command="vacancy",    description="🔍 Analyze job / Анализ вакансии"),
+            BotCommand(command="assistant",  description="🤖 AI assistant / AI-ассистент"),
+            BotCommand(command="upgrade",    description="💎 Plans & pricing / Тарифы и оплата"),
+            BotCommand(command="profile",    description="👤 My profile / Мой профиль"),
+            BotCommand(command="language",   description="🌐 Switch language / Сменить язык"),
         ], language_code="ru")
         logger.info("Bot commands registered.")
     except Exception as e:
@@ -180,6 +181,7 @@ async def run_bot() -> None:
         except Exception:
             pass
 
+    dp.include_router(language.router)   # language must be before start so lang:* callbacks fire first
     dp.include_router(start.router)
     dp.include_router(resume.router)
     dp.include_router(cover_letter.router)

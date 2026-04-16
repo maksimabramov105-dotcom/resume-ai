@@ -1,169 +1,176 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 
 from config import WEBAPP_URL
+from utils.bot_translations import t
 
 
-def main_menu_kb() -> InlineKeyboardMarkup:
+def main_menu_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
     rows = [
         [
-            InlineKeyboardButton(text="📄 Создать резюме", callback_data="create_resume"),
-            InlineKeyboardButton(text="✉️ Сопр. письмо", callback_data="cover_letter"),
+            InlineKeyboardButton(text=t(lang, 'menu.resume'),      callback_data="create_resume"),
+            InlineKeyboardButton(text=t(lang, 'menu.cover_letter'),callback_data="cover_letter"),
         ],
         [
-            InlineKeyboardButton(text="🎯 Симуляция собеса", callback_data="interview"),
-            InlineKeyboardButton(text="🔍 Анализ вакансии", callback_data="vacancy_analysis"),
+            InlineKeyboardButton(text=t(lang, 'menu.interview'),   callback_data="interview"),
+            InlineKeyboardButton(text=t(lang, 'menu.vacancy'),     callback_data="vacancy_analysis"),
         ],
         [
-            InlineKeyboardButton(text="💬 AI-ассистент", callback_data="ai_assistant"),
+            InlineKeyboardButton(text=t(lang, 'menu.assistant'),   callback_data="ai_assistant"),
         ],
         [
-            InlineKeyboardButton(text="👤 Мой профиль", callback_data="profile"),
-            InlineKeyboardButton(text="💳 Купить кредиты", callback_data="buy_credits"),
+            InlineKeyboardButton(text=t(lang, 'menu.profile'),     callback_data="profile"),
+            InlineKeyboardButton(text=t(lang, 'menu.buy'),         callback_data="buy_credits"),
         ],
         [
-            InlineKeyboardButton(text="🎁 Пригласить друга", callback_data="referral"),
+            InlineKeyboardButton(text=t(lang, 'menu.referral'),    callback_data="referral"),
         ],
         [
-            InlineKeyboardButton(text="🆘 Поддержка", callback_data="support"),
+            InlineKeyboardButton(text=t(lang, 'menu.support'),     callback_data="support"),
         ],
     ]
     if WEBAPP_URL:
         rows.insert(0, [
-            InlineKeyboardButton(text="🌐 Открыть Mini App", web_app=WebAppInfo(url=WEBAPP_URL)),
+            InlineKeyboardButton(text=t(lang, 'menu.webapp'), web_app=WebAppInfo(url=WEBAPP_URL)),
         ])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def after_resume_kb(bot_username: str = "topbestworkerbot", referral_code: str = "") -> InlineKeyboardMarkup:
-    share_url = f"https://t.me/share/url?url=https://t.me/{bot_username}?start=ref_{referral_code}&text=Попробуй%20РезюмеАИ%20—%20резюме%20за%2030%20секунд%21"
+def after_resume_kb(
+    bot_username: str = "topbestworkerbot",
+    referral_code: str = "",
+    lang: str = 'ru',
+) -> InlineKeyboardMarkup:
+    share_url = (
+        f"https://t.me/share/url"
+        f"?url=https://t.me/{bot_username}?start=ref_{referral_code}"
+        f"&text=Попробуй%20РезюмеАИ%20—%20резюме%20за%2030%20секунд%21"
+    )
     rows = [
         [
-            InlineKeyboardButton(text="✉️ Письмо под эту вакансию", callback_data="cover_letter"),
-            InlineKeyboardButton(text="🎯 Собес под эту вакансию", callback_data="interview"),
+            InlineKeyboardButton(text=t(lang, 'btn.cover_for_job'),    callback_data="cover_letter"),
+            InlineKeyboardButton(text=t(lang, 'btn.interview_for_job'),callback_data="interview"),
         ],
         [
-            InlineKeyboardButton(text="📄 Новое резюме", callback_data="create_resume"),
-            InlineKeyboardButton(text="🏠 В меню", callback_data="main_menu"),
+            InlineKeyboardButton(text=t(lang, 'btn.new_resume'), callback_data="create_resume"),
+            InlineKeyboardButton(text=t(lang, 'btn.menu'),       callback_data="main_menu"),
         ],
     ]
     if referral_code:
         rows.insert(0, [
-            InlineKeyboardButton(
-                text="🎁 Поделиться → получить бесплатное резюме",
-                url=share_url,
-            )
+            InlineKeyboardButton(text=t(lang, 'btn.share'), url=share_url)
         ])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def after_cover_letter_kb() -> InlineKeyboardMarkup:
+def after_cover_letter_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="📄 Резюме под эту вакансию", callback_data="create_resume"),
+            InlineKeyboardButton(text=t(lang, 'btn.resume_for_job'), callback_data="create_resume"),
         ],
         [
-            InlineKeyboardButton(text="🏠 В меню", callback_data="main_menu"),
+            InlineKeyboardButton(text=t(lang, 'btn.menu'), callback_data="main_menu"),
         ],
     ])
 
 
-def interview_kb(can_finish: bool = False) -> InlineKeyboardMarkup:
+def interview_kb(can_finish: bool = False, lang: str = 'ru') -> InlineKeyboardMarkup:
     rows = []
     if can_finish:
         rows.append([
-            InlineKeyboardButton(text="⏭ Завершить собеседование", callback_data="finish_interview"),
+            InlineKeyboardButton(text=t(lang, 'interview.btn_finish'), callback_data="finish_interview"),
         ])
     rows.append([
-        InlineKeyboardButton(text="🏠 Выйти из собеседования", callback_data="exit_interview"),
+        InlineKeyboardButton(text=t(lang, 'interview.btn_exit'), callback_data="exit_interview"),
     ])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def after_interview_kb() -> InlineKeyboardMarkup:
+def after_interview_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="🔄 Ещё раз", callback_data="interview"),
-            InlineKeyboardButton(text="📄 Создать резюме", callback_data="create_resume"),
+            InlineKeyboardButton(text=t(lang, 'btn.repeat'),      callback_data="interview"),
+            InlineKeyboardButton(text=t(lang, 'menu.resume'),     callback_data="create_resume"),
         ],
         [
-            InlineKeyboardButton(text="💬 Задать вопрос AI", callback_data="ai_assistant"),
-            InlineKeyboardButton(text="🏠 В меню", callback_data="main_menu"),
-        ],
-    ])
-
-
-def after_vacancy_analysis_kb() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text="📄 Создать резюме под эту вакансию", callback_data="create_resume"),
-        ],
-        [
-            InlineKeyboardButton(text="🏠 В меню", callback_data="main_menu"),
+            InlineKeyboardButton(text=t(lang, 'btn.ai_question'), callback_data="ai_assistant"),
+            InlineKeyboardButton(text=t(lang, 'btn.menu'),        callback_data="main_menu"),
         ],
     ])
 
 
-def assistant_kb() -> InlineKeyboardMarkup:
+def after_vacancy_analysis_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="🗑 Очистить историю", callback_data="clear_assistant_history"),
-            InlineKeyboardButton(text="🏠 В меню", callback_data="exit_assistant"),
+            InlineKeyboardButton(text=t(lang, 'btn.resume_for_job'), callback_data="create_resume"),
+        ],
+        [
+            InlineKeyboardButton(text=t(lang, 'btn.menu'), callback_data="main_menu"),
         ],
     ])
 
 
-def buy_credits_kb() -> InlineKeyboardMarkup:
+def assistant_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📄 Базовый — 299₽", callback_data="buy_basic")],
-        [InlineKeyboardButton(text="⭐ Про — 790₽", callback_data="buy_pro")],
-        [InlineKeyboardButton(text="👑 VIP 30 дней — 1990₽", callback_data="buy_vip")],
-        [InlineKeyboardButton(text="💬 50 сообщений AI — 149₽", callback_data="buy_assistant_50")],
-        [InlineKeyboardButton(text="💬 200 сообщений AI — 399₽", callback_data="buy_assistant_200")],
-        [InlineKeyboardButton(text="💬 AI Безлимит 30 дней — 690₽", callback_data="buy_assistant_unlimited")],
-        [InlineKeyboardButton(text="🏠 В меню", callback_data="main_menu")],
+        [
+            InlineKeyboardButton(text=t(lang, 'btn.clear_history'), callback_data="clear_assistant_history"),
+            InlineKeyboardButton(text=t(lang, 'btn.menu'),          callback_data="exit_assistant"),
+        ],
     ])
 
 
-def buy_assistant_kb() -> InlineKeyboardMarkup:
+def buy_credits_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="💬 50 сообщений — 149₽", callback_data="buy_assistant_50")],
-        [InlineKeyboardButton(text="💬 200 сообщений — 399₽", callback_data="buy_assistant_200")],
-        [InlineKeyboardButton(text="💬 AI Безлимит 30 дней — 690₽", callback_data="buy_assistant_unlimited")],
-        [InlineKeyboardButton(text="🏠 В меню", callback_data="main_menu")],
+        [InlineKeyboardButton(text=t(lang, 'pay.basic'),        callback_data="buy_basic")],
+        [InlineKeyboardButton(text=t(lang, 'pay.pro'),          callback_data="buy_pro")],
+        [InlineKeyboardButton(text=t(lang, 'pay.vip'),          callback_data="buy_vip")],
+        [InlineKeyboardButton(text=t(lang, 'pay.ai50'),         callback_data="buy_assistant_50")],
+        [InlineKeyboardButton(text=t(lang, 'pay.ai200'),        callback_data="buy_assistant_200")],
+        [InlineKeyboardButton(text=t(lang, 'pay.ai_unlimited'), callback_data="buy_assistant_unlimited")],
+        [InlineKeyboardButton(text=t(lang, 'btn.menu'),         callback_data="main_menu")],
     ])
 
 
-def profile_kb() -> InlineKeyboardMarkup:
+def buy_assistant_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="💳 Пополнить баланс", callback_data="buy_credits")],
-        [InlineKeyboardButton(text="🏠 В меню", callback_data="main_menu")],
+        [InlineKeyboardButton(text=t(lang, 'pay.ai50'),         callback_data="buy_assistant_50")],
+        [InlineKeyboardButton(text=t(lang, 'pay.ai200'),        callback_data="buy_assistant_200")],
+        [InlineKeyboardButton(text=t(lang, 'pay.ai_unlimited'), callback_data="buy_assistant_unlimited")],
+        [InlineKeyboardButton(text=t(lang, 'btn.menu'),         callback_data="main_menu")],
     ])
 
 
-def payment_method_kb(package_key: str) -> InlineKeyboardMarkup:
+def profile_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="💎 Криптовалюта (USDT)", callback_data=f"pay_method:{package_key}:crypto")],
-        [InlineKeyboardButton(text="🇷🇺 Карта РФ (перевод)", callback_data=f"pay_method:{package_key}:rucard")],
-        [InlineKeyboardButton(text="💳 Revolut", callback_data=f"pay_method:{package_key}:revolut")],
-        [InlineKeyboardButton(text="◀️ Назад", callback_data="buy_credits")],
+        [InlineKeyboardButton(text=t(lang, 'btn.top_up'), callback_data="buy_credits")],
+        [InlineKeyboardButton(text=t(lang, 'btn.menu'),   callback_data="main_menu")],
     ])
 
 
-def crypto_check_kb(invoice_id: str, package_key: str) -> InlineKeyboardMarkup:
+def payment_method_kb(package_key: str, lang: str = 'ru') -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✅ Проверить оплату", callback_data=f"check_crypto:{invoice_id}:{package_key}")],
-        [InlineKeyboardButton(text="🏠 В меню", callback_data="main_menu")],
+        [InlineKeyboardButton(text=t(lang, 'pay.method_crypto'),  callback_data=f"pay_method:{package_key}:crypto")],
+        [InlineKeyboardButton(text=t(lang, 'pay.method_rucard'),  callback_data=f"pay_method:{package_key}:rucard")],
+        [InlineKeyboardButton(text=t(lang, 'pay.method_revolut'), callback_data=f"pay_method:{package_key}:revolut")],
+        [InlineKeyboardButton(text=t(lang, 'btn.back'),           callback_data="buy_credits")],
     ])
 
 
-def manual_paid_kb(payment_db_id: int) -> InlineKeyboardMarkup:
+def crypto_check_kb(invoice_id: str, package_key: str, lang: str = 'ru') -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✅ Я оплатил — отправить чек", callback_data=f"manual_paid:{payment_db_id}")],
-        [InlineKeyboardButton(text="🏠 В меню", callback_data="main_menu")],
+        [InlineKeyboardButton(text=t(lang, 'pay.check'), callback_data=f"check_crypto:{invoice_id}:{package_key}")],
+        [InlineKeyboardButton(text=t(lang, 'btn.menu'),  callback_data="main_menu")],
+    ])
+
+
+def manual_paid_kb(payment_db_id: int, lang: str = 'ru') -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=t(lang, 'pay.i_paid'), callback_data=f"manual_paid:{payment_db_id}")],
+        [InlineKeyboardButton(text=t(lang, 'btn.menu'),   callback_data="main_menu")],
     ])
 
 
 def admin_approve_kb(payment_db_id: int, telegram_id: int, package_key: str) -> InlineKeyboardMarkup:
+    """Admin-only keyboard — always in Russian."""
     return InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(
@@ -178,20 +185,20 @@ def admin_approve_kb(payment_db_id: int, telegram_id: int, package_key: str) -> 
     ])
 
 
-def payment_check_kb(payment_id: str) -> InlineKeyboardMarkup:
+def payment_check_kb(payment_id: str, lang: str = 'ru') -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✅ Проверить оплату", callback_data=f"check_payment:{payment_id}")],
-        [InlineKeyboardButton(text="🏠 В меню", callback_data="main_menu")],
+        [InlineKeyboardButton(text=t(lang, 'pay.check'), callback_data=f"check_payment:{payment_id}")],
+        [InlineKeyboardButton(text=t(lang, 'btn.menu'),  callback_data="main_menu")],
     ])
 
 
-def support_kb() -> InlineKeyboardMarkup:
+def support_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🏠 В меню", callback_data="main_menu")],
+        [InlineKeyboardButton(text=t(lang, 'btn.menu'), callback_data="main_menu")],
     ])
 
 
-def cancel_kb() -> InlineKeyboardMarkup:
+def cancel_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="❌ Отмена", callback_data="main_menu")],
+        [InlineKeyboardButton(text=t(lang, 'btn.cancel'), callback_data="main_menu")],
     ])

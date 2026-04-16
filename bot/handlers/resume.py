@@ -7,10 +7,7 @@ from database.db import get_or_create_user, save_user, log_generation
 from services.openai_service import generate_resume
 from services.pdf_generator import ResumePDF
 from utils.keyboards import after_resume_kb, buy_credits_kb, cancel_kb
-from utils.texts import (
-    RESUME_ASK_VACANCY, RESUME_ASK_EXPERIENCE, RESUME_ASK_EDUCATION,
-    RESUME_ASK_SKILLS, RESUME_GENERATING, RESUME_NO_CREDITS,
-)
+from utils.bot_translations import t
 
 router = Router()
 
@@ -25,11 +22,12 @@ class ResumeStates(StatesGroup):
 @router.callback_query(F.data == "create_resume")
 async def start_resume(callback: CallbackQuery, state: FSMContext):
     user = await get_or_create_user(callback.from_user.id)
+    lang = user.language or 'ru'
     if user.credits_resume <= 0:
-        await callback.message.edit_text(RESUME_NO_CREDITS, reply_markup=buy_credits_kb())
+        await callback.message.edit_text(t(lang, 'resume.no_credits'), reply_markup=buy_credits_kb(lang))
         return
     await state.set_state(ResumeStates.waiting_vacancy)
-    await callback.message.edit_text(RESUME_ASK_VACANCY, reply_markup=cancel_kb())
+    await callback.message.edit_text(t(lang, 'resume.ask_vacancy'), reply_markup=cancel_kb(lang))
 
 
 @router.message(ResumeStates.waiting_vacancy, F.text)
@@ -46,37 +44,45 @@ async def got_vacancy(message: Message, state: FSMContext):
         )
         await _generate_and_send(message, state, user)
     else:
+        lang = user.language or 'ru'
         await state.set_state(ResumeStates.waiting_experience)
-        await message.answer(RESUME_ASK_EXPERIENCE, reply_markup=cancel_kb())
+        await message.answer(t(lang, 'resume.ask_experience'), reply_markup=cancel_kb(lang))
 
 
 @router.message(ResumeStates.waiting_vacancy)
 async def resume_vacancy_wrong_type(message: Message):
-    await message.answer("📋 Пожалуйста, отправь текст вакансии.")
+    user = await get_or_create_user(message.from_user.id)
+    await message.answer(t(user.language, 'resume.wrong_type'))
 
 
 @router.message(ResumeStates.waiting_experience, F.text)
 async def got_experience(message: Message, state: FSMContext):
     await state.update_data(experience=message.text)
+    user = await get_or_create_user(message.from_user.id)
+    lang = user.language or 'ru'
     await state.set_state(ResumeStates.waiting_education)
-    await message.answer(RESUME_ASK_EDUCATION, reply_markup=cancel_kb())
+    await message.answer(t(lang, 'resume.ask_education'), reply_markup=cancel_kb(lang))
 
 
 @router.message(ResumeStates.waiting_experience)
 async def resume_experience_wrong_type(message: Message):
-    await message.answer("💼 Пожалуйста, опиши опыт работы текстом.")
+    user = await get_or_create_user(message.from_user.id)
+    await message.answer(t(user.language, 'resume.wrong_exp'))
 
 
 @router.message(ResumeStates.waiting_education, F.text)
 async def got_education(message: Message, state: FSMContext):
     await state.update_data(education=message.text)
+    user = await get_or_create_user(message.from_user.id)
+    lang = user.language or 'ru'
     await state.set_state(ResumeStates.waiting_skills)
-    await message.answer(RESUME_ASK_SKILLS, reply_markup=cancel_kb())
+    await message.answer(t(lang, 'resume.ask_skills'), reply_markup=cancel_kb(lang))
 
 
 @router.message(ResumeStates.waiting_education)
 async def resume_education_wrong_type(message: Message):
-    await message.answer("🎓 Пожалуйста, напиши об образовании текстом.")
+    user = await get_or_create_user(message.from_user.id)
+    await message.answer(t(user.language, 'resume.wrong_edu'))
 
 
 @router.message(ResumeStates.waiting_skills, F.text)
@@ -88,14 +94,16 @@ async def got_skills(message: Message, state: FSMContext):
 
 @router.message(ResumeStates.waiting_skills)
 async def resume_skills_wrong_type(message: Message):
-    await message.answer("🛠 Пожалуйста, напиши навыки текстом.")
+    user = await get_or_create_user(message.from_user.id)
+    await message.answer(t(user.language, 'resume.wrong_skills'))
 
 
 async def _generate_and_send(message: Message, state: FSMContext, user):
+    lang = user.language or 'ru'
     data = await state.get_data()
     await state.clear()
 
-    status_msg = await message.answer(RESUME_GENERATING)
+    status_msg = await message.answer(t(lang, 'resume.generating'))
 
     resume_text, tokens = await generate_resume(
         vacancy=data.get("vacancy", ""),
@@ -131,17 +139,17 @@ async def _generate_and_send(message: Message, state: FSMContext, user):
     from utils.md_cleaner import md_to_telegram
     clean_preview = md_to_telegram(text_preview)
     await status_msg.edit_text(
-        f"📄 <b>Ваше резюме готово!</b>\n\n{clean_preview}",
-        reply_markup=after_resume_kb(referral_code=user.referral_code or ""),
+        f"{t(lang, 'resume.ready')}\n\n{clean_preview}",
+        reply_markup=after_resume_kb(referral_code=user.referral_code or "", lang=lang),
     )
 
     # Generate and send PDF
     try:
         pdf = ResumePDF()
-        pdf_bytes = pdf.generate(resume_text, user.full_name or "Резюме")
+        pdf_bytes = pdf.generate(resume_text, user.full_name or "Resume")
         await message.answer_document(
             BufferedInputFile(pdf_bytes, filename="resume.pdf"),
-            caption="📄 Ваше резюме в формате PDF",
+            caption=t(lang, 'resume.pdf_caption'),
         )
     except Exception as e:
-        await message.answer(f"⚠️ PDF не удалось создать: {e}")
+        await message.answer(t(lang, 'resume.pdf_error', error=e))

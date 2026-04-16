@@ -7,9 +7,7 @@ from database.db import get_or_create_user, save_user, log_generation
 from services.openai_service import generate_cover_letter
 from utils.md_cleaner import md_to_telegram
 from utils.keyboards import after_cover_letter_kb, buy_credits_kb, cancel_kb
-from utils.texts import (
-    COVER_LETTER_ASK_VACANCY, COVER_LETTER_GENERATING, COVER_LETTER_NO_CREDITS,
-)
+from utils.bot_translations import t
 
 router = Router()
 
@@ -21,11 +19,12 @@ class CoverLetterStates(StatesGroup):
 @router.callback_query(F.data == "cover_letter")
 async def start_cover_letter(callback: CallbackQuery, state: FSMContext):
     user = await get_or_create_user(callback.from_user.id)
+    lang = user.language or 'ru'
     if user.credits_cover_letter <= 0:
-        await callback.message.edit_text(COVER_LETTER_NO_CREDITS, reply_markup=buy_credits_kb())
+        await callback.message.edit_text(t(lang, 'cover.no_credits'), reply_markup=buy_credits_kb(lang))
         return
     await state.set_state(CoverLetterStates.waiting_vacancy)
-    await callback.message.edit_text(COVER_LETTER_ASK_VACANCY, reply_markup=cancel_kb())
+    await callback.message.edit_text(t(lang, 'cover.ask_vacancy'), reply_markup=cancel_kb(lang))
 
 
 @router.message(CoverLetterStates.waiting_vacancy, F.text)
@@ -34,8 +33,9 @@ async def got_vacancy(message: Message, state: FSMContext):
     await state.clear()
 
     user = await get_or_create_user(message.from_user.id)
+    lang = user.language or 'ru'
 
-    status_msg = await message.answer(COVER_LETTER_GENERATING)
+    status_msg = await message.answer(t(lang, 'cover.generating'))
 
     candidate_summary = ""
     if user.experience_text:
@@ -68,12 +68,13 @@ async def got_vacancy(message: Message, state: FSMContext):
 
     text_preview = md_to_telegram(letter_text[:3800] if len(letter_text) > 3800 else letter_text)
     await status_msg.edit_text(
-        f"✉️ <b>Сопроводительное письмо готово!</b>\n\n{text_preview}",
+        f"{t(lang, 'cover.ready')}\n\n{text_preview}",
         parse_mode="HTML",
-        reply_markup=after_cover_letter_kb(),
+        reply_markup=after_cover_letter_kb(lang),
     )
 
 
 @router.message(CoverLetterStates.waiting_vacancy)
 async def cover_letter_wrong_type(message: Message):
-    await message.answer("📋 Пожалуйста, напиши текст вакансии.")
+    user = await get_or_create_user(message.from_user.id)
+    await message.answer(t(user.language, 'cover.wrong_type'))

@@ -6,7 +6,7 @@ from aiogram.fsm.state import State, StatesGroup
 from database.db import get_or_create_user, log_generation
 from services.openai_service import analyze_vacancy
 from utils.keyboards import after_vacancy_analysis_kb, cancel_kb
-from utils.texts import VACANCY_ASK, VACANCY_ANALYZING
+from utils.bot_translations import t
 
 router = Router()
 
@@ -17,8 +17,10 @@ class VacancyAnalysisStates(StatesGroup):
 
 @router.callback_query(F.data == "vacancy_analysis")
 async def start_analysis(callback: CallbackQuery, state: FSMContext):
+    user = await get_or_create_user(callback.from_user.id)
+    lang = user.language or 'ru'
     await state.set_state(VacancyAnalysisStates.waiting_vacancy)
-    await callback.message.edit_text(VACANCY_ASK, reply_markup=cancel_kb())
+    await callback.message.edit_text(t(lang, 'vacancy.ask'), reply_markup=cancel_kb(lang))
 
 
 @router.message(VacancyAnalysisStates.waiting_vacancy, F.text)
@@ -26,7 +28,10 @@ async def got_vacancy(message: Message, state: FSMContext):
     vacancy = message.text
     await state.clear()
 
-    status_msg = await message.answer(VACANCY_ANALYZING)
+    user = await get_or_create_user(message.from_user.id)
+    lang = user.language or 'ru'
+
+    status_msg = await message.answer(t(lang, 'vacancy.analyzing'))
 
     analysis_text, tokens = await analyze_vacancy(vacancy)
 
@@ -47,11 +52,12 @@ async def got_vacancy(message: Message, state: FSMContext):
     from utils.md_cleaner import md_to_telegram
     clean_preview = md_to_telegram(text_preview)
     await status_msg.edit_text(
-        f"🔍 <b>Анализ вакансии:</b>\n\n{clean_preview}",
-        reply_markup=after_vacancy_analysis_kb(),
+        f"{t(lang, 'vacancy.result')}\n\n{clean_preview}",
+        reply_markup=after_vacancy_analysis_kb(lang),
     )
 
 
 @router.message(VacancyAnalysisStates.waiting_vacancy)
 async def vacancy_wrong_type(message: Message):
-    await message.answer("📋 Пожалуйста, напиши текст вакансии.")
+    user = await get_or_create_user(message.from_user.id)
+    await message.answer(t(user.language, 'vacancy.wrong_type'))

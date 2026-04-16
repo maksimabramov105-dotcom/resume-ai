@@ -21,6 +21,7 @@ async def init_db():
     _migrations = [
         "ALTER TABLE users ADD COLUMN specialty VARCHAR",
         "ALTER TABLE users ADD COLUMN checkin_sent_at DATETIME",
+        "ALTER TABLE users ADD COLUMN language VARCHAR DEFAULT 'ru'",
     ]
     for _sql in _migrations:
         try:

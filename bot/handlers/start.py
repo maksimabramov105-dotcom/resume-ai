@@ -5,10 +5,9 @@ from aiogram.filters import CommandStart, Command
 from database.db import get_or_create_user, save_user
 from services.user_service import add_referral_bonus
 from utils.keyboards import main_menu_kb
-from utils.texts import START_MESSAGE
+from utils.bot_translations import t
 
 # Analytics tracker — project root (3 levels up from bot/handlers/start.py)
-# track_start is wrapped in try/except inside analytics_tracker so it never crashes
 import sys, os as _os
 _ROOT = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 if _ROOT not in sys.path:
@@ -20,6 +19,16 @@ from daily_reporter import send_daily_report, ADMIN_CHAT_ID as _REPORTER_ADMIN_I
 router = Router()
 
 ADMIN_ID = int(_os.getenv("ADMIN_ID", "6246429438"))
+
+
+def _language_kb() -> InlineKeyboardMarkup:
+    """Inline keyboard for first-run language selection."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="🇷🇺 Русский", callback_data="lang:ru"),
+            InlineKeyboardButton(text="🇬🇧 English",  callback_data="lang:en"),
+        ]
+    ])
 
 
 @router.message(CommandStart())
@@ -38,7 +47,6 @@ async def cmd_start(message: Message):
         from database.db import get_session
         from models.user import User as UserModel
         async with get_session() as session:
-            from sqlalchemy import select
             result = await session.execute(
                 select(UserModel).where(UserModel.referral_code == referral_code)
             )
@@ -51,13 +59,24 @@ async def cmd_start(message: Message):
     # Track join source for analytics (never raises)
     await track_start(user.telegram_id, args, _ANALYTICS_DB_PATH)
 
-    await message.answer(START_MESSAGE, reply_markup=main_menu_kb())
+    # First-time user: ask language before showing main menu
+    if not user.language:
+        await message.answer(
+            t(None, 'start.choose_lang'),
+            reply_markup=_language_kb(),
+        )
+        return
+
+    lang = user.language or 'ru'
+    await message.answer(t(lang, 'start.welcome'), reply_markup=main_menu_kb(lang))
 
 
 @router.callback_query(F.data == "main_menu")
 async def go_main_menu(callback: CallbackQuery):
     await callback.answer()
-    await callback.message.edit_text(START_MESSAGE, reply_markup=main_menu_kb())
+    user = await get_or_create_user(callback.from_user.id)
+    lang = user.language or 'ru'
+    await callback.message.edit_text(t(lang, 'start.welcome'), reply_markup=main_menu_kb(lang))
 
 
 # ── Admin: maintenance broadcast commands ────────────────────────────────────
@@ -67,7 +86,7 @@ async def cmd_maintenance_on(message: Message):
     """Admin only: broadcast maintenance message to all active users."""
     if message.from_user.id != ADMIN_ID:
         return
-    await message.answer("📢 Sending maintenance notification to all users…")
+    await message.answer(t('ru', 'admin.maintenance_on'))
     await broadcast_maintenance_start(message.bot)
 
 
@@ -76,7 +95,7 @@ async def cmd_maintenance_off(message: Message):
     """Admin only: broadcast recovery message to all active users."""
     if message.from_user.id != ADMIN_ID:
         return
-    await message.answer("✅ Sending recovery notification to all users…")
+    await message.answer(t('ru', 'admin.maintenance_off'))
     await broadcast_maintenance_end(message.bot)
 
 
@@ -86,20 +105,18 @@ async def cmd_report(message: Message):
     """Admin only: trigger daily report immediately (/report or /отчет)."""
     if message.from_user.id != ADMIN_ID:
         return
-    await message.answer("📊 Генерирую отчёт…")
+    await message.answer(t('ru', 'admin.report_generating'))
     try:
-        # Use a wrapper so the report arrives as a reply in THIS chat,
-        # bypassing bot.send_message() which can time out on idle sessions.
         class _ReplyBot:
             async def send_message(self, chat_id, text, **kw):
                 await message.answer(text, **kw)
 
         await send_daily_report(_ReplyBot(), ADMIN_ID, _ANALYTICS_DB_PATH)
     except Exception as exc:
-        await message.answer(f"❌ Ошибка отчёта: {exc}")
+        await message.answer(t('ru', 'admin.report_error', error=exc))
 
 
-# ── Upgrade / Pay commands (Build A2) ────────────────────────────────────────
+# ── Upgrade / Pay commands ────────────────────────────────────────────────────
 
 @router.message(Command("upgrade"))
 @router.message(Command("pay"))
