@@ -1138,7 +1138,7 @@ async def health():
     # ── AutoApply DB ──────────────────────────────────────────────────────────
     try:
         async with aiosqlite.connect(AUTOAPPLY_DB) as db:
-            async with db.execute("SELECT count(*) FROM users") as cur:
+            async with db.execute("SELECT count(*) FROM autoapply_users") as cur:
                 row = await cur.fetchone()
             checks["db_autoapply"] = {"status": "ok", "users": row[0] if row else 0}
     except Exception as exc:
