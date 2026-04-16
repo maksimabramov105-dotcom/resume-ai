@@ -180,6 +180,32 @@ def _eta_string(current: int, avg_daily: float, goal: int = 1000) -> str:
     return eta.strftime("%d.%m.%Y")
 
 
+async def _count_recent_errors() -> int | str:
+    """
+    Count ERROR/EXCEPTION log lines from systemd journal in the last 24h.
+    Falls back gracefully to 'n/a' if journalctl is unavailable.
+    """
+    try:
+        import asyncio
+        proc = await asyncio.create_subprocess_exec(
+            "journalctl", "-u", "resumeaibot", "--since", "24 hours ago",
+            "--no-pager", "-q",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=8)
+        text = stdout.decode("utf-8", errors="replace").lower()
+        count = (
+            text.count(" error ")
+            + text.count("exception")
+            + text.count("traceback")
+            + text.count("critical")
+        )
+        return count
+    except Exception:
+        return "n/a"
+
+
 # ── Daily report ──────────────────────────────────────────────────────────────
 
 async def send_daily_report(
@@ -288,6 +314,16 @@ async def send_daily_report(
             f"├ Активных кампаний: {web_stats.get('active_campaigns', 0)}\n"
             f"└ Бот→сайт (telegram linked): {web_stats.get('bot_to_web', 0)}\n\n"
         )
+
+    # ── Errors in last 24h (from systemd journal) ────────────────────────────
+    errors_24h = await _count_recent_errors()
+    errors_emoji = "🔴" if isinstance(errors_24h, int) and errors_24h > 10 else (
+        "🟡" if isinstance(errors_24h, int) and errors_24h > 0 else "🟢"
+    )
+    text += (
+        f"🔧 <b>ОШИБКИ (24ч)</b>\n"
+        f"└ {errors_emoji} Записей ERROR/EXCEPTION: {errors_24h}\n\n"
+    )
 
     text += (
         f"🎯 <b>ЦЕЛЬ: 1000 платных</b>\n"

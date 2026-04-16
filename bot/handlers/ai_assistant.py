@@ -13,9 +13,7 @@ from database.db import (
 from services.openai_service import chat_completion
 from prompts.assistant_prompt import ASSISTANT_SYSTEM_PROMPT, ASSISTANT_UPSELL_MESSAGES
 from utils.keyboards import assistant_kb, buy_assistant_kb, main_menu_kb
-from utils.texts import (
-    ASSISTANT_INTRO, ASSISTANT_NO_CREDITS, ASSISTANT_LOW_CREDITS, ASSISTANT_LAST_MESSAGE,
-)
+from utils.bot_translations import t
 from config import ASSISTANT_MAX_CONTEXT_MESSAGES
 
 router = Router()
@@ -28,26 +26,28 @@ class AssistantStates(StatesGroup):
 @router.callback_query(F.data == "ai_assistant")
 async def start_assistant(callback: CallbackQuery, state: FSMContext):
     user = await get_or_create_user(callback.from_user.id)
+    lang = user.language or 'ru'
 
     if user.credits_assistant <= 0:
-        await callback.message.edit_text(ASSISTANT_NO_CREDITS, reply_markup=buy_assistant_kb())
+        await callback.message.edit_text(t(lang, 'assistant.no_credits'), reply_markup=buy_assistant_kb(lang))
         return
 
     await state.set_state(AssistantStates.active)
     await state.update_data(message_count=0)
 
     await callback.message.edit_text(
-        ASSISTANT_INTRO.format(credits_assistant=user.credits_assistant),
-        reply_markup=assistant_kb(),
+        t(lang, 'assistant.intro').format(credits_assistant=user.credits_assistant),
+        reply_markup=assistant_kb(lang),
     )
 
 
 @router.message(AssistantStates.active, F.text)
 async def handle_assistant_message(message: Message, state: FSMContext):
     user = await get_or_create_user(message.from_user.id)
+    lang = user.language or 'ru'
 
     if user.credits_assistant <= 0:
-        await message.answer(ASSISTANT_NO_CREDITS, reply_markup=buy_assistant_kb())
+        await message.answer(t(lang, 'assistant.no_credits'), reply_markup=buy_assistant_kb(lang))
         await state.clear()
         return
 
@@ -97,29 +97,32 @@ async def handle_assistant_message(message: Message, state: FSMContext):
 
     warning = ""
     if user.credits_assistant == 5:
-        warning = ASSISTANT_LOW_CREDITS.format(n=5)
+        warning = t(lang, 'assistant.low_credits').format(n=5)
     elif user.credits_assistant == 0:
-        warning = ASSISTANT_LAST_MESSAGE
+        warning = t(lang, 'assistant.last_message')
 
     full_text = f"{md_to_telegram(response)}{upsell}{warning}"
     if len(full_text) > 4096:
         full_text = full_text[:4093] + "…"
-    await message.answer(full_text, parse_mode="HTML", reply_markup=assistant_kb())
+    await message.answer(full_text, parse_mode="HTML", reply_markup=assistant_kb(lang))
 
 
 @router.message(AssistantStates.active)
 async def assistant_wrong_type(message: Message):
-    await message.answer("💬 Пожалуйста, напиши свой вопрос текстом.")
+    user = await get_or_create_user(message.from_user.id)
+    await message.answer(t(user.language, 'assistant.wrong_type'))
 
 
 @router.callback_query(F.data == "clear_assistant_history")
 async def clear_history(callback: CallbackQuery):
     await clear_conversation_history(callback.from_user.id)
-    await callback.answer("История очищена ✅")
+    user = await get_or_create_user(callback.from_user.id)
+    await callback.answer(t(user.language, 'assistant.history_cleared'))
 
 
 @router.callback_query(F.data == "exit_assistant")
 async def exit_assistant(callback: CallbackQuery, state: FSMContext):
     await state.clear()
-    from utils.texts import START_MESSAGE
-    await callback.message.edit_text(START_MESSAGE, reply_markup=main_menu_kb())
+    user = await get_or_create_user(callback.from_user.id)
+    lang = user.language or 'ru'
+    await callback.message.edit_text(t(lang, 'start.welcome'), reply_markup=main_menu_kb(lang))

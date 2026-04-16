@@ -2020,6 +2020,61 @@ async def import_linkedin(
 
 
 # ── SPA fallback ──────────────────────────────────────────────────────────────
+@app.get("/blog", include_in_schema=False)
+@app.get("/blog/", include_in_schema=False)
+async def blog_index():
+    """Blog index — placeholder until real articles are generated."""
+    html = """<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Блог — РезюмеАИ | ResumeAI Blog</title>
+  <meta name="description" content="Советы по поиску работы, оптимизации резюме, подготовке к собеседованию — от команды РезюмеАИ.">
+  <link rel="canonical" href="https://resumeai-bot.ru/blog">
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 60px auto; padding: 0 20px; color: #1e293b; }
+    h1 { font-size: 2rem; margin-bottom: 8px; }
+    .sub { color: #64748b; margin-bottom: 40px; }
+    .cta { display:inline-block; background:#2563EB; color:#fff; padding:12px 24px; border-radius:8px; text-decoration:none; font-weight:600; }
+    .coming { background:#f1f5f9; border-radius:12px; padding:24px; margin-top:32px; }
+    footer { margin-top:60px; color:#94a3b8; font-size:.875rem; }
+  </style>
+</head>
+<body>
+  <h1>📝 Блог / Blog</h1>
+  <p class="sub">Советы по карьере · Career tips · AI &amp; Job Search</p>
+
+  <div class="coming">
+    <strong>🚧 Статьи скоро появятся / Articles coming soon</strong><br><br>
+    Подпишись на бота — первым узнаешь о публикациях.<br>
+    Follow the bot to be first to read new posts.
+  </div>
+
+  <p style="margin-top:32px">
+    <a class="cta" href="https://t.me/topbestworkerbot">🤖 Попробовать бота / Try the bot →</a>
+  </p>
+
+  <footer>© 2026 ResumeAI · <a href="/">На главную / Home</a></footer>
+</body>
+</html>"""
+    from fastapi.responses import HTMLResponse
+    return HTMLResponse(content=html, status_code=200)
+
+
+@app.get("/blog/{slug}", include_in_schema=False)
+async def blog_article(slug: str):
+    """Individual blog article — served from pre-generated HTML files if available."""
+    import pathlib
+    blog_dir = pathlib.Path(__file__).parent / "static" / "blog"
+    article_path = blog_dir / f"{slug}.html"
+    if article_path.exists():
+        return FileResponse(str(article_path))
+    # Redirect to blog index if article not found
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/blog", status_code=302)
+
+
 @app.get("/app", include_in_schema=False)
 @app.get("/app/{path:path}", include_in_schema=False)
 async def serve_app(path: str = ""):

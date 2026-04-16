@@ -15,17 +15,12 @@ from utils.keyboards import (
     buy_credits_kb, buy_assistant_kb, main_menu_kb,
     payment_method_kb, manual_paid_kb, admin_approve_kb, crypto_check_kb,
 )
+# Admin-only strings stay in Russian; user-facing strings use t()
 from utils.texts import (
-    BUY_MESSAGE, PAYMENT_SUCCESS,
-    PAYMENT_CRYPTO_PENDING, PAYMENT_CRYPTO_CHECKING,
-    PAYMENT_MANUAL_RU, PAYMENT_MANUAL_REVOLUT,
-    PAYMENT_RECEIPT_ASK, PAYMENT_RECEIPT_SENT,
-    PAYMENT_RECEIPT_CHECKING, PAYMENT_AUTO_APPROVED,
-    PAYMENT_CHECK_PENDING, PAYMENT_NOT_FOUND,
     ADMIN_PAYMENT_NOTIFY, ADMIN_PAYMENT_AI_ANALYSIS,
     ADMIN_PAYMENT_APPROVED, ADMIN_PAYMENT_REJECTED,
-    PAYMENT_APPROVED_USER, PAYMENT_REJECTED_USER,
 )
+from utils.bot_translations import t
 
 router = Router()
 
@@ -40,7 +35,7 @@ PACKAGE_CALLBACKS = {
 
 
 class PaymentStates(StatesGroup):
-    waiting_receipt = State()   # waiting for screenshot from user (manual payment)
+    waiting_receipt = State()
 
 
 # ---------------------------------------------------------------------------
@@ -49,7 +44,9 @@ class PaymentStates(StatesGroup):
 
 @router.callback_query(F.data == "buy_credits")
 async def show_buy_menu(callback: CallbackQuery):
-    await callback.message.edit_text(BUY_MESSAGE, reply_markup=buy_credits_kb())
+    user = await get_or_create_user(callback.from_user.id)
+    lang = user.language or 'ru'
+    await callback.message.edit_text(t(lang, 'buy.header'), reply_markup=buy_credits_kb(lang))
 
 
 # ---------------------------------------------------------------------------
@@ -58,14 +55,23 @@ async def show_buy_menu(callback: CallbackQuery):
 
 @router.callback_query(F.data.in_(set(PACKAGE_CALLBACKS.keys())))
 async def select_payment_method(callback: CallbackQuery):
+    user = await get_or_create_user(callback.from_user.id)
+    lang = user.language or 'ru'
     package_key = PACKAGE_CALLBACKS[callback.data]
     pkg = PRICING[package_key]
-    text = (
-        f"Выбран пакет: <b>{pkg['name']}</b>\n"
-        f"Сумма: <b>{pkg['price_rub']}₽</b> / <b>{pkg['price_usdt']} USDT</b>\n\n"
-        "Выбери способ оплаты:"
-    )
-    await callback.message.edit_text(text, reply_markup=payment_method_kb(package_key))
+    if lang == 'en':
+        text = (
+            f"Selected package: <b>{pkg['name']}</b>\n"
+            f"Amount: <b>{pkg['price_rub']}₽</b> / <b>{pkg['price_usdt']} USDT</b>\n\n"
+            "Choose payment method:"
+        )
+    else:
+        text = (
+            f"Выбран пакет: <b>{pkg['name']}</b>\n"
+            f"Сумма: <b>{pkg['price_rub']}₽</b> / <b>{pkg['price_usdt']} USDT</b>\n\n"
+            "Выбери способ оплаты:"
+        )
+    await callback.message.edit_text(text, reply_markup=payment_method_kb(package_key, lang))
 
 
 # ---------------------------------------------------------------------------
@@ -74,14 +80,16 @@ async def select_payment_method(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith("pay_method:") & F.data.endswith(":crypto"))
 async def pay_crypto(callback: CallbackQuery):
+    user = await get_or_create_user(callback.from_user.id)
+    lang = user.language or 'ru'
     package_key = callback.data.split(":")[1]
 
     if not CRYPTOBOT_TOKEN:
-        await callback.answer("Криптооплата временно недоступна.", show_alert=True)
+        await callback.answer(t(lang, 'pay.crypto_unavailable'), show_alert=True)
         return
 
     pkg = PRICING[package_key]
-    await callback.message.edit_text("⏳ Создаю инвойс...")
+    await callback.message.edit_text(t(lang, 'pay.loading'))
 
     try:
         from services.payment_service import create_crypto_invoice
@@ -95,25 +103,26 @@ async def pay_crypto(callback: CallbackQuery):
         )
 
         await callback.message.edit_text(
-            PAYMENT_CRYPTO_PENDING.format(
+            t(lang, 'pay.crypto_pending').format(
                 usdt=pkg["price_usdt"],
-                url=pay_url,
+                pay_url=pay_url,
             ),
-            reply_markup=crypto_check_kb(invoice_id, package_key),
+            reply_markup=crypto_check_kb(invoice_id, package_key, lang),
         )
     except Exception as e:
         await callback.message.edit_text(
-            f"⚠️ Ошибка при создании инвойса: {e}",
-            reply_markup=main_menu_kb(),
+            t(lang, 'pay.error_grant', error=e),
+            reply_markup=main_menu_kb(lang),
         )
 
 
 @router.callback_query(F.data.startswith("check_crypto:"))
 async def check_crypto(callback: CallbackQuery):
     _, invoice_id, package_key = callback.data.split(":", 2)
-
-    # Answer callback ONCE immediately — removes Telegram's loading spinner
     await callback.answer()
+
+    user = await get_or_create_user(callback.from_user.id)
+    lang = user.language or 'ru'
 
     try:
         from services.payment_service import check_crypto_invoice, apply_package_credits
@@ -123,7 +132,6 @@ async def check_crypto(callback: CallbackQuery):
             pkg = PRICING[package_key]
             await apply_package_credits(callback.from_user.id, package_key)
             await update_payment_status(invoice_id, "succeeded")
-            # Track crypto payment for analytics (never raises)
             try:
                 import sys, os as _os
                 _ROOT = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
@@ -134,25 +142,24 @@ async def check_crypto(callback: CallbackQuery):
             except Exception:
                 pass
             await callback.message.edit_text(
-                PAYMENT_SUCCESS.format(name=pkg["name"]),
-                reply_markup=main_menu_kb(),
+                t(lang, 'pay.success').format(name=pkg["name"]),
+                reply_markup=main_menu_kb(lang),
             )
         elif status == "expired":
             await callback.message.edit_text(
-                "❌ Инвойс истёк. Создай новый:",
-                reply_markup=buy_credits_kb(),
+                t(lang, 'pay.not_found'),
+                reply_markup=buy_credits_kb(lang),
             )
         else:
-            # Not paid yet — edit message so user sees clear feedback
             await callback.message.edit_text(
-                PAYMENT_CHECK_PENDING,
-                reply_markup=crypto_check_kb(invoice_id, package_key),
+                t(lang, 'pay.check_pending'),
+                reply_markup=crypto_check_kb(invoice_id, package_key, lang),
             )
 
     except Exception as e:
         await callback.message.edit_text(
-            f"⚠️ Ошибка при проверке: {e}\n\nПопробуй ещё раз.",
-            reply_markup=crypto_check_kb(invoice_id, package_key),
+            t(lang, 'pay.error_grant', error=e),
+            reply_markup=crypto_check_kb(invoice_id, package_key, lang),
         )
 
 
@@ -162,6 +169,8 @@ async def check_crypto(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith("pay_method:") & F.data.endswith(":rucard"))
 async def pay_rucard(callback: CallbackQuery, state: FSMContext):
+    user = await get_or_create_user(callback.from_user.id)
+    lang = user.language or 'ru'
     package_key = callback.data.split(":")[1]
     pkg = PRICING[package_key]
 
@@ -174,13 +183,13 @@ async def pay_rucard(callback: CallbackQuery, state: FSMContext):
     await state.set_state(PaymentStates.waiting_receipt)
     await state.update_data(payment_db_id=db_payment.id, package_key=package_key, payment_method="rucard")
 
-    text = PAYMENT_MANUAL_RU.format(
+    text = t(lang, 'pay.manual_ru').format(
         amount=pkg["price_rub"],
         card=RU_CARD_NUMBER,
         holder=RU_CARD_HOLDER,
         bank=RU_BANK_NAME,
     )
-    await callback.message.edit_text(text, reply_markup=manual_paid_kb(db_payment.id))
+    await callback.message.edit_text(text, reply_markup=manual_paid_kb(db_payment.id, lang))
 
 
 # ---------------------------------------------------------------------------
@@ -189,6 +198,8 @@ async def pay_rucard(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data.startswith("pay_method:") & F.data.endswith(":revolut"))
 async def pay_revolut(callback: CallbackQuery, state: FSMContext):
+    user = await get_or_create_user(callback.from_user.id)
+    lang = user.language or 'ru'
     package_key = callback.data.split(":")[1]
     pkg = PRICING[package_key]
 
@@ -202,12 +213,12 @@ async def pay_revolut(callback: CallbackQuery, state: FSMContext):
     await state.update_data(payment_db_id=db_payment.id, package_key=package_key, payment_method="revolut")
 
     revolut_ref = REVOLUT_LINK or REVOLUT_TAG
-    text = PAYMENT_MANUAL_REVOLUT.format(
+    text = t(lang, 'pay.manual_revolut').format(
         amount_rub=pkg["price_rub"],
         amount_usdt=pkg["price_usdt"],
         revolut=revolut_ref,
     )
-    await callback.message.edit_text(text, reply_markup=manual_paid_kb(db_payment.id))
+    await callback.message.edit_text(text, reply_markup=manual_paid_kb(db_payment.id, lang))
 
 
 # ---------------------------------------------------------------------------
@@ -217,14 +228,15 @@ async def pay_revolut(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data.startswith("manual_paid:"))
 async def ask_for_receipt(callback: CallbackQuery, state: FSMContext):
     payment_db_id = int(callback.data.split(":")[1])
+    user = await get_or_create_user(callback.from_user.id)
+    lang = user.language or 'ru'
 
-    # If state was lost (e.g. bot restart), restore from callback
     data = await state.get_data()
     if not data.get("payment_db_id"):
         await state.set_state(PaymentStates.waiting_receipt)
         await state.update_data(payment_db_id=payment_db_id, package_key="unknown")
 
-    await callback.message.edit_text(PAYMENT_RECEIPT_ASK)
+    await callback.message.edit_text(t(lang, 'pay.receipt_ask'))
 
 
 # ---------------------------------------------------------------------------
@@ -233,20 +245,21 @@ async def ask_for_receipt(callback: CallbackQuery, state: FSMContext):
 
 @router.message(PaymentStates.waiting_receipt, F.photo)
 async def got_receipt(message: Message, state: FSMContext, bot: Bot):
+    user = await get_or_create_user(message.from_user.id)
+    lang = user.language or 'ru'
+
     data = await state.get_data()
-    payment_db_id = data.get("payment_db_id", 0)
-    package_key   = data.get("package_key", "unknown")
-    payment_method = data.get("payment_method", "rucard")   # "rucard" | "revolut"
+    payment_db_id  = data.get("payment_db_id", 0)
+    package_key    = data.get("package_key", "unknown")
+    payment_method = data.get("payment_method", "rucard")
 
     await state.clear()
 
-    pkg  = PRICING.get(package_key, {})
+    pkg     = PRICING.get(package_key, {})
     file_id = message.photo[-1].file_id
 
-    # Tell the user we're checking
-    checking_msg = await message.answer(PAYMENT_RECEIPT_CHECKING)
+    checking_msg = await message.answer(t(lang, 'pay.receipt_checking'))
 
-    # ── Mark payment as awaiting_review in DB ─────────────────────────────
     from database.db import get_session
     from models.user import Payment
     from sqlalchemy import select
@@ -256,7 +269,6 @@ async def got_receipt(message: Message, state: FSMContext, bot: Bot):
         if payment_row:
             payment_row.status = "awaiting_review"
 
-    # ── AI receipt analysis ───────────────────────────────────────────────
     try:
         from services.receipt_checker import check_receipt
         ai_result = await check_receipt(
@@ -274,13 +286,11 @@ async def got_receipt(message: Message, state: FSMContext, bot: Bot):
             analysis="AI-проверка не удалась.",
         )
 
-    # ── AUTO-APPROVE ──────────────────────────────────────────────────────
     if ai_result.verdict == "approve":
         try:
             from services.payment_service import apply_package_credits
             await apply_package_credits(message.from_user.id, package_key)
-            await update_payment_status_by_id(payment_db_id, "succeeded")
-            # Track manual payment for analytics (never raises)
+            await _update_payment_status_by_id(payment_db_id, "succeeded")
             try:
                 import sys, os as _os
                 _ROOT = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
@@ -294,11 +304,10 @@ async def got_receipt(message: Message, state: FSMContext, bot: Bot):
 
             await checking_msg.delete()
             await message.answer(
-                PAYMENT_AUTO_APPROVED.format(name=pkg.get("name", package_key)),
-                reply_markup=main_menu_kb(),
+                t(lang, 'pay.auto_approved').format(name=pkg.get("name", package_key)),
+                reply_markup=main_menu_kb(lang),
             )
 
-            # Notify admin about auto-approval (FYI, no action needed)
             admin_caption = (
                 ADMIN_PAYMENT_NOTIFY.format(
                     user_id=message.from_user.id,
@@ -317,21 +326,15 @@ async def got_receipt(message: Message, state: FSMContext, bot: Bot):
                 )
             )
             try:
-                await bot.send_photo(
-                    ADMIN_ID,
-                    photo=file_id,
-                    caption=admin_caption[:1020],   # Telegram caption limit
-                )
+                await bot.send_photo(ADMIN_ID, photo=file_id, caption=admin_caption[:1020])
             except Exception:
                 pass
         except Exception as e:
             await checking_msg.delete()
-            await message.answer(f"⚠️ Ошибка начисления: {e}", reply_markup=main_menu_kb())
+            await message.answer(t(lang, 'pay.error_grant', error=e), reply_markup=main_menu_kb(lang))
         return
 
-    # ── MANUAL REVIEW → forward to admin ─────────────────────────────────
     verdict_emoji = "⚠️" if ai_result.confidence < 0.4 else "🤔"
-
     admin_caption = (
         ADMIN_PAYMENT_NOTIFY.format(
             user_id=message.from_user.id,
@@ -351,25 +354,24 @@ async def got_receipt(message: Message, state: FSMContext, bot: Bot):
 
     try:
         await bot.send_photo(
-            ADMIN_ID,
-            photo=file_id,
-            caption=admin_caption[:1020],
+            ADMIN_ID, photo=file_id, caption=admin_caption[:1020],
             reply_markup=admin_approve_kb(payment_db_id, message.from_user.id, package_key),
         )
     except Exception:
         pass
 
     await checking_msg.delete()
-    await message.answer(PAYMENT_RECEIPT_SENT, reply_markup=main_menu_kb())
+    await message.answer(t(lang, 'pay.receipt_sent'), reply_markup=main_menu_kb(lang))
 
 
 @router.message(PaymentStates.waiting_receipt)
 async def receipt_not_photo(message: Message):
-    await message.answer("📸 Пожалуйста, отправь скриншот оплаты как <b>фото</b>.")
+    user = await get_or_create_user(message.from_user.id)
+    await message.answer(t(user.language, 'pay.receipt_wrong_type'))
 
 
 # ---------------------------------------------------------------------------
-# Admin: approve / reject
+# Admin: approve / reject  (admin always gets Russian)
 # ---------------------------------------------------------------------------
 
 @router.callback_query(F.data.startswith("admin_ok:"))
@@ -377,13 +379,12 @@ async def admin_approve(callback: CallbackQuery, bot: Bot):
     await callback.answer()
     _, payment_db_id_str, telegram_id_str, package_key = callback.data.split(":", 3)
     payment_db_id = int(payment_db_id_str)
-    telegram_id = int(telegram_id_str)
+    telegram_id   = int(telegram_id_str)
 
     try:
         from services.payment_service import apply_package_credits
         await apply_package_credits(telegram_id, package_key)
-        await update_payment_status_by_id(payment_db_id, "succeeded")
-        # Track admin-approved payment for analytics (never raises)
+        await _update_payment_status_by_id(payment_db_id, "succeeded")
         try:
             import sys, os as _os
             _ROOT = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
@@ -397,12 +398,15 @@ async def admin_approve(callback: CallbackQuery, bot: Bot):
 
         pkg = PRICING.get(package_key, {"name": package_key})
 
-        # Notify user
+        # Notify the user in THEIR language
+        from database.db import get_user
+        target_user = await get_user(telegram_id)
+        target_lang = (target_user.language if target_user else None) or 'ru'
         try:
             await bot.send_message(
                 telegram_id,
-                PAYMENT_APPROVED_USER.format(name=pkg["name"]),
-                reply_markup=main_menu_kb(),
+                t(target_lang, 'pay.approved_user').format(name=pkg["name"]),
+                reply_markup=main_menu_kb(target_lang),
             )
         except Exception:
             pass
@@ -418,12 +422,15 @@ async def admin_reject(callback: CallbackQuery, bot: Bot):
     await callback.answer()
     _, payment_db_id_str, telegram_id_str, package_key = callback.data.split(":", 3)
     payment_db_id = int(payment_db_id_str)
-    telegram_id = int(telegram_id_str)
+    telegram_id   = int(telegram_id_str)
 
-    await update_payment_status_by_id(payment_db_id, "failed")
+    await _update_payment_status_by_id(payment_db_id, "failed")
 
+    from database.db import get_user
+    target_user = await get_user(telegram_id)
+    target_lang = (target_user.language if target_user else None) or 'ru'
     try:
-        await bot.send_message(telegram_id, PAYMENT_REJECTED_USER)
+        await bot.send_message(telegram_id, t(target_lang, 'pay.rejected_user'))
     except Exception:
         pass
 
@@ -435,7 +442,7 @@ async def admin_reject(callback: CallbackQuery, bot: Bot):
 # Helpers
 # ---------------------------------------------------------------------------
 
-async def update_payment_status_by_id(payment_db_id: int, status: str):
+async def _update_payment_status_by_id(payment_db_id: int, status: str):
     from database.db import get_session
     from models.user import Payment
     from sqlalchemy import select

@@ -160,6 +160,91 @@ STRINGS: dict[str, dict[str, str]] = {
         'admin.maintenance_on':    "📢 Sending maintenance notification to all users…",
         'admin.maintenance_off':   "✅ Sending recovery notification to all users…",
         'admin.report_error':      "❌ Ошибка отчёта: {error}",
+
+        # Interview (extra)
+        'interview.started':       "🎯 <b>Собеседование началось!</b>",
+        'interview.finish_header': "📊 <b>Итоги собеседования:</b>",
+        'interview.finish_error':  "⚠️ Не удалось подвести итоги: {error}\n\nПопробуй начать собеседование заново.",
+        'interview.wrong_vacancy': "📋 Пожалуйста, напиши текст вакансии.",
+        'interview.wrong_answer':  "💬 Пожалуйста, напиши свой ответ текстом.",
+
+        # AI Assistant
+        'assistant.intro':         (
+            "💬 <b>AI-ассистент активирован!</b>\n\n"
+            "Задай мне любой вопрос — я помогу с карьерой, текстами,\n"
+            "обучением и чем угодно ещё.\n\n"
+            "💰 Осталось сообщений: <b>{credits_assistant}</b>\n\n"
+            "Для выхода нажми кнопку ниже."
+        ),
+        'assistant.low_credits':   "\n\n⚠️ <i>Осталось {n} сообщений.</i>",
+        'assistant.last_message':  "\n\n❌ <i>Это было последнее сообщение.</i>",
+        'assistant.wrong_type':    "💬 Пожалуйста, напиши свой вопрос текстом.",
+        'assistant.history_cleared':"История очищена ✅",
+
+        # Payment — user-facing
+        'pay.loading':             "⏳ Создаю инвойс...",
+        'pay.crypto_unavailable':  "Криптооплата временно недоступна.",
+        'pay.success':             "✅ Оплата подтверждена! Пакет «{name}» активирован.\nВаш баланс обновлён.",
+        'pay.check_pending':       (
+            "⏳ <b>Платёж ещё не подтверждён.</b>\n\n"
+            "Оплати через @CryptoBot и нажми кнопку ещё раз.\n"
+            "Обычно занимает 1-2 минуты."
+        ),
+        'pay.not_found':           "Платёж не найден. Если оплата прошла — обратись в поддержку.",
+        'pay.checking':            "⏳ Проверяю...",
+        'pay.receipt_ask':         "📸 Отправь скриншот подтверждения оплаты (фото):",
+        'pay.receipt_sent':        (
+            "✅ Чек получен! Мы проверим оплату и зачислим кредиты в течение нескольких минут.\n\n"
+            "Ожидай уведомления."
+        ),
+        'pay.receipt_checking':    "🔍 Проверяю чек с помощью AI... Займёт несколько секунд.",
+        'pay.receipt_wrong_type':  "📸 Пожалуйста, отправь скриншот оплаты как <b>фото</b>.",
+        'pay.auto_approved':       "✅ <b>Оплата подтверждена автоматически!</b>\n\nПакет «{name}» активирован. Баланс обновлён. 🎉",
+        'pay.approved_user':       "✅ Оплата подтверждена! Пакет «{name}» активирован. Баланс обновлён.",
+        'pay.rejected_user':       (
+            "❌ Оплата не подтверждена.\n\n"
+            "Если ты действительно оплатил — напиши в поддержку и приложи скриншот."
+        ),
+        'pay.error_grant':         "⚠️ Ошибка начисления: {error}",
+        'pay.crypto_pending':      (
+            "💎 <b>Оплата криптовалютой (USDT)</b>\n\n"
+            "Сумма: <b>{usdt} USDT</b>\n\n"
+            "👉 Перейди по ссылке и оплати через @CryptoBot:\n"
+            "{pay_url}\n\n"
+            "После оплаты нажми кнопку ниже."
+        ),
+        'pay.manual_ru':           (
+            "🇷🇺 <b>Перевод на карту РФ</b>\n\n"
+            "Сумма: <b>{amount}₽</b>\n"
+            "Банк: <b>{bank}</b>\n"
+            "Карта: <code>{card}</code>\n"
+            "Получатель: <b>{holder}</b>\n\n"
+            "После оплаты нажми кнопку ниже и отправь скриншот."
+        ),
+        'pay.manual_revolut':      (
+            "💳 <b>Перевод на Revolut</b>\n\n"
+            "Сумма: <b>{amount_rub}₽</b> (≈ <b>{amount_usdt} USDT</b>)\n"
+            "Revolut: <b>{revolut}</b>\n\n"
+            "Скопируй тег и сделай перевод в Revolut, затем нажми кнопку ниже."
+        ),
+
+        # Support
+        'support.ask':             (
+            "🆘 <b>Поддержка РезюмеАИ</b>\n\n"
+            "Опиши свою проблему или задай вопрос — сообщение сразу попадёт к нам.\n\n"
+            "Обычно отвечаем в течение 1 часа."
+        ),
+        'support.sent':            (
+            "✅ Сообщение отправлено в поддержку!\n\n"
+            "Мы ответим тебе здесь в ближайшее время."
+        ),
+        'support.wrong_type':      "📝 Пожалуйста, напиши своё сообщение текстом.",
+
+        # Buy menu header
+        'buy.header':              (
+            "💰 <b>Пополнить баланс</b>\n\n"
+            "Выбери пакет:"
+        ),
     },
     # ────────────────────────────────────────────────────────────────────────
     'en': {
@@ -312,6 +397,91 @@ STRINGS: dict[str, dict[str, str]] = {
         'admin.maintenance_on':    "📢 Sending maintenance notification to all users…",
         'admin.maintenance_off':   "✅ Sending recovery notification to all users…",
         'admin.report_error':      "❌ Report error: {error}",
+
+        # Interview (extra)
+        'interview.started':       "🎯 <b>Interview started!</b>",
+        'interview.finish_header': "📊 <b>Interview Results:</b>",
+        'interview.finish_error':  "⚠️ Could not generate results: {error}\n\nTry starting the interview again.",
+        'interview.wrong_vacancy': "📋 Please send the job description as text.",
+        'interview.wrong_answer':  "💬 Please type your answer as text.",
+
+        # AI Assistant
+        'assistant.intro':         (
+            "💬 <b>AI Assistant activated!</b>\n\n"
+            "Ask me anything — career advice, writing help,\n"
+            "learning tips, and more.\n\n"
+            "💰 Messages remaining: <b>{credits_assistant}</b>\n\n"
+            "Press the button below to exit."
+        ),
+        'assistant.low_credits':   "\n\n⚠️ <i>{n} messages remaining.</i>",
+        'assistant.last_message':  "\n\n❌ <i>That was your last message.</i>",
+        'assistant.wrong_type':    "💬 Please type your question as text.",
+        'assistant.history_cleared':"History cleared ✅",
+
+        # Payment — user-facing
+        'pay.loading':             "⏳ Creating invoice...",
+        'pay.crypto_unavailable':  "Crypto payment is temporarily unavailable.",
+        'pay.success':             "✅ Payment confirmed! Package «{name}» activated.\nYour balance has been updated.",
+        'pay.check_pending':       (
+            "⏳ <b>Payment not confirmed yet.</b>\n\n"
+            "Complete payment via @CryptoBot and press the button again.\n"
+            "Usually takes 1-2 minutes."
+        ),
+        'pay.not_found':           "Payment not found. If you've already paid — contact support.",
+        'pay.checking':            "⏳ Checking...",
+        'pay.receipt_ask':         "📸 Send a screenshot of your payment confirmation (photo):",
+        'pay.receipt_sent':        (
+            "✅ Receipt received! We'll verify your payment and add credits within a few minutes.\n\n"
+            "Watch for a notification here."
+        ),
+        'pay.receipt_checking':    "🔍 Verifying receipt with AI... This takes a few seconds.",
+        'pay.receipt_wrong_type':  "📸 Please send the payment screenshot as a <b>photo</b>.",
+        'pay.auto_approved':       "✅ <b>Payment confirmed automatically!</b>\n\nPackage «{name}» activated. Balance updated. 🎉",
+        'pay.approved_user':       "✅ Payment confirmed! Package «{name}» activated. Balance updated.",
+        'pay.rejected_user':       (
+            "❌ Payment not confirmed.\n\n"
+            "If you did pay — contact support and include a screenshot."
+        ),
+        'pay.error_grant':         "⚠️ Error granting credits: {error}",
+        'pay.crypto_pending':      (
+            "💎 <b>Crypto payment (USDT)</b>\n\n"
+            "Amount: <b>{usdt} USDT</b>\n\n"
+            "👉 Follow the link and pay via @CryptoBot:\n"
+            "{pay_url}\n\n"
+            "Press the button below after payment."
+        ),
+        'pay.manual_ru':           (
+            "🇷🇺 <b>Transfer to Russian card</b>\n\n"
+            "Amount: <b>{amount}₽</b>\n"
+            "Bank: <b>{bank}</b>\n"
+            "Card: <code>{card}</code>\n"
+            "Recipient: <b>{holder}</b>\n\n"
+            "After payment press the button below and send a screenshot."
+        ),
+        'pay.manual_revolut':      (
+            "💳 <b>Revolut transfer</b>\n\n"
+            "Amount: <b>{amount_rub}₽</b> (≈ <b>{amount_usdt} USDT</b>)\n"
+            "Revolut tag: <b>{revolut}</b>\n\n"
+            "Copy the tag, make the transfer in Revolut, then press the button below."
+        ),
+
+        # Support
+        'support.ask':             (
+            "🆘 <b>ResumeAI Support</b>\n\n"
+            "Describe your issue or ask a question — your message goes straight to our team.\n\n"
+            "We usually reply within 1 hour."
+        ),
+        'support.sent':            (
+            "✅ Your message has been sent to support!\n\n"
+            "We'll reply to you here shortly."
+        ),
+        'support.wrong_type':      "📝 Please type your message as text.",
+
+        # Buy menu header
+        'buy.header':              (
+            "💰 <b>Top Up Balance</b>\n\n"
+            "Choose a package:"
+        ),
     },
 }
 

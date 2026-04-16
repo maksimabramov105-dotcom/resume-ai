@@ -12,19 +12,21 @@ from aiogram.fsm.state import State, StatesGroup
 
 from config import ADMIN_ID
 from utils.keyboards import main_menu_kb, support_kb
-from utils.texts import SUPPORT_MESSAGE, SUPPORT_SENT, ADMIN_SUPPORT_NOTIFY
+from utils.texts import ADMIN_SUPPORT_NOTIFY   # admin-only, always Russian
+from utils.bot_translations import t
+from database.db import get_or_create_user
 
 router = Router()
 
 # ── Knowledge base ────────────────────────────────────────────────────────────
 
-_KB_ARTICLES = {
+_KB_ARTICLES_RU = {
     "kb:pdf": (
         "📄 <b>Как скачать резюме в PDF</b>",
         "1. Создайте резюме через /resume\n"
         "2. Нажмите кнопку <b>«📄 Скачать PDF»</b> — файл придёт в чат\n"
         "3. На сайте: кнопка <b>«Экспорт PDF»</b> в правом верхнем углу\n\n"
-        "<b>PDF не скачивается?</b> Обновите страницу или напишите @maksimabramov — "
+        "<b>PDF не скачивается?</b> Обновите страницу или напишите нам — "
         "отвечаем в течение часа 🕐"
     ),
     "kb:format": (
@@ -60,91 +62,164 @@ _KB_ARTICLES = {
         "В боте: /cancel → «Подписка» → «Отменить»\n"
         "На сайте: «Биллинг» → «Отменить подписку»\n\n"
         "Доступ сохраняется до конца периода. Данные не удаляются.\n\n"
-        "Если кнопки не работают или нужен возврат средств — "
-        "напишите @maksimabramov, разберёмся в течение часа 🕐"
+        "Если нужен возврат средств — напишите в поддержку, разберёмся в течение часа 🕐"
     ),
 }
 
-def _help_kb() -> InlineKeyboardMarkup:
+_KB_ARTICLES_EN = {
+    "kb:pdf": (
+        "📄 <b>How to download your resume as PDF</b>",
+        "1. Generate your resume via /resume\n"
+        "2. Click <b>«📄 Download PDF»</b> — the file will arrive in this chat\n"
+        "3. On the website: click <b>«Export PDF»</b> in the top-right corner\n\n"
+        "<b>PDF not downloading?</b> Refresh the page or contact us — "
+        "we reply within an hour 🕐"
+    ),
+    "kb:format": (
+        "🎨 <b>Formatting looks wrong</b>",
+        "Common causes:\n"
+        "• <b>Text too long</b> — trim to 1-2 pages\n"
+        "• <b>Too many symbols</b> •→★ — replace with dashes and numbers\n"
+        "• <b>Wrong template</b> — try «Classic» or «ATS-optimized»\n\n"
+        "Click <b>«Regenerate»</b> in the editor — AI will rebuild with clean structure."
+    ),
+    "kb:templates": (
+        "🖼 <b>How to change the resume template</b>",
+        "In the bot: /resume → <b>«Change Template»</b>\n"
+        "On the website: «Resume» → «Template» → «Apply»\n\n"
+        "<b>8 templates available:</b>\n"
+        "• Minimalist — tech, startups\n"
+        "• Classic — finance, legal\n"
+        "• ATS-optimized — job boards ⭐\n"
+        "• International — overseas jobs\n"
+        "• And 4 more"
+    ),
+    "kb:plans": (
+        "💳 <b>Pricing plans</b>",
+        "<b>FREE</b> — free: 1 resume, 3 auto-applies/day\n"
+        "<b>STARTER — 990₽/mo:</b> 10 resumes, 50 applies/day\n"
+        "<b>PRO — 2,490₽/mo:</b> unlimited resumes, 200 applies/day\n"
+        "<b>UNLIMITED — 4,990₽/mo:</b> 9,999 applies, API access\n\n"
+        "Payment: crypto, Russian card, Revolut\n"
+        "Subscribe: /pay"
+    ),
+    "kb:cancel": (
+        "❌ <b>Cancel subscription</b>",
+        "In the bot: /cancel → «Subscription» → «Cancel»\n"
+        "On the website: «Billing» → «Cancel Subscription»\n\n"
+        "Access continues until the end of the paid period. Your data is not deleted.\n\n"
+        "Need a refund? Contact support — we'll sort it within an hour 🕐"
+    ),
+}
+
+
+def _help_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
+    if lang == 'en':
+        return InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📄 Download PDF",    callback_data="kb:pdf"),
+             InlineKeyboardButton(text="🎨 Formatting",      callback_data="kb:format")],
+            [InlineKeyboardButton(text="🖼 Templates",       callback_data="kb:templates"),
+             InlineKeyboardButton(text="💳 Plans",           callback_data="kb:plans")],
+            [InlineKeyboardButton(text="❌ Cancel plan",     callback_data="kb:cancel")],
+            [InlineKeyboardButton(text="✉️ Contact Support", callback_data="support")],
+        ])
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📄 Скачать PDF", callback_data="kb:pdf"),
-         InlineKeyboardButton(text="🎨 Форматирование", callback_data="kb:format")],
-        [InlineKeyboardButton(text="🖼 Шаблоны", callback_data="kb:templates"),
-         InlineKeyboardButton(text="💳 Тарифы", callback_data="kb:plans")],
-        [InlineKeyboardButton(text="❌ Отмена подписки", callback_data="kb:cancel")],
+        [InlineKeyboardButton(text="📄 Скачать PDF",          callback_data="kb:pdf"),
+         InlineKeyboardButton(text="🎨 Форматирование",       callback_data="kb:format")],
+        [InlineKeyboardButton(text="🖼 Шаблоны",             callback_data="kb:templates"),
+         InlineKeyboardButton(text="💳 Тарифы",              callback_data="kb:plans")],
+        [InlineKeyboardButton(text="❌ Отмена подписки",      callback_data="kb:cancel")],
         [InlineKeyboardButton(text="✉️ Написать в поддержку", callback_data="support")],
+    ])
+
+
+def _back_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
+    label = "« Back to Help" if lang == 'en' else "« Назад к помощи"
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=label, callback_data="kb:menu")],
     ])
 
 
 @router.message(Command("help"))
 async def cmd_help(message: Message):
-    await message.answer(
-        "❓ <b>База знаний ResumeAI</b>\n\n"
-        "Выберите тему или напишите свой вопрос — "
-        "отвечаем <b>в течение часа</b> 🕐",
-        reply_markup=_help_kb(),
-    )
+    user = await get_or_create_user(message.from_user.id)
+    lang = user.language or 'ru'
+    if lang == 'en':
+        text = (
+            "❓ <b>ResumeAI Help Center</b>\n\n"
+            "Choose a topic or write your question — "
+            "we reply <b>within an hour</b> 🕐"
+        )
+    else:
+        text = (
+            "❓ <b>База знаний ResumeAI</b>\n\n"
+            "Выберите тему или напишите свой вопрос — "
+            "отвечаем <b>в течение часа</b> 🕐"
+        )
+    await message.answer(text, reply_markup=_help_kb(lang))
 
 
-@router.callback_query(F.data.startswith("kb:"))
+@router.callback_query(F.data.startswith("kb:") & ~F.data.in_({"kb:menu"}))
 async def kb_article(callback: CallbackQuery):
     await callback.answer()
-    title, body = _KB_ARTICLES.get(callback.data, ("❓", "Статья не найдена"))
+    user = await get_or_create_user(callback.from_user.id)
+    lang = user.language or 'ru'
+    articles = _KB_ARTICLES_EN if lang == 'en' else _KB_ARTICLES_RU
+    title, body = articles.get(callback.data, ("❓", "Article not found" if lang == 'en' else "Статья не найдена"))
     await callback.message.answer(
         f"{title}\n\n{body}",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="« Назад к помощи", callback_data="kb:menu")],
-        ]),
+        reply_markup=_back_kb(lang),
     )
 
 
 @router.callback_query(F.data == "kb:menu")
 async def kb_menu(callback: CallbackQuery):
     await callback.answer()
-    await callback.message.edit_text(
-        "❓ <b>База знаний ResumeAI</b>\n\n"
-        "Выберите тему или напишите свой вопрос — "
-        "отвечаем <b>в течение часа</b> 🕐",
-        reply_markup=_help_kb(),
-    )
-
-
+    user = await get_or_create_user(callback.from_user.id)
+    lang = user.language or 'ru'
+    if lang == 'en':
+        text = (
+            "❓ <b>ResumeAI Help Center</b>\n\n"
+            "Choose a topic or write your question — "
+            "we reply <b>within an hour</b> 🕐"
+        )
+    else:
+        text = (
+            "❓ <b>База знаний ResumeAI</b>\n\n"
+            "Выберите тему или напишите свой вопрос — "
+            "отвечаем <b>в течение часа</b> 🕐"
+        )
+    await callback.message.edit_text(text, reply_markup=_help_kb(lang))
 
 
 class SupportStates(StatesGroup):
     waiting_message = State()
 
 
-# ── Open support ──────────────────────────────────────────────────────────────
-
 @router.callback_query(F.data == "support")
 async def open_support(callback: CallbackQuery, state: FSMContext):
+    user = await get_or_create_user(callback.from_user.id)
+    lang = user.language or 'ru'
     await state.set_state(SupportStates.waiting_message)
-    await callback.message.edit_text(SUPPORT_MESSAGE, reply_markup=support_kb())
+    await callback.message.edit_text(t(lang, 'support.ask'), reply_markup=support_kb(lang))
 
-
-# ── Receive support message (also handles admin replies — same state, merged) ──
 
 @router.message(SupportStates.waiting_message, F.text)
 async def got_support_message(message: Message, state: FSMContext, bot: Bot):
+    user = await get_or_create_user(message.from_user.id)
+    lang = user.language or 'ru'
     data = await state.get_data()
     reply_user_id = data.get("reply_to_user_id")
-
     await state.clear()
 
-    # ── Admin is replying to a user ───────────────────────────────────────────
     if reply_user_id:
         try:
-            await bot.send_message(
-                reply_user_id,
-                f"💬 <b>Ответ поддержки:</b>\n\n{message.text}",
-            )
+            await bot.send_message(reply_user_id, f"💬 <b>Ответ поддержки:</b>\n\n{message.text}")
             await message.answer("✅ Ответ отправлен пользователю.")
         except Exception as e:
             await message.answer(f"⚠️ Не удалось отправить: {e}")
         return
 
-    # ── Regular user support message → forward to admin ──────────────────────
     notify = ADMIN_SUPPORT_NOTIFY.format(
         user_id=message.from_user.id,
         full_name=message.from_user.full_name or "—",
@@ -152,23 +227,20 @@ async def got_support_message(message: Message, state: FSMContext, bot: Bot):
         text=message.text,
     )
     try:
-        await bot.send_message(
-            ADMIN_ID,
-            notify,
-            reply_markup=_reply_kb(message.from_user.id),
-        )
+        await bot.send_message(ADMIN_ID, notify, reply_markup=_reply_kb(message.from_user.id))
     except Exception:
         pass
 
-    await message.answer(SUPPORT_SENT, reply_markup=main_menu_kb())
+    await message.answer(t(lang, 'support.sent'), reply_markup=main_menu_kb(lang))
 
 
 @router.message(SupportStates.waiting_message, F.photo)
 async def got_support_photo(message: Message, state: FSMContext, bot: Bot):
-    """User sent a photo (e.g. bug screenshot) with optional caption."""
+    user = await get_or_create_user(message.from_user.id)
+    lang = user.language or 'ru'
     await state.clear()
 
-    caption_text = message.caption or "(без подписи)"
+    caption_text = message.caption or ("(no caption)" if lang == 'en' else "(без подписи)")
     notify = ADMIN_SUPPORT_NOTIFY.format(
         user_id=message.from_user.id,
         full_name=message.from_user.full_name or "—",
@@ -185,31 +257,25 @@ async def got_support_photo(message: Message, state: FSMContext, bot: Bot):
     except Exception:
         pass
 
-    await message.answer(SUPPORT_SENT, reply_markup=main_menu_kb())
+    await message.answer(t(lang, 'support.sent'), reply_markup=main_menu_kb(lang))
 
 
 @router.message(SupportStates.waiting_message)
 async def support_wrong_type(message: Message):
-    await message.answer("📝 Пожалуйста, напиши текстовое сообщение или прикрепи фото.")
+    user = await get_or_create_user(message.from_user.id)
+    await message.answer(t(user.language, 'support.wrong_type'))
 
-
-# ── Admin replies to support message ──────────────────────────────────────────
 
 @router.callback_query(F.data.startswith("reply_user:"))
 async def admin_reply_prompt(callback: CallbackQuery, state: FSMContext):
     user_id = int(callback.data.split(":")[1])
     await state.set_state(SupportStates.waiting_message)
     await state.update_data(reply_to_user_id=user_id)
-    await callback.message.answer(
-        f"✏️ Напиши ответ пользователю <code>{user_id}</code>:"
-    )
+    await callback.message.answer(f"✏️ Напиши ответ пользователю <code>{user_id}</code>:")
     await callback.answer()
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
-def _reply_kb(user_id: int):
-    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+def _reply_kb(user_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(
             text="↩️ Ответить пользователю",

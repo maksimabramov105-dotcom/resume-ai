@@ -6,10 +6,8 @@ from aiogram.fsm.state import State, StatesGroup
 from database.db import get_or_create_user, save_user, log_generation
 from services.openai_service import start_interview, continue_interview, finish_interview
 from utils.md_cleaner import md_to_telegram
-from utils.keyboards import interview_kb, after_interview_kb, buy_credits_kb, cancel_kb
-from utils.texts import (
-    INTERVIEW_ASK_VACANCY, INTERVIEW_STARTING, INTERVIEW_NO_CREDITS, INTERVIEW_FINISH_PROMPT,
-)
+from utils.keyboards import interview_kb, after_interview_kb, buy_credits_kb, cancel_kb, main_menu_kb
+from utils.bot_translations import t
 
 router = Router()
 
@@ -25,21 +23,23 @@ class InterviewStates(StatesGroup):
 async def start_interview_handler(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     user = await get_or_create_user(callback.from_user.id)
+    lang = user.language or 'ru'
     if user.credits_interview <= 0:
-        await callback.message.edit_text(INTERVIEW_NO_CREDITS, reply_markup=buy_credits_kb())
+        await callback.message.edit_text(t(lang, 'interview.no_credits'), reply_markup=buy_credits_kb(lang))
         return
     await state.set_state(InterviewStates.waiting_vacancy)
-    await callback.message.edit_text(INTERVIEW_ASK_VACANCY, reply_markup=cancel_kb())
+    await callback.message.edit_text(t(lang, 'interview.ask_vacancy'), reply_markup=cancel_kb(lang))
 
 
 @router.message(InterviewStates.waiting_vacancy, F.text)
 async def got_vacancy(message: Message, state: FSMContext):
     vacancy = message.text
     user = await get_or_create_user(message.from_user.id)
+    lang = user.language or 'ru'
 
     candidate_summary = _build_candidate_summary(user)
 
-    status_msg = await message.answer(INTERVIEW_STARTING)
+    status_msg = await message.answer(t(lang, 'interview.starting'))
 
     first_question, tokens = await start_interview(vacancy, candidate_summary)
 
@@ -57,14 +57,15 @@ async def got_vacancy(message: Message, state: FSMContext):
     await save_user(user)
 
     await status_msg.edit_text(
-        f"🎯 <b>Собеседование началось!</b>\n\n{first_question}",
-        reply_markup=interview_kb(can_finish=False),
+        f"{t(lang, 'interview.started')}\n\n{first_question}",
+        reply_markup=interview_kb(can_finish=False, lang=lang),
     )
 
 
 @router.message(InterviewStates.waiting_vacancy)
 async def interview_vacancy_wrong_type(message: Message):
-    await message.answer("📋 Пожалуйста, напиши текст вакансии.")
+    user = await get_or_create_user(message.from_user.id)
+    await message.answer(t(user.language, 'interview.wrong_vacancy'))
 
 
 @router.message(InterviewStates.active, F.text)
@@ -86,19 +87,28 @@ async def handle_answer(message: Message, state: FSMContext):
     await state.update_data(history=history, question_count=question_count)
 
     can_finish = question_count >= MIN_QUESTIONS_TO_FINISH
+    user = await get_or_create_user(message.from_user.id)
+    lang = user.language or 'ru'
 
-    await message.answer(md_to_telegram(response), parse_mode="HTML", reply_markup=interview_kb(can_finish=can_finish))
+    await message.answer(
+        md_to_telegram(response),
+        parse_mode="HTML",
+        reply_markup=interview_kb(can_finish=can_finish, lang=lang),
+    )
 
 
 @router.callback_query(F.data == "finish_interview", InterviewStates.active)
 async def finish_interview_handler(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
+    user = await get_or_create_user(callback.from_user.id)
+    lang = user.language or 'ru'
+
     data = await state.get_data()
     history = data.get("history", [])
     vacancy = data.get("vacancy", "")
     candidate_summary = data.get("candidate_summary", "")
 
-    await callback.message.edit_text(INTERVIEW_FINISH_PROMPT)
+    await callback.message.edit_text(t(lang, 'interview.finish_prompt'))
 
     try:
         final_text, tokens = await finish_interview(vacancy, candidate_summary, history)
@@ -117,22 +127,21 @@ async def finish_interview_handler(callback: CallbackQuery, state: FSMContext):
     except Exception as e:
         await state.clear()
         await callback.message.answer(
-            f"⚠️ Не удалось подвести итоги: {e}\n\nПопробуй начать собеседование заново.",
-            reply_markup=after_interview_kb(),
+            t(lang, 'interview.finish_error', error=e),
+            reply_markup=after_interview_kb(lang),
         )
         return
 
     await state.clear()
 
-    # Truncate to stay within Telegram's 4096 char limit
-    header = "📊 <b>Итоги собеседования:</b>\n\n"
+    header = f"{t(lang, 'interview.finish_header')}\n\n"
     max_text_len = 4096 - len(header)
     if len(final_text) > max_text_len:
         final_text = final_text[:max_text_len - 1] + "…"
 
     await callback.message.answer(
         f"{header}{final_text}",
-        reply_markup=after_interview_kb(),
+        reply_markup=after_interview_kb(lang),
     )
 
     await log_generation(callback.from_user.id, "interview", vacancy, final_text, tokens)
@@ -140,16 +149,17 @@ async def finish_interview_handler(callback: CallbackQuery, state: FSMContext):
 
 @router.message(InterviewStates.active)
 async def interview_answer_wrong_type(message: Message):
-    await message.answer("💬 Пожалуйста, напиши свой ответ текстом.")
+    user = await get_or_create_user(message.from_user.id)
+    await message.answer(t(user.language, 'interview.wrong_answer'))
 
 
 @router.callback_query(F.data == "exit_interview")
 async def exit_interview_handler(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await state.clear()
-    from utils.texts import START_MESSAGE
-    from utils.keyboards import main_menu_kb
-    await callback.message.edit_text(START_MESSAGE, reply_markup=main_menu_kb())
+    user = await get_or_create_user(callback.from_user.id)
+    lang = user.language or 'ru'
+    await callback.message.edit_text(t(lang, 'start.welcome'), reply_markup=main_menu_kb(lang))
 
 
 def _build_candidate_summary(user) -> str:
