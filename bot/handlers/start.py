@@ -88,7 +88,13 @@ async def cmd_report(message: Message):
         return
     await message.answer("📊 Генерирую отчёт…")
     try:
-        await send_daily_report(message.bot, ADMIN_ID, _ANALYTICS_DB_PATH)
+        # Use a wrapper so the report arrives as a reply in THIS chat,
+        # bypassing bot.send_message() which can time out on idle sessions.
+        class _ReplyBot:
+            async def send_message(self, chat_id, text, **kw):
+                await message.answer(text, **kw)
+
+        await send_daily_report(_ReplyBot(), ADMIN_ID, _ANALYTICS_DB_PATH)
     except Exception as exc:
         await message.answer(f"❌ Ошибка отчёта: {exc}")
 

@@ -18,7 +18,7 @@ import aiosqlite
 import uvicorn
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from jose import JWTError, jwt
 from pydantic import BaseModel
@@ -273,7 +273,7 @@ async def process_email_drip():
             pending = await get_pending_drip_users()
             for drip in pending:
                 step = drip["step"]
-                sent = send_drip_email(drip["email"], step)
+                sent = await asyncio.to_thread(send_drip_email, drip["email"], step)
                 if sent:
                     logger.info(f"Drip step {step} sent to {drip['email']}")
 
@@ -696,20 +696,39 @@ async def resume_connect(
         async with aiosqlite.connect(BOT_DB) as db:
             db.row_factory = aiosqlite.Row
             async with db.execute(
-                "SELECT profile FROM users WHERE telegram_id = ?", (telegram_id,)
+                "SELECT specialty, experience_text, education_text, skills_text "
+                "FROM users WHERE telegram_id = ?",
+                (telegram_id,),
             ) as cur:
                 row = await cur.fetchone()
     except Exception as exc:
         logger.error("[api/resume/connect] bot.db read error: %s", exc)
         raise HTTPException(status_code=500, detail="Failed to read bot database")
 
-    if not row or not row["profile"]:
+    if not row:
+        raise HTTPException(
+            status_code=404,
+            detail="No Telegram account found with this ID. Link your account first.",
+        )
+
+    # Combine available profile fields into a single resume text
+    parts = []
+    if row["specialty"]:
+        parts.append(f"Специальность: {row['specialty']}")
+    if row["experience_text"]:
+        parts.append(f"Опыт работы:\n{row['experience_text']}")
+    if row["education_text"]:
+        parts.append(f"Образование:\n{row['education_text']}")
+    if row["skills_text"]:
+        parts.append(f"Навыки:\n{row['skills_text']}")
+
+    if not parts:
         raise HTTPException(
             status_code=404,
             detail="No resume found for this Telegram account. Create it via the bot first.",
         )
 
-    profile_text = row["profile"]
+    profile_text = "\n\n".join(parts)
     try:
         async with aiosqlite.connect(AUTOAPPLY_DB) as db:
             await db.execute(
