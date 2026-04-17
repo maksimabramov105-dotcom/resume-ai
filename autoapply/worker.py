@@ -106,11 +106,15 @@ async def _fetch_vacancies(
             scrapers_path = os.path.join(ROOT, "scrapers")
             if scrapers_path not in sys.path:
                 sys.path.insert(0, scrapers_path)
-            from superjob_scraper import search_vacancies as sj_search  # type: ignore
-            vacancies = await sj_search(
+            from superjob_scraper import scrape_vacancies as sj_scrape  # type: ignore
+            sj_api_key = os.getenv("SUPERJOB_API_KEY", "")
+            vacancies = await sj_scrape(
                 job_title=job_title,
                 location=location,
                 salary_min=salary_min,
+                experience=experience,
+                max_vacancies=200,
+                api_key=sj_api_key,
             )
         else:
             logger.warning("[worker] unknown platform=%s, skipping", platform)
