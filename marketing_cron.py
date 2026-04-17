@@ -234,6 +234,23 @@ def setup_marketing_scheduler(scheduler) -> None:
     )
     logger.info("[marketing_cron] daily job scheduled at 06:00 UTC (09:00 Moscow)")
 
+    # Lead scraper — 08:00 UTC daily
+    # Import deferred to avoid circular imports at module load time
+    try:
+        from scripts.lead_scraper import run_lead_scraper
+        scheduler.add_job(
+            run_lead_scraper,
+            trigger="cron",
+            hour=8,
+            minute=0,
+            id="lead_scraper",
+            replace_existing=True,
+            misfire_grace_time=3600,
+        )
+        logger.info("[marketing_cron] lead_scraper job scheduled at 08:00 UTC")
+    except ImportError as exc:
+        logger.warning("[marketing_cron] lead_scraper not available: %s", exc)
+
 
 # ── Standalone run ────────────────────────────────────────────────────────────
 if __name__ == "__main__":

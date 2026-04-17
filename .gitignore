@@ -14,3 +14,9 @@ content_marketing/content_output/
 content_marketing/logs/
 seo/.DS_Store
 .github/workflows/
+
+# Lead-gen data — may contain personal data / scraped content
+data/leads.csv
+data/drafts.csv
+data/outreach_log.csv
+data/tg_outreach_log.csv
