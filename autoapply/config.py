@@ -38,16 +38,21 @@ CRYPTOBOT_WEBHOOK_SECRET       = os.getenv("CRYPTOBOT_WEBHOOK_SECRET", "")
 # AutoApply-specific CryptoBot token (separate app from the main bot)
 CRYPTOBOT_AUTOAPPLY_TOKEN      = os.getenv("CRYPTOBOT_AUTOAPPLY_TOKEN", "")
 
+# ── Stripe payments ──────────────────────────────────────────────────────────
+STRIPE_SECRET_KEY       = os.getenv("STRIPE_SECRET_KEY", "")
+STRIPE_WEBHOOK_SECRET   = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+STRIPE_PUBLISHABLE_KEY  = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
+
 # ── Server ───────────────────────────────────────────────────────────────
 AUTOAPPLY_PORT = int(os.getenv("AUTOAPPLY_PORT", "8080"))
 AUTOAPPLY_HOST = os.getenv("AUTOAPPLY_HOST", "0.0.0.0")
 
 # ── Plans ────────────────────────────────────────────────────────────────
 PLANS = {
-    "free":      {"daily_limit": 3,    "price_rub": 0,    "label": "FREE"},
-    "start":     {"daily_limit": 50,   "price_rub": 990,  "label": "СТАРТ"},
-    "pro":       {"daily_limit": 200,  "price_rub": 2490, "label": "ПРО"},
-    "unlimited": {"daily_limit": 9999, "price_rub": 4990, "label": "БЕЗЛИМИТ"},
+    "free":      {"daily_limit": 3,    "price_rub": 0,    "price_usd": 0,     "label": "Free"},
+    "start":     {"daily_limit": 50,   "price_rub": 990,  "price_usd": 9.99,  "label": "Starter"},
+    "pro":       {"daily_limit": 200,  "price_rub": 2490, "price_usd": 24.99, "label": "Pro"},
+    "unlimited": {"daily_limit": 9999, "price_rub": 4990, "price_usd": 49.99, "label": "Unlimited"},
 }
 
 # ── Delays between applications (seconds) ────────────────────────────────

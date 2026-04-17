@@ -1568,11 +1568,13 @@ async def create_stripe_checkout(payload: dict, request: Request):
         ("premium", "annual"):  os.getenv("STRIPE_PRICE_PREMIUM_ANNUAL",  ""),
     }
     PRICE_FALLBACK = {
-        ("trial",   "monthly"): {"amount": 299,   "currency": "usd", "name": "РезюмеАИ Trial — 7 дней",     "recurring": None},
-        ("pro",     "monthly"): {"amount": 1999,  "currency": "usd", "name": "РезюмеАИ Pro — месяц",        "recurring": "month"},
-        ("pro",     "annual"):  {"amount": 14900, "currency": "usd", "name": "РезюмеАИ Pro — год",          "recurring": "year"},
-        ("premium", "monthly"): {"amount": 3999,  "currency": "usd", "name": "РезюмеАИ Premium — месяц",   "recurring": "month"},
-        ("premium", "annual"):  {"amount": 29900, "currency": "usd", "name": "РезюмеАИ Premium — год",      "recurring": "year"},
+        ("trial",     "monthly"): {"amount": 299,   "currency": "usd", "name": "ResumeAI Trial — 7 days",       "recurring": None},
+        ("start",     "monthly"): {"amount": 999,   "currency": "usd", "name": "ResumeAI Starter — 1 month",    "recurring": "month"},
+        ("pro",       "monthly"): {"amount": 2499,  "currency": "usd", "name": "ResumeAI Pro — 1 month",        "recurring": "month"},
+        ("pro",       "annual"):  {"amount": 23990, "currency": "usd", "name": "ResumeAI Pro — 1 year",         "recurring": "year"},
+        ("unlimited", "monthly"): {"amount": 4999,  "currency": "usd", "name": "ResumeAI Unlimited — 1 month",  "recurring": "month"},
+        ("premium",   "monthly"): {"amount": 3999,  "currency": "usd", "name": "ResumeAI Premium — 1 month",    "recurring": "month"},
+        ("premium",   "annual"):  {"amount": 29900, "currency": "usd", "name": "ResumeAI Premium — 1 year",     "recurring": "year"},
     }
 
     price_id = PRICE_ID_MAP.get((plan, period), "")
@@ -1652,10 +1654,25 @@ async def stripe_webhook(request: Request):
     data = event["data"]["object"]
 
     if event_type == "checkout.session.completed":
-        plan = data.get("metadata", {}).get("plan", "pro")
+        plan = data.get("metadata", {}).get("plan", "")
+        user_id_str = data.get("metadata", {}).get("user_id", "")
         customer_email = data.get("customer_details", {}).get("email", "")
-        logger.info(f"Stripe payment completed: plan={plan} email={customer_email}")
-        # TODO: update user subscription in DB when user auth is linked
+        logger.info(f"Stripe payment completed: plan={plan} user_id={user_id_str} email={customer_email}")
+
+        if plan and user_id_str:
+            try:
+                await update_user_plan(int(user_id_str), plan)
+                logger.info(f"[stripe_webhook] user {user_id_str} upgraded to {plan}")
+            except Exception as _e:
+                logger.error(f"[stripe_webhook] DB update failed: {_e}")
+        elif customer_email and plan:
+            try:
+                user = await get_user_by_email(customer_email)
+                if user:
+                    await update_user_plan(user["id"], plan)
+                    logger.info(f"[stripe_webhook] user email={customer_email} upgraded to {plan}")
+            except Exception as _e:
+                logger.error(f"[stripe_webhook] DB update by email failed: {_e}")
 
     elif event_type in ("customer.subscription.updated", "customer.subscription.deleted"):
         logger.info(f"Stripe subscription event: {event_type}")
