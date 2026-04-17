@@ -122,32 +122,33 @@ async def cmd_report(message: Message):
 @router.message(Command("pay"))
 @router.message(Command("plans"))
 async def cmd_upgrade(message: Message):
-    """Show payment options — website (Stripe) or crypto (CryptoBot)."""
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(
-                text="💳 Оплатить картой (Visa/MC)",
-                url="https://resumeai-bot.ru/app#plans",
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                text="₿ Оплатить криптовалютой (USDT/BTC)",
-                callback_data="buy_credits",
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                text="💬 Связаться с нами",
-                url="https://t.me/topbestworkerbot",
-            )
-        ],
-    ])
-    await message.answer(
-        "💎 <b>Выберите способ оплаты:</b>\n\n"
-        "💳 <b>Карта</b> (Visa / Mastercard / Amex) — через наш защищённый сайт\n"
-        "₿ <b>Криптовалюта</b> (USDT / BTC / ETH / TON) — прямо здесь в боте\n"
-        "🇷🇺 <b>Карта РФ / Revolut</b> — свяжитесь с нами в Telegram\n\n"
-        "После оплаты план активируется <b>мгновенно</b> ✅",
-        reply_markup=kb,
-    )
+    """Show payment options — website or crypto (CryptoBot)."""
+    user = await get_or_create_user(message.from_user.id)
+    lang = user.language or 'ru'
+    if lang == 'en':
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="💳 Pay by card (Visa/MC)", url="https://resumeai-bot.ru/app#plans")],
+            [InlineKeyboardButton(text="₿ Pay with crypto (USDT/BTC)", callback_data="buy_credits")],
+            [InlineKeyboardButton(text="💬 Contact us", url="https://t.me/topbestworkerbot")],
+        ])
+        text = (
+            "💎 <b>Choose payment method:</b>\n\n"
+            "💳 <b>Card</b> (Visa / Mastercard / Amex) — via our secure website\n"
+            "₿ <b>Crypto</b> (USDT / BTC / ETH / TON) — right here in the bot\n"
+            "🇷🇺 <b>Russian card / Revolut</b> — contact us in Telegram\n\n"
+            "Plan activates <b>instantly</b> after payment ✅"
+        )
+    else:
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="💳 Оплатить картой (Visa/MC)", url="https://resumeai-bot.ru/app#plans")],
+            [InlineKeyboardButton(text="₿ Оплатить криптовалютой (USDT/BTC)", callback_data="buy_credits")],
+            [InlineKeyboardButton(text="💬 Связаться с нами", url="https://t.me/topbestworkerbot")],
+        ])
+        text = (
+            "💎 <b>Выберите способ оплаты:</b>\n\n"
+            "💳 <b>Карта</b> (Visa / Mastercard / Amex) — через наш защищённый сайт\n"
+            "₿ <b>Криптовалюта</b> (USDT / BTC / ETH / TON) — прямо здесь в боте\n"
+            "🇷🇺 <b>Карта РФ / Revolut</b> — свяжитесь с нами в Telegram\n\n"
+            "После оплаты план активируется <b>мгновенно</b> ✅"
+        )
+    await message.answer(text, reply_markup=kb)

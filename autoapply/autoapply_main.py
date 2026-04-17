@@ -253,6 +253,65 @@ async def security_headers_middleware(request, call_next):
     return response
 
 
+# ── Request logging + in-memory rate limiting ─────────────────────────────────
+import time as _time
+from collections import defaultdict as _defaultdict
+
+_rate_windows: dict = _defaultdict(list)
+
+# Heavy AI paths → 20 req/min per IP.  General API → 100 req/min per IP.
+_AI_HEAVY_PATHS = {
+    "/api/generate-cover-letter",
+    "/api/interview/evaluate",
+    "/api/help/question",
+    "/api/salary/insights",
+    "/api/resume/templates",
+    "/api/resume/generate-pdf",
+}
+_AI_GENERAL_TOKENS = {"generate", "ai", "resume", "interview", "cover", "salary"}
+
+
+@app.middleware("http")
+async def logging_and_rate_limit_middleware(request: Request, call_next):
+    start = _time.monotonic()
+    client_ip = (
+        request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+        or (request.client.host if request.client else "unknown")
+    )
+    path = request.url.path
+
+    # Rate limiting for /api/* endpoints only
+    if path.startswith("/api/"):
+        if path in _AI_HEAVY_PATHS:
+            limit = 20
+        elif any(tok in path for tok in _AI_GENERAL_TOKENS):
+            limit = 100
+        else:
+            limit = None
+
+        if limit is not None:
+            now = _time.time()
+            window_key = f"{client_ip}:{path}"
+            _rate_windows[window_key] = [t for t in _rate_windows[window_key] if now - t < 60]
+            if len(_rate_windows[window_key]) >= limit:
+                logger.warning("[rate_limit] %s blocked on %s (%d/%d req/min)", client_ip, path, len(_rate_windows[window_key]), limit)
+                return JSONResponse(
+                    {"error": "rate_limit_exceeded", "retry_after": 60},
+                    status_code=429,
+                )
+            _rate_windows[window_key].append(now)
+
+    try:
+        response = await call_next(request)
+        ms = int((_time.monotonic() - start) * 1000)
+        logger.info("[req] %s %s %s → %d (%dms)", client_ip, request.method, path, response.status_code, ms)
+        return response
+    except Exception as exc:
+        ms = int((_time.monotonic() - start) * 1000)
+        logger.error("[req] %s %s %s → ERROR (%dms): %s", client_ip, request.method, path, ms, exc, exc_info=True)
+        raise
+
+
 # ── Static files ──────────────────────────────────────────────────────────────
 STATIC_DIR = Path(ROOT) / "autoapply" / "static"
 STATIC_DIR.mkdir(exist_ok=True)
@@ -1185,6 +1244,76 @@ async def health():
         "timestamp": ts,
         "checks": checks,
     }
+
+
+@app.get("/api/health/deep", summary="Deep health check — tests each subsystem (no auth)")
+async def health_deep():
+    ts = datetime.utcnow().isoformat() + "Z"
+    checks: dict = {}
+
+    # 1 · AutoApply DB write + read cycle
+    try:
+        async with aiosqlite.connect(AUTOAPPLY_DB) as db:
+            async with db.execute("SELECT count(*), max(created_at) FROM autoapply_users") as cur:
+                row = await cur.fetchone()
+        checks["db_autoapply"] = {"status": "ok", "users": row[0] if row else 0, "last_signup": row[1] if row else None}
+    except Exception as exc:
+        checks["db_autoapply"] = {"status": "error", "detail": str(exc)}
+
+    # 2 · Bot DB
+    bot_db = os.path.join(os.path.dirname(os.path.dirname(__file__)), "bot.db")
+    if os.path.exists(bot_db):
+        try:
+            async with aiosqlite.connect(bot_db) as db:
+                async with db.execute(
+                    "SELECT count(*), sum(total_resumes_generated) FROM users"
+                ) as cur:
+                    row = await cur.fetchone()
+            checks["db_bot"] = {"status": "ok", "users": row[0], "total_resumes": row[1]}
+        except Exception as exc:
+            checks["db_bot"] = {"status": "error", "detail": str(exc)}
+    else:
+        checks["db_bot"] = {"status": "not_found"}
+
+    # 3 · AI key format validation
+    ai_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY", "")
+    if not ai_key:
+        checks["ai_key"] = "missing"
+    elif len(ai_key) < 20:
+        checks["ai_key"] = "suspicious_length"
+    else:
+        checks["ai_key"] = "present"
+
+    # 4 · Resume templates accessible
+    try:
+        templates_dir = STATIC_DIR / "templates"
+        tmpl_count = len(list(templates_dir.glob("*.html"))) if templates_dir.exists() else 0
+        checks["resume_templates"] = {"status": "ok", "count": tmpl_count}
+    except Exception as exc:
+        checks["resume_templates"] = {"status": "error", "detail": str(exc)}
+
+    # 5 · Blog route
+    try:
+        blog_dir = Path(ROOT) / "landing" / "blog"
+        blog_posts = len(list(blog_dir.glob("*.html"))) if blog_dir.exists() else 0
+        checks["blog"] = {"status": "ok", "posts": blog_posts}
+    except Exception as exc:
+        checks["blog"] = {"status": "error", "detail": str(exc)}
+
+    # 6 · Log file writable
+    try:
+        log_path = os.path.join(LOGS_DIR, "autoapply_api.log")
+        checks["log_file"] = "ok" if os.path.exists(log_path) else "missing"
+    except Exception as exc:
+        checks["log_file"] = f"error: {exc}"
+
+    overall = "ok" if all(
+        (v.get("status") == "ok" if isinstance(v, dict) else v in ("ok", "present"))
+        for v in checks.values()
+    ) else "degraded"
+
+    return {"status": overall, "timestamp": ts, "checks": checks}
+
 
 
 # ── Chrome Extension API ──────────────────────────────────────────────────────

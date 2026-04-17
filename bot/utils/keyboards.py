@@ -27,6 +27,13 @@ def main_menu_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
         [
             InlineKeyboardButton(text=t(lang, 'menu.support'),     callback_data="support"),
         ],
+        # Language toggle — always visible, shows the OTHER language to switch to
+        [
+            InlineKeyboardButton(
+                text="🇬🇧 Switch to English" if lang == 'ru' else "🇷🇺 Переключить на Русский",
+                callback_data="lang:en" if lang == 'ru' else "lang:ru",
+            ),
+        ],
     ]
     if WEBAPP_URL:
         rows.insert(0, [
