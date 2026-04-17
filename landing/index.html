@@ -113,6 +113,37 @@
   }
   </script>
 
+  <!-- ── JSON-LD: HowTo ───────────────────────────────────────────────── -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": "Как создать резюме с AI за 60 секунд",
+    "description": "Создайте ATS-оптимизированное резюме с помощью искусственного интеллекта за три простых шага.",
+    "totalTime": "PT1M",
+    "step": [
+      {
+        "@type": "HowToStep",
+        "position": 1,
+        "name": "Опишите вашу должность",
+        "text": "Введите желаемую должность и количество лет опыта. Никаких регистраций и загрузок не требуется."
+      },
+      {
+        "@type": "HowToStep",
+        "position": 2,
+        "name": "AI создаст резюме",
+        "text": "Искусственный интеллект генерирует уникальное ATS-оптимизированное резюме за 30 секунд."
+      },
+      {
+        "@type": "HowToStep",
+        "position": 3,
+        "name": "Скачайте PDF",
+        "text": "Скачайте готовый PDF или отправьте резюме прямо на вакансию в один клик."
+      }
+    ]
+  }
+  </script>
+
   <!-- ── Preconnects ───────────────────────────────────────────────────── -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -486,6 +517,29 @@
     .ds3-section-tag { background: #EEF2FF; color: #2563EB; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 6px; }
     .ds3-bar { height: 6px; background: #E2E8F0; border-radius: 3px; margin-top: 16px; overflow: hidden; }
     .ds3-bar-fill { height: 100%; background: linear-gradient(90deg, #10B981, #059669); border-radius: 3px; width: 94%; }
+
+    /* ── Sticky CTA bar ── */
+    #sticky-cta {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 1100;
+      background: var(--primary); color: #fff;
+      padding: 10px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+      transform: translateY(-100%);
+      transition: transform 0.35s ease;
+    }
+    #sticky-cta.visible { transform: translateY(0); }
+    #sticky-cta .sticky-logo { font-weight: 800; font-size: 17px; }
+    #sticky-cta .sticky-btn {
+      background: #F59E0B; color: #fff; font-weight: 700; font-size: 14px;
+      padding: 8px 20px; border-radius: 8px; border: none; cursor: pointer;
+      transition: background 0.2s; text-decoration: none; white-space: nowrap;
+    }
+    #sticky-cta .sticky-btn:hover { background: #D97706; }
+    #sticky-cta .sticky-close {
+      background: none; border: none; color: rgba(255,255,255,0.7);
+      font-size: 18px; cursor: pointer; padding: 0 0 0 12px; line-height: 1;
+    }
 
     /* ── Social Proof Bar (new animated counters) ── */
     .social-proof-bar {
@@ -1161,15 +1215,16 @@
   </div>
 </header>
 
+<!-- SECTION: hero -->
 <!-- ══════════════════ HERO ══════════════════ -->
 <section id="hero">
   <div class="container">
     <div class="hero-badge" data-i18n="hero.badge">🤖 Работает прямо в Telegram и на Web</div>
-    <h1 data-i18n-html="hero.h1">Получи в <span>3x Больше Интервью.</span> AI Создаёт Идеальное Резюме за 30 Секунд.</h1>
-    <p class="hero-sub" data-i18n="hero.sub">Вставь ссылку на вакансию. AI создаёт резюме, сопроводительное письмо и подготовку к интервью — мгновенно. Работает на Web и в Telegram.</p>
+    <h1 data-i18n-html="hero.h1">Создай AI‑резюме за <span>60 секунд</span></h1>
+    <p class="hero-sub" data-i18n="hero.sub">Бесплатно. Без регистрации. ATS‑оптимизировано.</p>
     <div class="hero-ctas">
-      <a href="/app" class="btn-hero-primary btn-lg" data-i18n="hero.cta1">Создать Резюме Бесплатно →</a>
-      <a href="https://t.me/topbestworkerbot" target="_blank" rel="noopener" class="btn-hero-tg btn-lg" data-i18n="hero.cta2">💬 Или Попробовать в Telegram</a>
+      <a href="https://t.me/topbestworkerbot" target="_blank" rel="noopener" class="btn-hero-primary btn-lg" data-i18n="hero.cta1">Попробовать бесплатно →</a>
+      <a href="/app" class="btn-hero-tg btn-lg" data-i18n="hero.cta2">Открыть веб‑приложение →</a>
     </div>
     <p class="hero-trust" data-i18n="hero.trust">Без карты • 1 бесплатное резюме • Готово за 30 секунд</p>
 
@@ -1222,6 +1277,7 @@
   </div>
 </section>
 
+<!-- SECTION: social-proof -->
 <!-- ══════════════════ SOCIAL PROOF BAR (animated counters) ══════════════════ -->
 <div class="social-proof-bar">
   <div class="proof-item"><span class="count" data-target="1847">0</span><span class="label">Резюме создано</span></div>
@@ -1230,6 +1286,7 @@
   <div class="proof-item"><span class="count" data-target="89">0</span><span class="label">% успешных собеседований</span></div>
 </div>
 
+<!-- SECTION: demo -->
 <!-- ══════════════════ INSTANT DEMO ══════════════════ -->
 <section id="instant-demo">
   <div class="container">
@@ -1281,6 +1338,7 @@
   </div>
 </section>
 
+<!-- SECTION: features -->
 <!-- ══════════════════ FEATURES ══════════════════ -->
 <section id="features" class="features-bg">
   <div class="container">
@@ -1378,6 +1436,7 @@
   </div>
 </section>
 
+<!-- SECTION: how-it-works -->
 <!-- ══════════════════ HOW IT WORKS ══════════════════ -->
 <section id="how-it-works">
   <div class="container">
@@ -1389,26 +1448,27 @@
     <div class="steps-grid">
       <div class="step-card animate-on-scroll">
         <div class="step-number">1</div>
-        <div class="step-icon">📄</div>
-        <h3>Загрузи резюме</h3>
-        <p>Загрузите ваше резюме в PDF или Word. AI проанализирует его и выявит ключевые навыки и опыт.</p>
+        <div class="step-icon">📝</div>
+        <h3>Опишите вашу должность</h3>
+        <p>Введите желаемую должность и количество лет опыта. Никаких регистраций и загрузок.</p>
       </div>
       <div class="step-card animate-on-scroll">
         <div class="step-number">2</div>
-        <div class="step-icon">⚙️</div>
-        <h3>Настрой фильтры</h3>
-        <p>Укажите желаемые должности, зарплату, город, формат работы и другие параметры. AI будет искать только подходящие вакансии.</p>
+        <div class="step-icon">🤖</div>
+        <h3>AI создаст резюме</h3>
+        <p>Искусственный интеллект генерирует уникальное ATS‑оптимизированное резюме за 30 секунд.</p>
       </div>
       <div class="step-card animate-on-scroll">
         <div class="step-number">3</div>
-        <div class="step-icon">🤖</div>
-        <h3>AI откликается за тебя</h3>
-        <p>Сидите дома, а AI рассылает адаптированные резюме и сопроводительные письма на десятки вакансий каждый день.</p>
+        <div class="step-icon">📥</div>
+        <h3>Скачайте PDF</h3>
+        <p>Скачайте готовый PDF или отправьте резюме прямо на вакансию в один клик.</p>
       </div>
     </div>
   </div>
 </section>
 
+<!-- SECTION: results -->
 <!-- ══════════════════ RESULTS (replaces testimonials) ══════════════════ -->
 <section id="results" style="background:var(--bg-alt);">
   <div class="container">
@@ -1474,6 +1534,7 @@
   </div>
 </section>
 
+<!-- SECTION: testimonials -->
 <!-- ══════════════════ TESTIMONIALS ══════════════════ -->
 <section id="testimonials" style="background:var(--bg-alt);padding:64px 0;">
   <div class="container">
@@ -1545,6 +1606,163 @@
 })();
 </script>
 
+<!-- SECTION: try-it-now -->
+<!-- ══════════════════ TRY IT NOW (conversion hook) ══════════════════ -->
+<section id="try-it-now" style="background:linear-gradient(135deg,#EEF2FF 0%,#F8FAFC 100%);padding:72px 0;">
+  <div class="container">
+    <div class="section-header" style="text-align:center;margin-bottom:36px;">
+      <span class="section-label" id="try-label">🚀 Попробовать</span>
+      <h2 class="section-title" id="try-title">Создайте резюме прямо здесь</h2>
+      <p class="section-subtitle" style="margin:0 auto;" id="try-sub">Введите должность и опыт — AI сгенерирует превью за секунды. Без регистрации.</p>
+    </div>
+    <div style="max-width:560px;margin:0 auto;">
+      <div style="background:#fff;border-radius:16px;padding:32px;box-shadow:0 8px 30px rgba(0,0,0,0.08);border:1px solid #E2E8F0;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+          <div>
+            <label style="font-size:13px;font-weight:600;color:#64748B;display:block;margin-bottom:6px;" id="lbl-title">Ваша должность</label>
+            <input id="preview-job" type="text" placeholder="Python Developer" style="width:100%;padding:11px 14px;border:1.5px solid #E2E8F0;border-radius:8px;font-size:14px;outline:none;transition:border 0.2s;" onfocus="this.style.borderColor='#2563EB'" onblur="this.style.borderColor='#E2E8F0'" />
+          </div>
+          <div>
+            <label style="font-size:13px;font-weight:600;color:#64748B;display:block;margin-bottom:6px;" id="lbl-exp">Лет опыта</label>
+            <input id="preview-exp" type="number" min="0" max="40" placeholder="3" style="width:100%;padding:11px 14px;border:1.5px solid #E2E8F0;border-radius:8px;font-size:14px;outline:none;transition:border 0.2s;" onfocus="this.style.borderColor='#2563EB'" onblur="this.style.borderColor='#E2E8F0'" />
+          </div>
+        </div>
+        <button id="preview-btn" onclick="runResumePreview()" style="width:100%;padding:14px;background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;font-weight:700;font-size:15px;border:none;border-radius:10px;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 14px rgba(245,158,11,0.35);" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='none'">
+          <span id="preview-btn-text">Сгенерировать →</span>
+        </button>
+        <!-- Loading state -->
+        <div id="preview-loading" style="display:none;text-align:center;padding:24px 0;">
+          <div class="demo-spinner"></div>
+          <p style="margin-top:12px;color:#64748B;font-size:0.95rem;" id="preview-loading-text">🤖 AI генерирует резюме…</p>
+        </div>
+        <!-- Result card -->
+        <div id="preview-result" style="display:none;margin-top:24px;padding:20px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;font-size:0.9rem;line-height:1.7;color:#334155;">
+        </div>
+        <!-- CTA after result -->
+        <div id="preview-cta" style="display:none;margin-top:16px;text-align:center;">
+          <a href="https://t.me/topbestworkerbot" target="_blank" rel="noopener" id="preview-cta-link" style="display:inline-flex;align-items:center;gap:8px;padding:12px 24px;background:#0088CC;color:#fff;font-weight:700;font-size:14px;border-radius:10px;text-decoration:none;transition:all 0.2s;" onmouseover="this.style.background='#006FA8'" onmouseout="this.style.background='#0088CC'">
+            💬 <span id="preview-cta-text">Скачать полную версию в боте →</span>
+          </a>
+          <p style="margin-top:8px;font-size:12px;color:#94A3B8;" id="preview-note">Это превью. Полный PDF — в Telegram боте @topbestworkerbot</p>
+        </div>
+        <!-- Rate limit message -->
+        <div id="preview-ratelimit" style="display:none;margin-top:16px;padding:12px;background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;font-size:13px;color:#92400E;text-align:center;">
+          <span id="preview-ratelimit-text">⏳ Лимит запросов: 3 в час. Попробуйте позже.</span>
+        </div>
+      </div>
+      <!-- Platform badges -->
+      <div style="display:flex;justify-content:center;align-items:center;gap:16px;margin-top:24px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:#94A3B8;font-weight:500;">Работает с:</span>
+        <span style="padding:5px 12px;background:#fff;border:1px solid #E2E8F0;border-radius:20px;font-size:12px;font-weight:600;color:#334155;">hh.ru</span>
+        <span style="padding:5px 12px;background:#fff;border:1px solid #E2E8F0;border-radius:20px;font-size:12px;font-weight:600;color:#334155;">LinkedIn</span>
+        <span style="padding:5px 12px;background:#fff;border:1px solid #E2E8F0;border-radius:20px;font-size:12px;font-weight:600;color:#334155;">Indeed</span>
+        <span style="padding:5px 12px;background:#fff;border:1px solid #E2E8F0;border-radius:20px;font-size:12px;font-weight:600;color:#334155;">SuperJob</span>
+      </div>
+    </div>
+  </div>
+</section>
+<script>
+(function(){
+  // i18n for the try-it-now widget — patched by the main i18n block on load
+  window._tryWidgetI18n = {
+    ru: {
+      label: '🚀 Попробовать', title: 'Создайте резюме прямо здесь',
+      sub: 'Введите должность и опыт — AI сгенерирует превью за секунды. Без регистрации.',
+      lblTitle: 'Ваша должность', lblExp: 'Лет опыта',
+      btnText: 'Сгенерировать →', loading: '🤖 AI генерирует резюме…',
+      ctaText: 'Скачать полную версию в боте →',
+      note: 'Это превью. Полный PDF — в Telegram боте @topbestworkerbot',
+      ratelimit: '⏳ Лимит запросов: 3 в час. Попробуйте позже.',
+    },
+    en: {
+      label: '🚀 Try it Now', title: 'Build Your Resume Right Here',
+      sub: 'Enter your role and experience — AI generates a preview in seconds. No sign-up.',
+      lblTitle: 'Your job title', lblExp: 'Years of experience',
+      btnText: 'Generate →', loading: '🤖 AI is generating your resume…',
+      ctaText: 'Download full version in the bot →',
+      note: 'This is a preview. Full PDF available in Telegram @topbestworkerbot',
+      ratelimit: '⏳ Rate limit: 3 requests/hour. Please try again later.',
+    }
+  };
+
+  function _applyTryWidget(lang) {
+    var s = window._tryWidgetI18n[lang] || window._tryWidgetI18n.ru;
+    var $$ = function(id){ return document.getElementById(id); };
+    if ($$('try-label'))    $$('try-label').textContent = s.label;
+    if ($$('try-title'))    $$('try-title').textContent = s.title;
+    if ($$('try-sub'))      $$('try-sub').textContent   = s.sub;
+    if ($$('lbl-title'))    $$('lbl-title').textContent = s.lblTitle;
+    if ($$('lbl-exp'))      $$('lbl-exp').textContent   = s.lblExp;
+    if ($$('preview-btn-text'))     $$('preview-btn-text').textContent      = s.btnText;
+    if ($$('preview-loading-text')) $$('preview-loading-text').textContent  = s.loading;
+    if ($$('preview-cta-text'))     $$('preview-cta-text').textContent      = s.ctaText;
+    if ($$('preview-note'))         $$('preview-note').textContent          = s.note;
+    if ($$('preview-ratelimit-text')) $$('preview-ratelimit-text').textContent = s.ratelimit;
+    var inp = document.getElementById('preview-job');
+    if (inp) inp.placeholder = lang === 'en' ? 'Python Developer' : 'Python разработчик';
+  }
+  // Hook into the global applyLang
+  var _origToggle = window.toggleLang;
+  document.addEventListener('DOMContentLoaded', function(){
+    var storedLang = localStorage.getItem('resumeai_lang') || 'ru';
+    _applyTryWidget(storedLang);
+  });
+  // Override toggleLang to also update widget
+  var _origApply = window._tryWidgetApplyFn;
+  window._tryWidgetApplyFn = _applyTryWidget;
+})();
+
+window.runResumePreview = function() {
+  var jobTitle = document.getElementById('preview-job').value.trim();
+  var expVal   = document.getElementById('preview-exp').value.trim();
+  var lang     = localStorage.getItem('resumeai_lang') || 'ru';
+
+  if (!jobTitle) {
+    document.getElementById('preview-job').style.borderColor = '#EF4444';
+    setTimeout(function(){ document.getElementById('preview-job').style.borderColor = '#E2E8F0'; }, 2000);
+    return;
+  }
+
+  var btn = document.getElementById('preview-btn');
+  btn.disabled = true;
+  btn.style.opacity = '0.7';
+  document.getElementById('preview-loading').style.display = 'block';
+  document.getElementById('preview-result').style.display  = 'none';
+  document.getElementById('preview-cta').style.display     = 'none';
+  document.getElementById('preview-ratelimit').style.display = 'none';
+
+  fetch('/api/resume/preview', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ job_title: jobTitle, experience: parseInt(expVal) || 0, lang: lang })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    document.getElementById('preview-loading').style.display = 'none';
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    var html = d.preview_html || '';
+    if (html.toLowerCase().indexOf('rate limit') !== -1 || html.toLowerCase().indexOf('лимит') !== -1) {
+      document.getElementById('preview-ratelimit').style.display = 'block';
+    } else {
+      document.getElementById('preview-result').innerHTML = html;
+      document.getElementById('preview-result').style.display = 'block';
+      document.getElementById('preview-cta').style.display    = 'block';
+      // Re-apply i18n to CTA text
+      if (window._tryWidgetApplyFn) window._tryWidgetApplyFn(lang);
+    }
+  })
+  .catch(function(err){
+    document.getElementById('preview-loading').style.display = 'none';
+    btn.disabled = false; btn.style.opacity = '1';
+    document.getElementById('preview-result').innerHTML =
+      '<p style="color:#EF4444;">⚠️ Ошибка соединения. Попробуйте ещё раз.</p>';
+    document.getElementById('preview-result').style.display = 'block';
+  });
+};
+</script>
+
+<!-- SECTION: pricing -->
 <!-- ══════════════════ PRICING ══════════════════ -->
 <section id="pricing">
   <div class="container">
@@ -1557,46 +1775,46 @@
       <!-- FREE -->
       <div class="pricing-card animate-on-scroll">
         <div class="pricing-name">FREE</div>
-        <div class="pricing-price">0<span> ₽</span></div>
+        <div class="pricing-price">$0<span></span></div>
         <div class="pricing-period">/месяц навсегда</div>
         <ul class="pricing-features">
-          <li>5 откликов в день</li>
-          <li>1 версия резюме</li>
-          <li>Трекер заявок</li>
-          <li>Telegram-бот базовый</li>
+          <li>3 AI‑генерации резюме</li>
+          <li>1 резюме в аккаунте</li>
+          <li>Базовые шаблоны</li>
+          <li>Telegram‑бот базовый</li>
         </ul>
-        <a href="/app" class="btn btn-outline" style="width: 100%; justify-content: center;">Начать бесплатно</a>
+        <a href="https://t.me/topbestworkerbot" target="_blank" rel="noopener" class="btn btn-outline" style="width:100%;justify-content:center;">Начать бесплатно</a>
       </div>
 
       <!-- PRO -->
       <div class="pricing-card popular featured animate-on-scroll">
         <div class="popular-badge">🔥 Популярный</div>
-        <div class="pricing-name">ПРО</div>
-        <div class="pricing-price">990<span> ₽</span></div>
+        <div class="pricing-name">PRO</div>
+        <div class="pricing-price">$9<span>.99</span></div>
         <div class="pricing-period">/месяц</div>
         <ul class="pricing-features">
-          <li>50 откликов в день</li>
-          <li>Безлимит резюме</li>
+          <li>Безлимит AI‑генераций</li>
+          <li>Все шаблоны резюме</li>
           <li>Сопроводительные письма</li>
-          <li>Email-дайджест</li>
-          <li>Приоритетный ATS</li>
+          <li>Подготовка к интервью</li>
+          <li>Приоритетный ATS‑скор</li>
         </ul>
-        <a href="/app" class="btn btn-primary" style="width: 100%; justify-content: center;">Начать с ПРО</a>
+        <a href="https://t.me/topbestworkerbot" target="_blank" rel="noopener" class="btn btn-primary" style="width:100%;justify-content:center;">Начать с PRO</a>
         <p class="pricing-cancel">Отмена в любое время</p>
       </div>
 
       <!-- UNLIMITED -->
       <div class="pricing-card animate-on-scroll">
-        <div class="pricing-name">БЕЗЛИМИТ</div>
-        <div class="pricing-price">2490<span> ₽</span></div>
+        <div class="pricing-name">UNLIMITED</div>
+        <div class="pricing-price">$19<span>.99</span></div>
         <div class="pricing-period">/месяц</div>
         <ul class="pricing-features">
-          <li>Безлимит откликов</li>
-          <li>Всё из ПРО</li>
-          <li>AI интервью-подготовка</li>
+          <li>Всё из PRO</li>
+          <li>Авто‑отклик на вакансии</li>
+          <li>Безлимит откликов/день</li>
           <li>Приоритетная поддержка 24ч</li>
         </ul>
-        <a href="/app" class="btn btn-primary" style="width: 100%; justify-content: center;">Начать с Безлимит</a>
+        <a href="https://t.me/topbestworkerbot" target="_blank" rel="noopener" class="btn btn-primary" style="width:100%;justify-content:center;">Начать с UNLIMITED</a>
         <p class="pricing-cancel">Отмена в любое время</p>
       </div>
     </div>
@@ -1604,6 +1822,7 @@
   </div>
 </section>
 
+<!-- SECTION: faq -->
 <!-- ══════════════════ FAQ ══════════════════ -->
 <section id="faq" class="faq-bg">
   <div class="container">
@@ -1723,6 +1942,7 @@
   </div>
 </section>
 
+<!-- SECTION: footer -->
 <!-- ══════════════════ FOOTER (new 4-col dark) ══════════════════ -->
 <footer id="footer">
   <div class="container">
@@ -1772,6 +1992,13 @@
     </div>
   </div>
 </footer>
+
+<!-- ══════════════════ STICKY CTA ══════════════════ -->
+<div id="sticky-cta" role="banner" aria-label="Sticky call-to-action">
+  <span class="sticky-logo">ResumeAI</span>
+  <a href="https://t.me/topbestworkerbot" target="_blank" rel="noopener" class="sticky-btn" id="sticky-cta-btn">Попробовать бесплатно</a>
+  <button class="sticky-close" onclick="document.getElementById('sticky-cta').classList.remove('visible');window._stickyClosed=true;" aria-label="Close">✕</button>
+</div>
 
 <!-- ══════════════════ SOCIAL TOAST ══════════════════ -->
 <div id="social-toast" style="position:fixed;bottom:24px;left:24px;z-index:9999;pointer-events:none;"></div>
@@ -2127,6 +2354,33 @@
 })();
 </script>
 
+<!-- ═══════════════ Sticky CTA logic ═══════════════ -->
+<script>
+(function(){
+  var _stickyCTA = document.getElementById('sticky-cta');
+  var _heroEl    = document.getElementById('hero');
+  window._stickyClosed = false;
+
+  function _checkScroll(){
+    if (window._stickyClosed) return;
+    var heroBottom = _heroEl ? (_heroEl.getBoundingClientRect().bottom + window.scrollY) : 400;
+    var threshold  = heroBottom + 300;
+    if (window.scrollY > threshold) {
+      _stickyCTA.classList.add('visible');
+    } else {
+      _stickyCTA.classList.remove('visible');
+    }
+  }
+  window.addEventListener('scroll', _checkScroll, { passive: true });
+
+  // i18n for sticky btn
+  window._stickyI18n = function(lang) {
+    var btn = document.getElementById('sticky-cta-btn');
+    if (btn) btn.textContent = lang === 'en' ? 'Try Free' : 'Попробовать бесплатно';
+  };
+})();
+</script>
+
 <!-- ═══════════════ i18n / Language Toggle ═══════════════ -->
 <script>
 (function(){
@@ -2142,11 +2396,11 @@
       'nav.telegram':      '✈ Telegram',
       'nav.telegram_full': '✈ Telegram — попробовать бота',
       'hero.badge':      '🤖 Работает прямо в Telegram и на Web',
-      'hero.h1':         'Получи в <span>3x Больше Интервью.</span> AI Создаёт Идеальное Резюме за 30 Секунд.',
-      'hero.sub':        'Вставь ссылку на вакансию. AI создаёт резюме, сопроводительное письмо и подготовку к интервью — мгновенно. Работает на Web и в Telegram.',
-      'hero.cta1':       'Создать Резюме Бесплатно →',
-      'hero.cta2':       '💬 Или Попробовать в Telegram',
-      'hero.trust':      'Без карты • 1 бесплатное резюме • Готово за 30 секунд'
+      'hero.h1':         'Создай AI‑резюме за <span>60 секунд</span>',
+      'hero.sub':        'Бесплатно. Без регистрации. ATS‑оптимизировано.',
+      'hero.cta1':       'Попробовать бесплатно →',
+      'hero.cta2':       'Открыть веб‑приложение →',
+      'hero.trust':      'Без карты • 1 бесплатное резюме • Готово за 60 секунд'
     },
     en: {
       'nav.features':    'Features',
@@ -2158,11 +2412,11 @@
       'nav.telegram':    '✈ Telegram',
       'nav.telegram_full': '✈ Telegram — Try the Bot',
       'hero.badge':      '🤖 Works in Telegram and on Web',
-      'hero.h1':         'Get <span>3x More Interviews.</span> AI Builds Your Perfect Resume in 30 Seconds.',
-      'hero.sub':        'Paste a job link. AI creates a tailored resume, cover letter, and interview prep — instantly. Works on Web and in Telegram.',
-      'hero.cta1':       'Build Resume Free →',
-      'hero.cta2':       '💬 Or Try in Telegram',
-      'hero.trust':      'No card needed • 1 free resume • Ready in 30 seconds'
+      'hero.h1':         'Create an AI Resume in <span>60 Seconds</span>',
+      'hero.sub':        'Free. No signup. ATS‑optimized.',
+      'hero.cta1':       'Try Free →',
+      'hero.cta2':       'Open Web App →',
+      'hero.trust':      'No card needed • 1 free resume • Ready in 60 seconds'
     }
   };
 
@@ -2356,6 +2610,40 @@
     'Получить бесплатный чек-лист →': 'Get the free checklist →',
     '✅ Отправлено! Проверьте вашу почту.': '✅ Sent! Check your email.',
     'Никакого спама. Только полезный контент. Отписаться в 1 клик.': 'No spam. Useful content only. Unsubscribe in 1 click.',
+    // Updated hero trust line
+    'Без карты • 1 бесплатное резюме • Готово за 60 секунд': 'No card needed • 1 free resume • Ready in 60 seconds',
+    // How it works (updated steps)
+    'Опишите вашу должность': 'Describe your role',
+    'Введите желаемую должность и количество лет опыта. Никаких регистраций и загрузок.': 'Enter your desired role and years of experience. No signup or uploads needed.',
+    'AI создаст резюме': 'AI generates your resume',
+    'Искусственный интеллект генерирует уникальное ATS‑оптимизированное резюме за 30 секунд.': 'Artificial intelligence generates a unique ATS-optimized resume in 30 seconds.',
+    'Скачайте PDF': 'Download PDF',
+    'Скачайте готовый PDF или отправьте резюме прямо на вакансию в один клик.': 'Download the finished PDF or send your resume directly to a job posting in one click.',
+    // Pricing updated
+    '3 AI‑генерации резюме': '3 AI resume generations',
+    '1 резюме в аккаунте': '1 resume in account',
+    'Базовые шаблоны': 'Basic templates',
+    'Telegram‑бот базовый': 'Basic Telegram bot',
+    'Безлимит AI‑генераций': 'Unlimited AI generations',
+    'Все шаблоны резюме': 'All resume templates',
+    'Приоритетный ATS‑скор': 'Priority ATS score',
+    'Начать с PRO': 'Start with PRO',
+    'Авто‑отклик на вакансии': 'Auto-apply to jobs',
+    'Безлимит откликов/день': 'Unlimited applications/day',
+    'Начать с UNLIMITED': 'Start with UNLIMITED',
+    // Try-it-now widget
+    'Создайте резюме прямо здесь': 'Build Your Resume Right Here',
+    'Введите должность и опыт — AI сгенерирует превью за секунды. Без регистрации.': 'Enter your role and experience — AI generates a preview in seconds. No sign-up.',
+    'Ваша должность': 'Your job title',
+    'Лет опыта': 'Years of experience',
+    'Сгенерировать →': 'Generate →',
+    'Скачать полную версию в боте →': 'Download full version in bot →',
+    'Это превью. Полный PDF — в Telegram боте @topbestworkerbot': 'This is a preview. Full PDF available in Telegram @topbestworkerbot',
+    'Работает с:': 'Works with:',
+    // Updated pricing period
+    '$0': '$0',
+    '$9': '$9',
+    '$19': '$19',
   };
 
   var currentLang = 'ru';
@@ -2522,6 +2810,31 @@
     if (btnM) btnM.textContent = lang === 'ru' ? '🇷🇺 Русский' : '🇬🇧 English';
     document.documentElement.lang = lang;
     localStorage.setItem('resumeai_lang', lang);
+
+    // Meta tags language switch
+    var metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) {
+      metaDesc.setAttribute('content', lang === 'en'
+        ? 'ResumeAI creates a unique ATS-optimized resume for each job in 60 seconds. Free, no sign-up. Works in Telegram and on Web.'
+        : 'РезюмеАИ создаёт уникальное ATS-оптимизированное резюме под каждую вакансию за 60 секунд. Бесплатно, без регистрации.');
+    }
+    var ogTitle = document.querySelector('meta[property="og:title"]');
+    if (ogTitle) {
+      ogTitle.setAttribute('content', lang === 'en'
+        ? 'ResumeAI — AI Resume in 60 Seconds | AutoApply'
+        : 'РезюмеАИ — AI Резюме за 60 секунд | АвтоОтклик');
+    }
+    var ogDesc = document.querySelector('meta[property="og:description"]');
+    if (ogDesc) {
+      ogDesc.setAttribute('content', lang === 'en'
+        ? 'Build a perfect resume in 60 seconds with AI. Auto-apply to hh.ru, LinkedIn, Indeed while you sleep.'
+        : 'Создайте идеальное резюме с AI за 60 секунд. Авто-отклик на hh.ru, LinkedIn, Indeed пока вы спите.');
+    }
+
+    // Sticky CTA i18n
+    if (window._stickyI18n) window._stickyI18n(lang);
+    // Try-it-now widget i18n
+    if (window._tryWidgetApplyFn) window._tryWidgetApplyFn(lang);
   }
 
   window.toggleLang = function() {

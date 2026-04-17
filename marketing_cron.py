@@ -74,6 +74,38 @@ DAILY_TIPS = [
     )),
 ]
 
+# ── English daily tips pool ───────────────────────────────────────────────────
+DAILY_TIPS_EN = [
+    ("📄 Tip of the day: Resume ATS Keywords", (
+        "Most resumes are filtered before a recruiter sees them. "
+        "Check your ATS score for free and find out which keywords to add."
+    )),
+    ("🎯 Tip of the day: Cover Letter", (
+        "Candidates with personalized cover letters get responses 2.5× more often. "
+        "AI writes one for your job in 15 seconds."
+    )),
+    ("🤖 Tip of the day: Auto-applications on hh.ru", (
+        "While competitors apply manually, your bot already sent 50 applications. "
+        "Try AutoApply — first 3 applications are free."
+    )),
+    ("📊 Tip of the day: Job search statistics", (
+        "The average candidate spends 3 hours per day on manual applications. "
+        "With AI it takes 5 minutes. Free up time for interview prep."
+    )),
+    ("💼 Tip of the day: hh.ru profile", (
+        "Resumes with a photo get 40% more views. "
+        "But more important — the right headline. What do you write in the first line?"
+    )),
+    ("🎤 Tip of the day: Interview preparation", (
+        "'Tell me about yourself' — 90% of candidates answer this wrong. "
+        "Practice with the AI interview simulator — asks real questions."
+    )),
+    ("🔥 Tip of the day: Hot vacancies this week", (
+        "IT, finance, marketing — the market is active. "
+        "Set up auto-monitoring of vacancies and be the first to see the best ones."
+    )),
+]
+
 
 async def post_to_telegram(text: str) -> bool:
     """Post message to Telegram channel."""
@@ -137,13 +169,19 @@ def _pick_tip() -> tuple[str, str]:
     return DAILY_TIPS[day % len(DAILY_TIPS)]
 
 
+def _pick_tip_en() -> tuple[str, str]:
+    """Pick today's English tip based on day-of-year for consistent daily rotation."""
+    day = datetime.now(timezone.utc).timetuple().tm_yday
+    return DAILY_TIPS_EN[day % len(DAILY_TIPS_EN)]
+
+
 async def run_daily_marketing() -> None:
     """Main daily job — called by cron/scheduler."""
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     logger.info("=== daily marketing run at %s ===", now)
 
     title, body = _pick_tip()
-    cta_url = f"{WEBAPP_URL}?utm_source=daily_tip&utm_medium=social&utm_campaign=tips"
+    cta_url = f"{WEBAPP_URL}?utm_source=tg_tip&utm_medium=social&utm_campaign=daily_tip"
 
     # Telegram message
     tg_text = (
@@ -158,6 +196,25 @@ async def run_daily_marketing() -> None:
     vk_ok = await post_to_vk(vk_text)
 
     logger.info("daily marketing done — tg=%s vk=%s", tg_ok, vk_ok)
+
+
+async def run_daily_marketing_en() -> None:
+    """English daily marketing job — posts English tips to Telegram channel."""
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    logger.info("=== daily marketing EN run at %s ===", now)
+
+    title, body = _pick_tip_en()
+    cta_url = f"{WEBAPP_URL}?utm_source=tg_tip&utm_medium=social&utm_campaign=daily_tip"
+
+    # Telegram message
+    tg_text = (
+        f"<b>{title}</b>\n\n"
+        f"{body}\n\n"
+        f'<a href="{cta_url}">Try for free →</a>'
+    )
+    tg_ok = await post_to_telegram(tg_text)
+
+    logger.info("daily marketing EN done — tg=%s", tg_ok)
 
 
 # ── APScheduler integration ───────────────────────────────────────────────────

@@ -29,6 +29,7 @@ from config import BOT_TOKEN  # flat import (bot/ is in sys.path)
 from database.db import init_db
 from handlers import start, resume, cover_letter, interview, vacancy_analysis, ai_assistant, payment, profile, support, language
 from utils.texts import BOT_DESCRIPTION, BOT_SHORT_DESCRIPTION
+from utils.bot_translations import t as _t
 
 # Analytics system — project root is already in sys.path
 from analytics_startup import startup_analytics
@@ -44,6 +45,35 @@ logger = logging.getLogger(__name__)
 
 API_PORT = int(os.getenv("API_PORT", "8000"))
 API_HOST = os.getenv("API_HOST", "0.0.0.0")
+
+
+async def _get_lang_from_update(update) -> str:
+    """
+    Extract user language from an aiogram Update.
+    Looks up the users table in bot.db; defaults to 'ru' on any error.
+    """
+    try:
+        import aiosqlite
+        user_id: int | None = None
+        if update.message:
+            user_id = update.message.from_user.id
+        elif update.callback_query:
+            user_id = update.callback_query.from_user.id
+        if user_id is None:
+            return "ru"
+        db_file = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./bot.db")
+        # Strip SQLAlchemy driver prefix
+        db_file = db_file.replace("sqlite+aiosqlite:///", "").replace("sqlite:///", "")
+        async with aiosqlite.connect(db_file) as db:
+            async with db.execute(
+                "SELECT language FROM users WHERE telegram_id = ?", (user_id,)
+            ) as cur:
+                row = await cur.fetchone()
+        if row and row[0] in ("ru", "en"):
+            return row[0]
+    except Exception:
+        pass
+    return "ru"
 
 
 async def run_bot() -> None:
@@ -111,12 +141,10 @@ async def run_bot() -> None:
                     pass
 
             if chat_id:
+                _lang = await _get_lang_from_update(event.update)
                 await bot.send_message(
                     chat_id,
-                    "⚙️ <b>Временный сбой</b>\n\n"
-                    "Что-то пошло не так на нашем сервере. "
-                    "Мы уже в курсе и чиним!\n\n"
-                    "Попробуйте через несколько минут 🙏",
+                    _t(_lang, "error.server_down"),
                     parse_mode="HTML",
                 )
         except Exception as notify_err:
@@ -170,12 +198,11 @@ async def run_bot() -> None:
                 elif upd.callback_query:
                     chat_id = upd.callback_query.message.chat.id
                 if chat_id:
+                    _upd = event.update if hasattr(event, "update") else event
+                    _lang = await _get_lang_from_update(_upd)
                     await bot.send_message(
                         chat_id,
-                        "⚙️ <b>Технические работы</b>\n\n"
-                        "На сервере временный сбой — мы уже чиним.\n"
-                        "Все ваши данные в безопасности.\n\n"
-                        "Бот вернётся в работу совсем скоро! 🙏",
+                        _t(_lang, "error.maintenance"),
                         parse_mode="HTML",
                     )
         except Exception:

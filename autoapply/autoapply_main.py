@@ -2154,6 +2154,147 @@ async def import_linkedin(
         return _parse_linkedin_zip(zip_bytes)
 
 
+# ── Resume Preview endpoint ───────────────────────────────────────────────────
+# In-memory rate limit store: {ip: [timestamp, ...]}
+import time as _preview_time
+from collections import defaultdict as _preview_defaultdict
+_preview_rate_store: dict = _preview_defaultdict(list)
+_PREVIEW_RATE_LIMIT = 3        # max requests
+_PREVIEW_RATE_WINDOW = 3600    # per hour (seconds)
+
+
+class ResumePreviewRequest(BaseModel):
+    job_title: str
+    experience: int
+    lang: str = "ru"
+
+
+@app.post("/api/resume/preview", summary="Generate short resume preview via AI")
+async def resume_preview(body: ResumePreviewRequest, request: Request):
+    """Generate a brief resume preview (summary + achievements + skills) using OpenRouter."""
+    # --- Rate limiting by IP ---
+    ip = request.client.host if request.client else "unknown"
+    now_ts = _preview_time.time()
+    # Prune old timestamps
+    _preview_rate_store[ip] = [t for t in _preview_rate_store[ip] if now_ts - t < _PREVIEW_RATE_WINDOW]
+    if len(_preview_rate_store[ip]) >= _PREVIEW_RATE_LIMIT:
+        return JSONResponse(
+            status_code=200,
+            content={"preview_html": "<p><strong>Rate limit:</strong> Превышен лимит запросов (3 в час). Попробуйте позже. / Too many requests (3/hour). Please try again later.</p>"},
+        )
+    _preview_rate_store[ip].append(now_ts)
+
+    # --- Build prompt ---
+    job_title = body.job_title.strip() or "Специалист"
+    experience = max(0, body.experience)
+    lang = body.lang.lower()
+
+    if lang == "ru":
+        prompt = (
+            f"Создай краткое резюме для {job_title} с {experience} годами опыта. "
+            "Включи: 1) Профессиональное резюме (2-3 предложения), "
+            "2) 3 ключевых достижения, "
+            "3) Ключевые навыки (5-7). "
+            "Ответ на русском. Кратко и конкретно."
+        )
+    else:
+        prompt = (
+            f"Create a brief resume preview for a {job_title} with {experience} years of experience. "
+            "Include: 1) Professional summary (2-3 sentences), "
+            "2) 3 key achievements, "
+            "3) Key skills (5-7). "
+            "Be concise and specific."
+        )
+
+    # --- Call OpenRouter/OpenAI ---
+    preview_html = ""
+    try:
+        import httpx as _httpx_preview
+        api_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY", "")
+        base_url = "https://openrouter.ai/api/v1" if os.getenv("OPENROUTER_API_KEY") else "https://api.openai.com/v1"
+        model = "openai/gpt-4o-mini" if os.getenv("OPENROUTER_API_KEY") else os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+        if os.getenv("OPENROUTER_API_KEY"):
+            headers["HTTP-Referer"] = "https://resumeai-bot.ru"
+            headers["X-Title"] = "ResumeAI"
+
+        payload = {
+            "model": model,
+            "max_tokens": 300,
+            "messages": [{"role": "user", "content": prompt}],
+        }
+        async with _httpx_preview.AsyncClient(timeout=25) as client:
+            resp = await client.post(f"{base_url}/chat/completions", json=payload, headers=headers)
+        resp.raise_for_status()
+        data = resp.json()
+        raw_text = data["choices"][0]["message"]["content"].strip()
+
+        # --- Format AI response as HTML ---
+        lines = raw_text.splitlines()
+        html_parts = []
+        in_list = False
+        for line in lines:
+            line = line.strip()
+            if not line:
+                if in_list:
+                    html_parts.append("</ul>")
+                    in_list = False
+                continue
+            # Detect section headers (numbered like "1)", "2)", "3)" or contain ":")
+            if (line.startswith(("1)", "2)", "3)")) or
+                    (line.endswith(":") and len(line) < 60)):
+                if in_list:
+                    html_parts.append("</ul>")
+                    in_list = False
+                html_parts.append(f"<p><strong>{line}</strong></p>")
+            # Detect bullet points
+            elif line.startswith(("- ", "• ", "* ", "– ")):
+                if not in_list:
+                    html_parts.append("<ul>")
+                    in_list = True
+                html_parts.append(f"<li>{line[2:].strip()}</li>")
+            # Detect comma-separated skill list (skills section)
+            elif "," in line and len(line.split(",")) >= 3:
+                if in_list:
+                    html_parts.append("</ul>")
+                    in_list = False
+                skills = [s.strip() for s in line.split(",") if s.strip()]
+                html_parts.append("<ul>" + "".join(f"<li>{s}</li>" for s in skills) + "</ul>")
+            else:
+                if in_list:
+                    html_parts.append("</ul>")
+                    in_list = False
+                html_parts.append(f"<p>{line}</p>")
+        if in_list:
+            html_parts.append("</ul>")
+
+        preview_html = "\n".join(html_parts)
+
+    except Exception as exc:
+        logging.getLogger(__name__).warning("resume_preview AI error: %s", exc)
+        if lang == "ru":
+            preview_html = f"<p><strong>Ошибка генерации:</strong> {exc}. Попробуйте позже.</p>"
+        else:
+            preview_html = f"<p><strong>Generation error:</strong> {exc}. Please try again later.</p>"
+
+    # --- Track feature usage (best-effort) ---
+    try:
+        import sys as _sys_preview
+        _root_preview = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if _root_preview not in _sys_preview.path:
+            _sys_preview.path.insert(0, _root_preview)
+        from analytics_tracker import track_feature, DB_PATH as _ADB_PREVIEW
+        await track_feature(0, "resume_preview", _ADB_PREVIEW)
+    except Exception:
+        pass
+
+    return JSONResponse(status_code=200, content={"preview_html": preview_html})
+
+
 # ── SPA fallback ──────────────────────────────────────────────────────────────
 @app.get("/blog", include_in_schema=False)
 @app.get("/blog/", include_in_schema=False)

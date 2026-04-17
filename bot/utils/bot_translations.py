@@ -118,6 +118,18 @@ STRINGS: dict[str, dict[str, str]] = {
         # Generic
         'no_credits': "У вас недостаточно кредитов.\n\nПополни баланс:",
         'error.generic': "⚠️ Произошла ошибка. Попробуйте ещё раз или обратитесь в поддержку.",
+        'error.server_down': (
+            "⚙️ <b>Временный сбой</b>\n\n"
+            "Что-то пошло не так на нашем сервере. "
+            "Мы уже в курсе и чиним!\n\n"
+            "Попробуйте через несколько минут 🙏"
+        ),
+        'error.maintenance': (
+            "⚙️ <b>Технические работы</b>\n\n"
+            "На сервере временный сбой — мы уже чиним.\n"
+            "Все ваши данные в безопасности.\n\n"
+            "Бот вернётся в работу совсем скоро! 🙏"
+        ),
 
         # Profile
         'profile.header': (
@@ -355,6 +367,18 @@ STRINGS: dict[str, dict[str, str]] = {
         # Generic
         'no_credits': "You don't have enough credits.\n\nTop up your balance:",
         'error.generic': "⚠️ An error occurred. Please try again or contact support.",
+        'error.server_down': (
+            "⚙️ <b>Temporary issue</b>\n\n"
+            "Something went wrong on our server. "
+            "We're aware and fixing it!\n\n"
+            "Try again in a few minutes 🙏"
+        ),
+        'error.maintenance': (
+            "⚙️ <b>Maintenance</b>\n\n"
+            "Server is temporarily unavailable — we're fixing it.\n"
+            "All your data is safe.\n\n"
+            "Bot will be back very soon! 🙏"
+        ),
 
         # Profile
         'profile.header': (
