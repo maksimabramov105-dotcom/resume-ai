@@ -8,7 +8,7 @@ set -e  # Exit on any error
 VPS="root@72.56.250.53"
 REMOTE="/opt/resumeaibot"
 VENV="$REMOTE/.venv/bin/python3"
-PASS='w##b2,54wWi_BR'
+PASS='${VPS_PASS}'
 
 SSH="sshpass -p $PASS ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $VPS"
 SCP="sshpass -p $PASS scp -o StrictHostKeyChecking=no -o PubkeyAuthentication=no"

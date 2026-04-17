@@ -18,7 +18,7 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "anthropic/claude-3-5-haiku")
 
 BOT_TOKEN    = os.getenv("BOT_TOKEN", "")
-MY_CHAT_ID   = int(os.getenv("ADMIN_ID", "6246429438"))   # already set in .env
+MY_CHAT_ID   = int(os.getenv("ADMIN_ID", "0")))   # already set in .env
 
 BOT_USERNAME = "topbestworkerbot"
 BOT_LINK     = "https://t.me/topbestworkerbot"

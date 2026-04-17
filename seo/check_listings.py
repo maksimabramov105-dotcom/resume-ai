@@ -23,7 +23,7 @@ import requests
 
 # ── Config ────────────────────────────────────────────────────────────────────
 BOT_TOKEN     = os.getenv("BOT_TOKEN", "8442677408:AAFGf_Y14ZZntTVipyA5VQgeGNFenpJ_iQk")
-ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID", "6246429438")
+ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID", "0")
 
 BOT_USERNAME  = "topbestworkerbot"
 BOT_LINK      = f"https://t.me/{BOT_USERNAME}"

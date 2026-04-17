@@ -15,7 +15,7 @@ from datetime import datetime
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-ADMIN_CHAT_ID = int(os.getenv("ADMIN_ID", "6246429438"))
+ADMIN_CHAT_ID = int(os.getenv("ADMIN_ID", "0")))
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 

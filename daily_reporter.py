@@ -23,7 +23,7 @@ AUTOAPPLY_DB = os.getenv("AUTOAPPLY_DB", "/opt/resumeaibot/autoapply.db")
 
 logger = logging.getLogger(__name__)
 
-ADMIN_CHAT_ID = 6246429438   # Your Telegram ID
+ADMIN_CHAT_ID = int(os.getenv("ADMIN_ID", "0"))   # Your Telegram ID
 
 # Russian weekday names (Monday = index 0)
 _WEEKDAYS_RU = [

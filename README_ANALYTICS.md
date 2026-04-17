@@ -228,7 +228,7 @@ It will reply with your user ID instantly.
 
 Your admin ID is already set in `daily_reporter.py`:
 ```python
-ADMIN_CHAT_ID = 6246429438
+ADMIN_CHAT_ID = YOUR_ADMIN_TELEGRAM_ID
 ```
 
 ---

@@ -22,7 +22,7 @@ import aiohttp
 log = logging.getLogger(__name__)
 
 BOT_TOKEN     = os.getenv("BOT_TOKEN", "")
-ADMIN_CHAT_ID = int(os.getenv("ADMIN_ID", "6246429438"))
+ADMIN_CHAT_ID = int(os.getenv("ADMIN_ID", "0")))
 BOT_DB        = os.getenv("BOT_DB",       "/opt/resumeaibot/bot.db")
 AUTOAPPLY_DB  = os.getenv("AUTOAPPLY_DB", "/opt/resumeaibot/autoapply.db")
 BACKUP_DIR    = Path(os.getenv("BACKUP_DIR", "/opt/resumeaibot/backups"))

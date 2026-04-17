@@ -45,7 +45,7 @@ logging.basicConfig(
 )
 
 BOT_TOKEN     = os.getenv("BOT_TOKEN", "")
-ADMIN_CHAT_ID = os.getenv("ADMIN_ID", "6246429438")
+ADMIN_CHAT_ID = os.getenv("ADMIN_ID", "0")
 API_HEALTH    = "http://127.0.0.1:8080/api/health"
 CHECK_INTERVAL = 300   # seconds between checks (5 min)
 DISK_MIN_MB    = 500   # alert if less than this many MB free

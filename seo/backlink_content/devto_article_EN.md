@@ -10,16 +10,16 @@ After getting laid off, I built a system to automate my job search. It ended wit
 
 ## Stack
 
-- **Python 3.11** — main language
-- **aiogram 3** — Telegram bot framework (async, excellent)
-- **FastAPI** — REST API for the web dashboard
-- **OpenAI API (GPT-4)** — resume tailoring
-- **Playwright** — browser automation for sites without APIs
-- **reportlab** — PDF generation
-- **SQLite + aiosqlite** — storage (simple, works fine at this scale)
-- **systemd** — process management on VPS
+- Python 3.11 — main language
+- aiogram 3— Telegram bot framework (async, excellent)
+- FastAPI — REST API for the web dashboard
+- OpenAI API (GPT-4)— resume tailoring
+- Playwright — browser automation for sites without APIs
+- reportlab — PDF generation
+- SQLite + aiosqlite — storage (simple, works fine at this scale)
+- systemd — process management on VPS
 
-## The Resume Tailoring Prompt
+ The Resume Tailoring Prompt
 
 The core of the system is a single well-engineered prompt:
 
@@ -40,7 +40,7 @@ TAILORING_PROMPT = ("""
 
 The key constraint is 'do not add experience that doesn't exist.' This keeps it honest while dramatically improving keyword matching.
 
-## hh.ru API Integration
+hh.ru API Integration
 
 hh.ru (Russia's largest job board) has a solid REST API:
 
@@ -63,7 +63,7 @@ async def search_vacancies(query, area='1', per_page=20, salary_from=None):
 
 Applying requires OAuth but the API is well-documented and the rate limits are reasonable.
 
-## PDF Generation
+PDF Generation
 
 reportlab for clean single-page PDFs:
 
@@ -80,7 +80,7 @@ def generate_pdf(text, name, output_path):
     doc.build(story)
 ```
 
-## Health Monitoring
+Health Monitoring
 
 Every 5 minutes, a systemd timer runs a health check that verifies:
 - Both SQLite databases respond
@@ -91,14 +91,14 @@ Every 5 minutes, a systemd timer runs a health check that verifies:
 
 On failure: auto-restart attempt, then Telegram alert to admin.
 
-## What I Learned
+What I Learned
 
-1. **Async everything** — the bot handles concurrent users, aiohttp + aiosqlite are essential
-2. **Idempotency matters** — track applied vacancies to avoid duplicates
-3. **Rate limit respect** — hh.ru will block you if you hammer their API. 1-2 req/sec is safe.
-4. **Playwright is slow** — use native APIs where possible, browser automation only as fallback
+1. Async everything — the bot handles concurrent users, aiohttp + aiosqlite are essential
+2. Idempotency matters— track applied vacancies to avoid duplicates
+3. Rate limit respect — hh.ru will block you if you hammer their API. 1-2 req/sec is safe.
+4. Playwright is slow — use native APIs where possible, browser automation only as fallback
 
-## Try It
+Try It
 
 The bot is live at [@topbestworkerbot](https://t.me/topbestworkerbot). Web dashboard at [resumeai.bot](https://resumeai.bot).
 

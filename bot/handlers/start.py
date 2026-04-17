@@ -18,7 +18,7 @@ from daily_reporter import send_daily_report, ADMIN_CHAT_ID as _REPORTER_ADMIN_I
 
 router = Router()
 
-ADMIN_ID = int(_os.getenv("ADMIN_ID", "6246429438"))
+ADMIN_ID = int(os.getenv("ADMIN_ID", "0")))
 
 
 def _language_kb() -> InlineKeyboardMarkup:

@@ -11,7 +11,7 @@ ResumeAI is a Telegram bot that combines two tools for job seekers:
 1. **AI Resume Builder** — generates a tailored resume for each specific vacancy in 30 seconds using GPT-4. The bot analyzes the job description and produces a matching PDF resume.
 2. **AutoApply** — automatically sends job applications to hh.ru, SuperJob, LinkedIn, and Indeed while the user sleeps. Supports filters by salary, keywords, location, and experience level.
 
-Free plan: 3 applications per day. Paid plans start at 499 RUB/month.
+Free plan: 3 applications per day. Paid plans start at 990 RUB/month.
 
 ## README addition (paste into the Career section)
 
@@ -27,4 +27,4 @@ Free plan: 3 applications per day. Paid plans start at 499 RUB/month.
 - Integrates with major job boards (hh.ru API, SuperJob API)
 
 Bot link: https://t.me/topbestworkerbot
-Website: https://resumeai.bot
+Website: https://resumeai-bot.ru

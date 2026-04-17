@@ -29,7 +29,7 @@ else
     echo "=== $(date '+%Y-%m-%d %H:%M:%S UTC') ERROR: exit code $EXIT_CODE ===" >> "$LOGFILE"
     # Send error alert via Telegram directly
     BOT_TOKEN="${BOT_TOKEN:-}"
-    ADMIN_ID="${ADMIN_ID:-6246429438}"
+    ADMIN_ID="${ADMIN_ID:-0}"
     if [ -n "$BOT_TOKEN" ]; then
         curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
             -d "chat_id=${ADMIN_ID}" \

@@ -32,7 +32,7 @@ import sys
 from datetime import datetime
 from functools import wraps
 
-ADMIN_CHAT_ID = int(os.getenv("ADMIN_ID", "6246429438"))
+ADMIN_CHAT_ID = int(os.getenv("ADMIN_ID", "0")))
 BOT_TOKEN     = os.getenv("BOT_TOKEN", "")
 LOGS_DIR      = os.getenv("LOGS_DIR", "/opt/resumeaibot/logs")
 ERROR_LOG     = os.path.join(LOGS_DIR, "errors.log")

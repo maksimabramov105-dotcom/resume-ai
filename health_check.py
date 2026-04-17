@@ -17,7 +17,7 @@ import shutil
 import subprocess
 from datetime import datetime
 
-ADMIN_CHAT_ID = int(os.getenv("ADMIN_ID", "6246429438"))
+ADMIN_CHAT_ID = int(os.getenv("ADMIN_ID", "0")))
 BOT_TOKEN     = os.getenv("BOT_TOKEN", "")
 BOT_DB        = os.getenv("BOT_DB", "/opt/resumeaibot/bot.db")
 AUTOAPPLY_DB  = os.getenv("AUTOAPPLY_DB", "/opt/resumeaibot/autoapply.db")

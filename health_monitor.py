@@ -26,7 +26,7 @@ async def check_health():
     ts = datetime.now().strftime("%Y-%m-%d %H:%M")
     if issues:
         bot_token = os.getenv("BOT_TOKEN", "")
-        admin_id = os.getenv("ADMIN_TELEGRAM_ID", os.getenv("ADMIN_ID", "6246429438"))
+        admin_id = os.getenv("ADMIN_TELEGRAM_ID", os.getenv("ADMIN_ID", "0"))
         msg = f"🚨 [{ts}] HEALTH CHECK FAILED:\n" + "\n".join(issues)
         print(msg)
         if bot_token and admin_id:

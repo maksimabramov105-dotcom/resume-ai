@@ -6,7 +6,7 @@ set -e
 
 VPS_IP="72.56.250.53"
 VPS_USER="root"
-PASS='w##b2,54wWi_BR'
+PASS='${VPS_PASS}'
 VPS_PATH="/opt/resumeaibot"
 LOCAL_PATH="$(cd "$(dirname "$0")" && pwd)"
 

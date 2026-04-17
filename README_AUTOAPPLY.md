@@ -104,7 +104,7 @@ Add all of these to `/opt/resumeaibot/.env`:
 ```env
 # ── Core ──────────────────────────────────────────
 BOT_TOKEN=your_telegram_bot_token_here
-ADMIN_ID=6246429438
+ADMIN_ID=0
 
 # ── Database paths ────────────────────────────────
 BOT_DB=/opt/resumeaibot/bot.db
@@ -211,8 +211,8 @@ The script will:
 
 ```bash
 # Upload only changed modules
-sshpass -p 'w##b2,54wWi_BR' scp -r autoapply/ root@72.56.250.53:/opt/resumeaibot/
-sshpass -p 'w##b2,54wWi_BR' ssh root@72.56.250.53 "systemctl restart autoapply autoapply-worker"
+sshpass -p 'YOUR_VPS_PASSWORD' scp -r autoapply/ root@72.56.250.53:/opt/resumeaibot/
+sshpass -p 'YOUR_VPS_PASSWORD' ssh root@72.56.250.53 "systemctl restart autoapply autoapply-worker"
 ```
 
 ### Manual deploy on VPS

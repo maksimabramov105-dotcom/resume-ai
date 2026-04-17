@@ -98,7 +98,7 @@ Every feature handler calls `track_feature(user_id, feature_name, db_path)`.
 Wrap in `try/except Exception: pass` — analytics must never crash the bot.
 
 ### 8. Admin ID
-`ADMIN_ID = int(os.getenv("ADMIN_ID", "6246429438"))` — set in `.env` on VPS.
+`ADMIN_ID = int(os.getenv("ADMIN_ID", "0")))` — set in `.env` on VPS.
 All admin commands check `message.from_user.id != ADMIN_ID` and return early.
 
 ---
