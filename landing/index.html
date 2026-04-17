@@ -283,11 +283,13 @@
     }
     .dark-toggle:hover { background: var(--bg-alt); }
     .lang-toggle {
-      background: none; border: 1px solid var(--border);
-      border-radius: 8px; padding: 5px 9px; cursor: pointer;
-      font-size: 15px; transition: all 0.2s; line-height: 1;
+      background: none; border: 1.5px solid var(--border);
+      border-radius: 8px; padding: 5px 11px; cursor: pointer;
+      font-size: 13px; font-weight: 600; letter-spacing: 0.02em;
+      transition: all 0.2s; line-height: 1; color: var(--text);
+      display: inline-flex; align-items: center; gap: 4px;
     }
-    .lang-toggle:hover { background: var(--bg-alt); }
+    .lang-toggle:hover { background: var(--bg-alt); border-color: var(--primary); color: var(--primary); }
 
     .hamburger {
       display: none;
@@ -1140,7 +1142,7 @@
       <div class="header-actions">
         <a href="/app" class="btn btn-outline btn-sm" data-i18n="nav.login">Войти</a>
         <a href="/app" class="btn btn-cta btn-sm" data-i18n="nav.start">Начать бесплатно</a>
-        <button class="lang-toggle" id="langToggle" onclick="toggleLang()" aria-label="Toggle language" title="Switch language">🇷🇺</button>
+        <button class="lang-toggle" id="langToggle" onclick="toggleLang()" aria-label="Toggle language" title="Switch language">🇷🇺 RU</button>
         <button class="dark-toggle" id="darkToggle" aria-label="Toggle dark mode">🌙</button>
         <button class="hamburger" id="hamburger" aria-label="Menu">
           <span></span><span></span><span></span>
@@ -2516,7 +2518,7 @@
     // Toggle buttons
     var btn = document.getElementById('langToggle');
     var btnM = document.getElementById('langToggleMobile');
-    if (btn) btn.textContent = lang === 'ru' ? '🇷🇺' : '🇬🇧';
+    if (btn) btn.textContent = lang === 'ru' ? '🇷🇺 RU' : '🇬🇧 EN';
     if (btnM) btnM.textContent = lang === 'ru' ? '🇷🇺 Русский' : '🇬🇧 English';
     document.documentElement.lang = lang;
     localStorage.setItem('resumeai_lang', lang);
