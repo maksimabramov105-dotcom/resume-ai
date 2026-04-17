@@ -94,12 +94,13 @@ async def _fetch_vacancies(
             scrapers_path = os.path.join(ROOT, "scrapers")
             if scrapers_path not in sys.path:
                 sys.path.insert(0, scrapers_path)
-            from hh_scraper import search_vacancies  # type: ignore
-            vacancies = await search_vacancies(
+            from hh_scraper import scrape_vacancies  # type: ignore
+            vacancies = await scrape_vacancies(
                 job_title=job_title,
                 location=location,
                 salary_min=salary_min,
                 experience=experience,
+                max_vacancies=200,
             )
         elif platform == "superjob":
             scrapers_path = os.path.join(ROOT, "scrapers")
