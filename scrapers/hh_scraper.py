@@ -1,16 +1,68 @@
 """
 hh_scraper.py — hh.ru vacancy scraper using official API
 Docs: https://api.hh.ru/openapi/en/redoc
-Rate limit: 1 request/second for anonymous, respect it
+Auth: requires OAuth app token (client_credentials) — register at https://dev.hh.ru/
 """
 import aiohttp
 import asyncio
 import logging
 import json
+import os
+import time
 from datetime import datetime
 from typing import List, Dict, Optional
 
 logger = logging.getLogger(__name__)
+
+# ── OAuth app-level token cache ──────────────────────────────────────────────
+_token_cache: Dict[str, object] = {"token": None, "expires_at": 0.0}
+
+async def _get_app_token() -> Optional[str]:
+    """
+    Exchange HH_CLIENT_ID + HH_CLIENT_SECRET for a client_credentials bearer token.
+    Caches the token until 60 s before expiry to avoid repeated auth calls.
+    Returns None (and logs a warning) if credentials are missing.
+    """
+    now = time.time()
+    if _token_cache["token"] and now < _token_cache["expires_at"]:
+        return _token_cache["token"]
+
+    client_id     = os.getenv("HH_CLIENT_ID", "")
+    client_secret = os.getenv("HH_CLIENT_SECRET", "")
+    if not client_id or not client_secret:
+        logger.warning(
+            "[hh_scraper] HH_CLIENT_ID / HH_CLIENT_SECRET not set — "
+            "vacancy search will fail with 403. Register an app at https://dev.hh.ru/"
+        )
+        return None
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                "https://hh.ru/oauth/token",
+                data={
+                    "grant_type":    "client_credentials",
+                    "client_id":     client_id,
+                    "client_secret": client_secret,
+                },
+                headers={"User-Agent": "ResumeAI-AutoApply/1.0 (resumeai.bot)"},
+                timeout=aiohttp.ClientTimeout(total=10),
+            ) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    token = data.get("access_token")
+                    expires_in = data.get("expires_in", 86400)
+                    _token_cache["token"]      = token
+                    _token_cache["expires_at"] = now + expires_in - 60
+                    logger.info("[hh_scraper] obtained new app token (expires in %ds)", expires_in)
+                    return token
+                else:
+                    text = await resp.text()
+                    logger.error("[hh_scraper] token request failed %d: %s", resp.status, text[:200])
+                    return None
+    except Exception as e:
+        logger.error("[hh_scraper] token request error: %s", e)
+        return None
 
 # City → hh.ru area_id mapping
 AREA_IDS = {
@@ -74,10 +126,13 @@ async def search_vacancies(
     if experience_code:
         params["experience"] = experience_code
 
+    token = await _get_app_token()
     headers = {
         "User-Agent": HH_APP_NAME,
         "Accept": "application/json",
     }
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
 
     try:
         async with aiohttp.ClientSession() as session:
@@ -223,10 +278,13 @@ async def get_vacancy_description(vacancy_id: str) -> str:
     GET /vacancies/{id} — fetch full vacancy description text.
     Returns plain text (HTML stripped), or empty string on error.
     """
+    token = await _get_app_token()
     headers = {
         "User-Agent": HH_APP_NAME,
         "Accept": "application/json",
     }
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
 
     try:
         async with aiohttp.ClientSession() as session:
