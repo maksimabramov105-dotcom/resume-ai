@@ -13,7 +13,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from config import BOT_TOKEN
 from database.db import init_db
-from handlers import start, resume, cover_letter, interview, vacancy_analysis, ai_assistant, payment, profile, support, checkin
+from handlers import start, resume, cover_letter, interview, vacancy_analysis, ai_assistant, payment, profile, support, checkin, language
 from handlers.checkin import checkin_loop
 from utils.texts import BOT_DESCRIPTION, BOT_SHORT_DESCRIPTION
 
@@ -35,6 +35,7 @@ async def main():
     dp = Dispatcher(storage=MemoryStorage())
 
     # Order matters — more specific routers first
+    dp.include_router(language.router)  # must be first: handles lang:ru/lang:en from any screen
     dp.include_router(start.router)
     dp.include_router(resume.router)
     dp.include_router(cover_letter.router)
