@@ -1,6 +1,7 @@
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import CommandStart, Command
+from aiogram.fsm.context import FSMContext
 
 from database.db import get_or_create_user, save_user
 from services.user_service import add_referral_bonus
@@ -32,7 +33,8 @@ def _language_kb() -> InlineKeyboardMarkup:
 
 
 @router.message(CommandStart())
-async def cmd_start(message: Message):
+async def cmd_start(message: Message, state: FSMContext):
+    await state.clear()
     args = message.text.split(maxsplit=1)[1] if " " in message.text else ""
     user = await get_or_create_user(
         telegram_id=message.from_user.id,
@@ -72,8 +74,9 @@ async def cmd_start(message: Message):
 
 
 @router.callback_query(F.data == "main_menu")
-async def go_main_menu(callback: CallbackQuery):
+async def go_main_menu(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
+    await state.clear()
     user = await get_or_create_user(callback.from_user.id)
     lang = user.language or 'ru'
     await callback.message.edit_text(t(lang, 'start.welcome'), reply_markup=main_menu_kb(lang))
