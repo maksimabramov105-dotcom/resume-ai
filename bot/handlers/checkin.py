@@ -19,7 +19,7 @@ from models.user import User
 router = Router()
 logger = logging.getLogger(__name__)
 
-ADMIN_ID = int(os.getenv("ADMIN_ID", "0")))
+ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
 
 CHECKIN_TEXT = (
     "👋 <b>Как дела с резюме?</b>\n\n"

@@ -292,14 +292,20 @@ async def logging_and_rate_limit_middleware(request: Request, call_next):
         if limit is not None:
             now = _time.time()
             window_key = f"{client_ip}:{path}"
-            _rate_windows[window_key] = [t for t in _rate_windows[window_key] if now - t < 60]
-            if len(_rate_windows[window_key]) >= limit:
-                logger.warning("[rate_limit] %s blocked on %s (%d/%d req/min)", client_ip, path, len(_rate_windows[window_key]), limit)
+            fresh = [t for t in _rate_windows[window_key] if now - t < 60]
+            if len(fresh) >= limit:
+                logger.warning("[rate_limit] %s blocked on %s (%d/%d req/min)", client_ip, path, len(fresh), limit)
                 return JSONResponse(
                     {"error": "rate_limit_exceeded", "retry_after": 60},
                     status_code=429,
                 )
-            _rate_windows[window_key].append(now)
+            fresh.append(now)
+            _rate_windows[window_key] = fresh
+            # Evict stale keys periodically to prevent unbounded memory growth
+            if len(_rate_windows) > 5000:
+                stale = [k for k, v in _rate_windows.items() if not v or now - v[-1] > 120]
+                for k in stale:
+                    del _rate_windows[k]
 
     try:
         response = await call_next(request)

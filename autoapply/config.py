@@ -16,7 +16,7 @@ JWT_EXPIRE_HOURS = 24 * 7   # 7 days
 
 # ── Telegram ─────────────────────────────────────────────────────────────
 BOT_TOKEN      = os.getenv("BOT_TOKEN", "")
-ADMIN_CHAT_ID  = int(os.getenv("ADMIN_ID", "0")))
+ADMIN_CHAT_ID  = int(os.getenv("ADMIN_ID", "0"))
 WEBAPP_BASE_URL = os.getenv("WEBAPP_BASE_URL", "https://resumeai.bot")
 
 # ── OpenAI ───────────────────────────────────────────────────────────────
