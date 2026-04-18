@@ -32,6 +32,15 @@ HH_REDIRECT_URI   = os.getenv("HH_REDIRECT_URI", "https://resumeai.bot/app/oauth
 # ── SuperJob API ─────────────────────────────────────────────────────────
 SUPERJOB_API_KEY  = os.getenv("SUPERJOB_API_KEY", "")
 
+# ── English job board APIs ────────────────────────────────────────────────
+ADZUNA_APP_ID  = os.getenv("ADZUNA_APP_ID", "")
+ADZUNA_APP_KEY = os.getenv("ADZUNA_APP_KEY", "")
+ENGLISH_JOB_SOURCES: list = [
+    s.strip()
+    for s in os.getenv("ENGLISH_JOB_SOURCES", "adzuna,themuse,arbeitnow,remoteok").split(",")
+    if s.strip()
+]
+
 # ── CryptoBot payments ───────────────────────────────────────────────────
 CRYPTOBOT_TOKEN                = os.getenv("CRYPTOBOT_TOKEN", "")
 CRYPTOBOT_WEBHOOK_SECRET       = os.getenv("CRYPTOBOT_WEBHOOK_SECRET", "")

@@ -888,53 +888,123 @@ Write ONLY the cover letter text, no explanation. Start with 'Уважаемый
 
 
 # ── Job search ─────────────────────────────────────────────────────────────────
-@app.get("/api/jobs/search", summary="Search jobs via hh.ru + Remotive API")
+@app.get("/api/jobs/search", summary="Search English job boards (Adzuna, Arbeitnow, RemoteOK, The Muse)")
 async def search_jobs(
     q: str = "",
     city: str = "",
-    remote: str = "",
+    country: str = "us",
+    source: str = "",
+    limit: int = Query(default=30, le=100),
 ):
-    """Search jobs from Remotive (remote jobs, no API key needed) + mock data."""
-    import httpx
+    """Search multiple English job boards in parallel. source= filters to one board."""
+    from autoapply.english_job_engine import search_english_jobs
+    from autoapply.config import ENGLISH_JOB_SOURCES
 
-    mock_jobs = [
-        {"title": "Python Backend Developer", "company": "Яндекс", "location": "Москва", "salary": "250 000 — 350 000 ₽", "remote": True, "match": 94, "url": "https://hh.ru"},
-        {"title": "Full Stack Developer", "company": "Сбер", "location": "Москва", "salary": "180 000 — 260 000 ₽", "remote": False, "match": 87, "url": "https://hh.ru"},
-        {"title": "Data Engineer", "company": "Тинькофф", "location": "Санкт-Петербург", "salary": "200 000 — 300 000 ₽", "remote": True, "match": 81, "url": "https://hh.ru"},
-        {"title": "DevOps Engineer", "company": "VK", "location": "Москва", "salary": "220 000 — 320 000 ₽", "remote": True, "match": 76, "url": "https://hh.ru"},
-        {"title": "Product Manager", "company": "Авито", "location": "Москва", "salary": "200 000 — 280 000 ₽", "remote": False, "match": 72, "url": "https://hh.ru"},
-    ]
-
+    sources = [source] if source else ENGLISH_JOB_SOURCES
     try:
-        # Try Remotive free API
-        search_term = q or "developer"
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.get(
-                f"https://remotive.com/api/remote-jobs",
-                params={"search": search_term, "limit": 10}
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                jobs = []
-                for job in data.get("jobs", [])[:10]:
-                    jobs.append({
-                        "title": job.get("title", ""),
-                        "company": job.get("company_name", ""),
-                        "location": job.get("candidate_required_location", "Remote"),
-                        "salary": job.get("salary", "Не указана"),
-                        "remote": True,
-                        "match": min(95, max(50, 70 + len([w for w in q.lower().split() if w in job.get("title", "").lower()]) * 10)),
-                        "url": job.get("url", "#"),
-                        "description": job.get("description", "")[:300]
-                    })
-                if jobs:
-                    return {"jobs": jobs, "source": "remotive"}
-    except Exception:
-        pass
+        jobs = await search_english_jobs(
+            query=q or "developer",
+            location=city,
+            country=country,
+            sources=sources,
+            limit_per_source=limit,
+        )
+        return {"jobs": jobs, "total": len(jobs), "sources": sources}
+    except Exception as exc:
+        logger.exception("[search_jobs] error: %s", exc)
+        raise HTTPException(status_code=500, detail="Job search failed")
 
-    # Fallback to mock
-    filtered = [j for j in mock_jobs if not q or q.lower() in j["title"].lower() or q.lower() in j["company"].lower()]
-    return {"jobs": filtered or mock_jobs, "source": "mock"}
+
+@app.post("/api/jobs/auto-apply", summary="Trigger batch English-job auto-apply for current user")
+async def auto_apply_jobs(
+    payload: dict,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Kick off an immediate apply pass for the authenticated user.
+    Body: {job_title, location, platforms, limit}
+    Returns count of applications queued.
+    """
+    from autoapply.autoapply_db import get_active_campaigns, create_campaign
+
+    job_title = payload.get("job_title", "")
+    location = payload.get("location", "")
+    platforms = payload.get("platforms", ["arbeitnow", "remoteok"])
+    limit = min(int(payload.get("limit", 5)), 20)
+
+    if not job_title:
+        raise HTTPException(status_code=400, detail="job_title is required")
+
+    # Create a one-off campaign if none exists for this title+user
+    user_id = current_user["id"]
+    try:
+        campaign_id = await create_campaign(
+            user_id=user_id,
+            job_title=job_title,
+            location=location,
+            salary_min=0,
+            experience="",
+            platforms=platforms,
+            daily_limit=limit,
+            db_path=AUTOAPPLY_DB,
+        )
+    except Exception as exc:
+        logger.exception("[auto_apply] create_campaign error: %s", exc)
+        raise HTTPException(status_code=500, detail="Failed to create campaign")
+
+    # Run one worker pass for that campaign in the background
+    async def _run_campaign(cid: int):
+        from autoapply.autoapply_db import get_active_campaigns
+        campaigns = await get_active_campaigns(AUTOAPPLY_DB)
+        target = next((c for c in campaigns if c["id"] == cid), None)
+        if target:
+            from autoapply.worker import process_campaign
+            await process_campaign(target)
+
+    asyncio.create_task(_run_campaign(campaign_id))
+    return {"status": "started", "campaign_id": campaign_id, "limit": limit}
+
+
+@app.get("/api/jobs/history", summary="Get English-job application history for current user")
+async def job_history(
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=20, le=100),
+    current_user: dict = Depends(get_current_user),
+):
+    """Returns paginated application history for the authenticated user."""
+    user_id = current_user["id"]
+    offset = (page - 1) * per_page
+    try:
+        async with aiosqlite.connect(AUTOAPPLY_DB) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                """
+                SELECT a.id, a.platform, a.vacancy_id, a.vacancy_title,
+                       a.company_name, a.vacancy_url, a.applied_at,
+                       c.job_title AS campaign_title
+                FROM applications a
+                LEFT JOIN campaigns c ON c.id = a.campaign_id
+                WHERE a.user_id = ?
+                ORDER BY a.applied_at DESC
+                LIMIT ? OFFSET ?
+                """,
+                (user_id, per_page, offset),
+            )
+            rows = await cursor.fetchall()
+            total_cur = await db.execute(
+                "SELECT COUNT(*) FROM applications WHERE user_id=?", (user_id,)
+            )
+            total = (await total_cur.fetchone())[0]
+    except Exception as exc:
+        logger.exception("[job_history] error: %s", exc)
+        raise HTTPException(status_code=500, detail="Failed to fetch history")
+
+    return {
+        "applications": [dict(r) for r in rows],
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+    }
 
 
 # ── Onboarding ─────────────────────────────────────────────────────────────────

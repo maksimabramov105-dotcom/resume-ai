@@ -22,6 +22,7 @@ if ROOT not in sys.path:
 
 from autoapply.config import (
     AUTOAPPLY_DB,
+    ENGLISH_JOB_SOURCES,
     LOGS_DIR,
     MAX_APPLY_DELAY,
     MIN_APPLY_DELAY,
@@ -116,6 +117,15 @@ async def _fetch_vacancies(
                 max_vacancies=200,
                 api_key=sj_api_key,
             )
+        elif platform in ("adzuna", "themuse", "arbeitnow", "remoteok") or platform == "english":
+            from autoapply.english_job_engine import search_english_jobs
+            sources = [platform] if platform != "english" else ENGLISH_JOB_SOURCES
+            vacancies = await search_english_jobs(
+                query=job_title,
+                location=location,
+                sources=sources,
+                limit_per_source=100,
+            )
         else:
             logger.warning("[worker] unknown platform=%s, skipping", platform)
             return []
@@ -203,6 +213,46 @@ async def _try_apply_hh(user: dict, vacancy: dict, resume_text: str) -> bool:
         return False
 
 
+async def _apply_english_job(user: dict, vacancy: dict, resume_text: str, cover_letter: str) -> bool:
+    """
+    Attempt to auto-apply to an English-language job posting via ATS form filling.
+    Returns True if the application was submitted successfully.
+    """
+    apply_url = vacancy.get("apply_url") or vacancy.get("url", "")
+    if not apply_url:
+        return False
+
+    user_data = {
+        "first_name": (user.get("full_name") or "").split()[0] if user.get("full_name") else "",
+        "last_name": " ".join((user.get("full_name") or "").split()[1:]) if user.get("full_name") else "",
+        "email": user.get("email", ""),
+        "phone": user.get("phone", ""),
+        "linkedin": user.get("linkedin_url", ""),
+        "resume_text": resume_text,
+        "cover_letter": cover_letter or resume_text[:500],
+    }
+
+    if not user_data["email"]:
+        logger.debug("[worker] skipping ATS apply — no user email for user_id=%s", user.get("id"))
+        return False
+
+    try:
+        from autoapply.ats_filler import ATSFiller  # type: ignore
+        filler = ATSFiller(headless=True)
+        await filler.start()
+        try:
+            success = await filler.apply(apply_url, user_data)
+        finally:
+            await filler.close()
+        return bool(success)
+    except ImportError:
+        logger.debug("[worker] ats_filler not available (playwright not installed?)")
+        return False
+    except Exception as exc:
+        logger.warning("[worker] ats_filler error url=%s: %s", apply_url, exc)
+        return False
+
+
 # ── Campaign processor ────────────────────────────────────────────────────────
 
 async def process_campaign(campaign: dict) -> int:
@@ -278,10 +328,21 @@ async def process_campaign(campaign: dict) -> int:
             # Generate (possibly tailored) resume
             resume_text = await _generate_resume(user, vacancy)
 
-            # Try actual API application for hh
+            # Generate cover letter for English jobs
+            cover_letter = ""
+            if platform in ("adzuna", "themuse", "arbeitnow", "remoteok", "english"):
+                try:
+                    from autoapply.english_job_engine import generate_cover_letter
+                    cover_letter = await generate_cover_letter(resume_text, vacancy)
+                except Exception as _cl_exc:
+                    logger.debug("[worker] cover letter generation failed: %s", _cl_exc)
+
+            # Try actual API application
             applied_via_api = False
             if platform == "hh":
                 applied_via_api = await _try_apply_hh(user, vacancy, resume_text)
+            elif platform in ("adzuna", "themuse", "arbeitnow", "remoteok", "english"):
+                applied_via_api = await _apply_english_job(user, vacancy, resume_text, cover_letter)
 
             apply_status = "sent" if applied_via_api else "queued"
 
