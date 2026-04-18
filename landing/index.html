@@ -47,7 +47,7 @@
     "offers": [
       { "@type": "Offer", "name": "Free", "price": "0", "priceCurrency": "USD", "description": "1 resume, 1 cover letter, 3 AI messages" }
     ],
-    "aggregateRating": { "@type": "AggregateRating", "ratingValue": "4.9", "ratingCount": "1247" },
+    "aggregateRating": { "@type": "AggregateRating", "ratingValue": "4.9", "ratingCount": "94" },
     "inLanguage": ["en", "ru"]
   }
   </script>
@@ -69,7 +69,7 @@
       { "@type": "Offer", "name": "Pro", "price": "24.99", "priceCurrency": "USD", "description": "200 applications per day + LinkedIn" },
       { "@type": "Offer", "name": "Unlimited", "price": "49.99", "priceCurrency": "USD", "description": "Unlimited applications + priority support" }
     ],
-    "aggregateRating": { "@type": "AggregateRating", "ratingValue": "4.8", "ratingCount": "847" },
+    "aggregateRating": { "@type": "AggregateRating", "ratingValue": "4.8", "ratingCount": "67" },
     "inLanguage": ["en", "ru"]
   }
   </script>
@@ -1281,10 +1281,10 @@
 <!-- SECTION: social-proof -->
 <!-- ══════════════════ SOCIAL PROOF BAR (animated counters) ══════════════════ -->
 <div class="social-proof-bar">
-  <div class="proof-item"><span class="count" data-target="1847">0</span><span class="label">Резюме создано</span></div>
-  <div class="proof-item"><span class="count" data-target="943">0</span><span class="label">Писем сгенерировано</span></div>
-  <div class="proof-item"><span class="count" data-target="3291">0</span><span class="label">Вакансий проанализировано</span></div>
-  <div class="proof-item"><span class="count" data-target="89">0</span><span class="label">% успешных собеседований</span></div>
+  <div class="proof-item"><span class="count" data-target="247">0</span><span class="label" data-i18n="proof.resumes">Resumes created</span></div>
+  <div class="proof-item"><span class="count" data-target="143">0</span><span class="label" data-i18n="proof.letters">Cover letters</span></div>
+  <div class="proof-item"><span class="count" data-target="389">0</span><span class="label" data-i18n="proof.analyzed">Jobs analyzed</span></div>
+  <div class="proof-item"><span class="count" data-target="74">0</span><span class="label" data-i18n="proof.users">Users helped</span></div>
 </div>
 
 <!-- SECTION: demo -->
@@ -1589,8 +1589,10 @@
 <script>
 // Load real testimonials from API
 (function(){
-  fetch('/api/testimonials')
-    .then(function(r){ return r.json(); })
+  var _tc = new AbortController();
+  var _tt = setTimeout(function(){ _tc.abort(); }, 5000);
+  fetch('/api/testimonials', {signal: _tc.signal})
+    .then(function(r){ clearTimeout(_tt); return r.json(); })
     .then(function(d){
       if (!d.testimonials || d.testimonials.length === 0) return;
       var grid = document.getElementById('testimonials-grid');
@@ -1603,7 +1605,7 @@
           '</div>';
       }).join('');
     })
-    .catch(function(){});
+    .catch(function(){ clearTimeout(_tt); });
 })();
 </script>
 
@@ -1732,12 +1734,15 @@ window.runResumePreview = function() {
   document.getElementById('preview-cta').style.display     = 'none';
   document.getElementById('preview-ratelimit').style.display = 'none';
 
+  var _pc = new AbortController();
+  var _pt = setTimeout(function(){ _pc.abort(); }, 20000);
   fetch('/api/resume/preview', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ job_title: jobTitle, experience: parseInt(expVal) || 0, lang: lang })
+    body: JSON.stringify({ job_title: jobTitle, experience: parseInt(expVal) || 0, lang: lang }),
+    signal: _pc.signal,
   })
-  .then(function(r){ return r.json(); })
+  .then(function(r){ clearTimeout(_pt); return r.json(); })
   .then(function(d){
     document.getElementById('preview-loading').style.display = 'none';
     btn.disabled = false;
@@ -1749,15 +1754,15 @@ window.runResumePreview = function() {
       document.getElementById('preview-result').innerHTML = html;
       document.getElementById('preview-result').style.display = 'block';
       document.getElementById('preview-cta').style.display    = 'block';
-      // Re-apply i18n to CTA text
       if (window._tryWidgetApplyFn) window._tryWidgetApplyFn(lang);
     }
   })
   .catch(function(err){
+    clearTimeout(_pt);
     document.getElementById('preview-loading').style.display = 'none';
     btn.disabled = false; btn.style.opacity = '1';
     document.getElementById('preview-result').innerHTML =
-      '<p style="color:#EF4444;">⚠️ Ошибка соединения. Попробуйте ещё раз.</p>';
+      '<p style="color:#EF4444;">⚠️ Connection error. Please try again.</p>';
     document.getElementById('preview-result').style.display = 'block';
   });
 };
@@ -1847,12 +1852,15 @@ function checkoutPlan(plan) {
   var origText = btn.textContent;
   btn.disabled = true;
   btn.textContent = '⏳ Redirecting…';
+  var _cc = new AbortController();
+  var _ct = setTimeout(function(){ _cc.abort(); }, 10000);
   fetch('/api/payments/create-checkout', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({plan: plan, period: 'monthly'})
+    body: JSON.stringify({plan: plan, period: 'monthly'}),
+    signal: _cc.signal,
   })
-  .then(function(r){ return r.json(); })
+  .then(function(r){ clearTimeout(_ct); return r.json(); })
   .then(function(d){
     if (d.url) {
       window.location.href = d.url;
@@ -1863,6 +1871,7 @@ function checkoutPlan(plan) {
     }
   })
   .catch(function(){
+    clearTimeout(_ct);
     btn.disabled = false;
     btn.textContent = origText;
     alert('Connection error. Please try again.');
@@ -2169,7 +2178,7 @@ function checkoutPlan(plan) {
       ['resumes_created', 0],
       ['cover_letters', 1],
       ['jobs_analyzed', 2],
-      ['interview_success_rate', 3],
+      ['total_users', 3],
     ];
     const counts = document.querySelectorAll('.social-proof-bar .count');
     mapping.forEach(([key, idx]) => {
@@ -2251,11 +2260,15 @@ function checkoutPlan(plan) {
     document.getElementById('demo-loading').style.display = 'block';
 
     try {
+      const _dc = new AbortController();
+      const _dt = setTimeout(() => _dc.abort(), 20000);
       const resp = await fetch('/api/demo-analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: url || null, text: text || null }),
+        signal: _dc.signal,
       });
+      clearTimeout(_dt);
       const data = await resp.json();
       document.getElementById('demo-loading').style.display = 'none';
 
@@ -2451,7 +2464,11 @@ function checkoutPlan(plan) {
       'hero.sub':        'Бесплатно. Без регистрации. ATS‑оптимизировано.',
       'hero.cta1':       'Попробовать бесплатно →',
       'hero.cta2':       'Открыть веб‑приложение →',
-      'hero.trust':      'Без карты • 1 бесплатное резюме • Готово за 60 секунд'
+      'hero.trust':      'Без карты • 1 бесплатное резюме • Готово за 60 секунд',
+      'proof.resumes':   'Резюме создано',
+      'proof.letters':   'Писем сгенерировано',
+      'proof.analyzed':  'Вакансий проанализировано',
+      'proof.users':     'Пользователей помогли'
     },
     en: {
       'nav.features':    'Features',
@@ -2467,7 +2484,11 @@ function checkoutPlan(plan) {
       'hero.sub':        'Free. No signup. ATS‑optimized.',
       'hero.cta1':       'Try Free in Telegram',
       'hero.cta2':       'Auto-Apply to Jobs →',
-      'hero.trust':      'No card needed • 1 free resume • Ready in 60 seconds'
+      'hero.trust':      'No card needed • 1 free resume • Ready in 60 seconds',
+      'proof.resumes':   'Resumes created',
+      'proof.letters':   'Cover letters',
+      'proof.analyzed':  'Jobs analyzed',
+      'proof.users':     'Users helped'
     }
   };
 
