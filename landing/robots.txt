@@ -4,11 +4,14 @@ Allow: /
 # Sitemaps
 Sitemap: https://resumeai-bot.ru/sitemap.xml
 
-# Crawl-delay (optional, keep low for good bots)
-Crawl-delay: 1
-
-# Disallow admin/internal paths if they exist
+# Block internal/admin paths
 Disallow: /admin/
 Disallow: /api/
 Disallow: /.env
 Disallow: /*.py$
+Disallow: /__pycache__/
+
+# Google-specific: allow JS/CSS so Googlebot can render the page
+User-agent: Googlebot
+Allow: /*.js$
+Allow: /*.css$

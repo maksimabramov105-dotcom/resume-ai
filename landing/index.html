@@ -12,8 +12,8 @@
   <meta name="author" content="ResumeAI" />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://resumeai-bot.ru" />
+  <link rel="alternate" hreflang="en" href="https://resumeai-bot.ru" />
   <link rel="alternate" hreflang="ru" href="https://resumeai-bot.ru" />
-  <link rel="alternate" hreflang="en" href="https://resumeai-bot.ru/en" />
   <link rel="alternate" hreflang="x-default" href="https://resumeai-bot.ru" />
 
   <!-- ── Open Graph (Telegram + VK) ───────────────────────────────────── -->
@@ -93,8 +93,12 @@
     "@context": "https://schema.org",
     "@type": "FAQPage",
     "mainEntity": [
-      {"@type": "Question", "name": "How does AI auto-apply work?", "acceptedAnswer": {"@type": "Answer", "text": "AI analyzes the job description, tailors your resume to the specific requirements, and automatically submits your application."}},
-      {"@type": "Question", "name": "Which platforms receive auto-applications?", "acceptedAnswer": {"@type": "Answer", "text": "hh.ru, SuperJob, LinkedIn, Indeed, Glassdoor, Workday and other major job platforms."}}
+      {"@type": "Question", "name": "How does AI auto-apply work?", "acceptedAnswer": {"@type": "Answer", "text": "ResumeAI analyzes each job description, tailors your resume to match the specific requirements, generates a cover letter, and automatically submits your application — all without you lifting a finger."}},
+      {"@type": "Question", "name": "Which job platforms does AutoApply support?", "acceptedAnswer": {"@type": "Answer", "text": "AutoApply supports hh.ru, SuperJob, LinkedIn, Indeed, Glassdoor, Workday, Greenhouse, Lever, Workable, Arbeitnow, RemoteOK, The Muse, and Adzuna."}},
+      {"@type": "Question", "name": "Is ResumeAI free to use?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. The Free plan lets you create 1 AI resume and send up to 3 auto-applications per day at no cost. Paid plans (Starter $9.99/mo, Pro $24.99/mo, Unlimited $49.99/mo) unlock higher daily limits."}},
+      {"@type": "Question", "name": "Will my resume pass ATS screening?", "acceptedAnswer": {"@type": "Answer", "text": "ResumeAI generates resumes specifically optimized for Applicant Tracking Systems. It selects keywords from the job description, uses ATS-safe formatting, and avoids tables and graphics that break parsers."}},
+      {"@type": "Question", "name": "How is ResumeAI different from ChatGPT?", "acceptedAnswer": {"@type": "Answer", "text": "ChatGPT generates text; ResumeAI builds complete, formatted resumes, auto-applies to job boards, tracks your applications, and sends you interview notifications — all integrated in one product."}},
+      {"@type": "Question", "name": "Can I cancel my subscription at any time?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. You can cancel your subscription at any time from the dashboard. You keep full access until the end of the billing period."}}
     ]
   }
   </script>
@@ -163,7 +167,7 @@
       --bg-card: #FFFFFF;
       --bg-alt: #F1F5F9;
       --text: #334155;
-      --text-muted: #71717A;
+      --text-muted: #5C6574;  /* #71717A fails 4.5:1 on #F8FAFC; #5C6574 = 5.6:1 */
       --heading: #0F172A;
       --danger: #EF4444;
       --border: #E2E8F0;
@@ -178,7 +182,21 @@
       --text-muted: #D4D4D8;
       --heading: #F8FAFC;
       --border: #334155;
+      --primary: #60A5FA;      /* blue-400: 7.0:1 on #0F172A, 5.85:1 on #1E293B */
+      --primary-dark: #3B82F6;
     }
+    /* sticky CTA uses background:var(--primary); keep it dark so white text passes */
+    [data-theme="dark"] #sticky-cta { background: #1D4ED8; }
+    /* btn-outline hover fills with --primary; use dark blue instead */
+    [data-theme="dark"] .btn-outline:hover { background: #1D4ED8; border-color: #1D4ED8; }
+    /* hardcoded blue outline buttons fail on dark cards (2.88:1) */
+    [data-theme="dark"] .btn-outline-blue { color: #60A5FA; border-color: #60A5FA; }
+    [data-theme="dark"] .btn-outline-blue:hover { background: #1E3A5F; }
+    /* hardcoded #64748B on dark card/bg fails (3.1:1); bump to #94A3B8 (5.8:1) */
+    [data-theme="dark"] .ds1-label,
+    [data-theme="dark"] .ds3-role,
+    [data-theme="dark"] .result-desc,
+    [data-theme="dark"] .proof-item .label { color: #94A3B8; }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1103,12 +1121,12 @@
     #footer { background: #0F172A; color: #94A3B8; padding: 64px 0 32px; }
     #footer .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 48px; margin-bottom: 48px; }
     .footer-logo { font-size: 1.4rem; font-weight: 800; color: #F8FAFC; margin-bottom: 12px; }
-    .footer-tagline { font-size: 0.88rem; line-height: 1.6; color: #64748B; max-width: 260px; }
+    .footer-tagline { font-size: 0.88rem; line-height: 1.6; color: #94A3B8; max-width: 260px; }
     .footer-socials { display: flex; gap: 12px; margin-top: 20px; }
     .social-icon { width: 36px; height: 36px; background: #1E293B; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #94A3B8; transition: all 0.2s; }
     .social-icon:hover { background: #2563EB; color: #fff; }
     .footer-col-title { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #F8FAFC; margin-bottom: 16px; }
-    .footer-link { display: block; font-size: 0.9rem; color: #64748B; text-decoration: none; margin-bottom: 10px; transition: color 0.2s; }
+    .footer-link { display: block; font-size: 0.9rem; color: #94A3B8; text-decoration: none; margin-bottom: 10px; transition: color 0.2s; }
     .footer-link:hover { color: #E2E8F0; }
     #footer .footer-bottom { border-top: 1px solid #1E293B; padding-top: 24px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; font-size: 0.82rem; }
 
