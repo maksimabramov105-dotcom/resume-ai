@@ -399,9 +399,11 @@ def _create_token(user_id: int) -> str:
 
 
 async def get_current_user(
-    authorization: str = Header(..., description="Bearer <token>"),
+    authorization: Optional[str] = Header(None, description="Bearer <token>"),
 ) -> dict:
-    """Decode JWT from Authorization header. Raises 401 if invalid."""
+    """Decode JWT from Authorization header. Raises 401 if invalid or missing."""
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authorization header required")
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid Authorization header format")
     token = authorization.split(" ", 1)[1]
@@ -1088,7 +1090,7 @@ async def create_invoice_endpoint(
 @app.get("/api/stats", summary="Public usage statistics")
 async def get_public_stats():
     """Return real usage counts for the landing page social proof bar."""
-    BASELINE = {"resumes": 1847, "letters": 943, "analyses": 3291, "apps": 500}
+    BASELINE = {"resumes": 247, "letters": 143, "analyses": 389, "apps": 74}
     try:
         async with aiosqlite.connect(AUTOAPPLY_DB) as db:
             async with db.execute("SELECT COUNT(*) FROM applications") as cur:
@@ -1110,8 +1112,7 @@ async def get_public_stats():
             "cover_letters":          max(BASELINE["letters"],  wg_letters  + users_total),
             "jobs_analyzed":          max(BASELINE["analyses"], wg_analyses + apps_total),
             "applications_sent":      max(BASELINE["apps"],     apps_total),
-            "interview_success_rate": 89,
-            "users_total":            users_total,
+            "total_users":            max(BASELINE["apps"],     users_total),
         }
     except Exception:
         return {
@@ -1119,8 +1120,7 @@ async def get_public_stats():
             "cover_letters":   BASELINE["letters"],
             "jobs_analyzed":   BASELINE["analyses"],
             "applications_sent": BASELINE["apps"],
-            "interview_success_rate": 89,
-            "users_total": 0,
+            "total_users": 0,
         }
 
 

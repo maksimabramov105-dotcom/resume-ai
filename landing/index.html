@@ -2196,7 +2196,7 @@ function checkoutPlan(plan) {
       ['resumes_created', 0],
       ['cover_letters', 1],
       ['jobs_analyzed', 2],
-      ['total_users', 3],
+      ['total_users', 3],  /* matches api/stats "total_users" field */
     ];
     const counts = document.querySelectorAll('.social-proof-bar .count');
     mapping.forEach(([key, idx]) => {
