@@ -1,0 +1,15 @@
+[Unit]
+Description=ResumeAI Self-Healer — system health monitor
+After=network.target resumeaibot.service autoapply.service
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/resumeaibot
+EnvironmentFile=/opt/resumeaibot/.env
+ExecStart=/opt/resumeaibot/venv/bin/python3 /opt/resumeaibot/self_healer.py
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

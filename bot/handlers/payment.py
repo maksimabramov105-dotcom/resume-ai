@@ -139,6 +139,8 @@ async def check_crypto(callback: CallbackQuery):
                     sys.path.insert(0, _ROOT)
                 from analytics_tracker import track_payment, DB_PATH as _ADB
                 await track_payment(callback.from_user.id, pkg["price_rub"], "crypto", _ADB)
+                from bot.utils.posthog_tracker import track as _ph_track
+                _ph_track(callback.from_user.id, 'payment_completed', {'plan': package_key, 'method': 'crypto', 'price_rub': pkg["price_rub"]})
             except Exception:
                 pass
             await callback.message.edit_text(

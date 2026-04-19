@@ -58,6 +58,8 @@ async def got_vacancy(message: Message, state: FSMContext):
             sys.path.insert(0, _ROOT)
         from analytics_tracker import track_feature, DB_PATH as _ADB
         await track_feature(message.from_user.id, "cover_letter", _ADB)
+        from bot.utils.posthog_tracker import track as _ph_track
+        _ph_track(message.from_user.id, 'cover_letter_generated', {'tokens': tokens})
     except Exception:
         pass
 

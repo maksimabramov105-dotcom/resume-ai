@@ -251,6 +251,54 @@ def setup_marketing_scheduler(scheduler) -> None:
     except ImportError as exc:
         logger.warning("[marketing_cron] lead_scraper not available: %s", exc)
 
+    # Auto-blogger — 06:30 UTC daily
+    try:
+        from scripts.auto_blogger import run_auto_blogger
+        scheduler.add_job(
+            run_auto_blogger,
+            trigger="cron",
+            hour=6,
+            minute=30,
+            id="auto_blogger",
+            replace_existing=True,
+            misfire_grace_time=3600,
+        )
+        logger.info("[marketing_cron] auto_blogger job scheduled at 06:30 UTC")
+    except ImportError as exc:
+        logger.warning("[marketing_cron] auto_blogger not available: %s", exc)
+
+    # Twitter poster — 14:00 UTC daily
+    try:
+        from scripts.twitter_poster import run_twitter_poster
+        scheduler.add_job(
+            run_twitter_poster,
+            trigger="cron",
+            hour=14,
+            minute=0,
+            id="twitter_poster",
+            replace_existing=True,
+            misfire_grace_time=3600,
+        )
+        logger.info("[marketing_cron] twitter_poster job scheduled at 14:00 UTC")
+    except ImportError as exc:
+        logger.warning("[marketing_cron] twitter_poster not available: %s", exc)
+
+    # Email drip — 10:00 UTC daily
+    try:
+        from scripts.email_drip_cron import main as run_email_drip
+        scheduler.add_job(
+            run_email_drip,
+            trigger="cron",
+            hour=10,
+            minute=0,
+            id="email_drip",
+            replace_existing=True,
+            misfire_grace_time=3600,
+        )
+        logger.info("[marketing_cron] email_drip job scheduled at 10:00 UTC")
+    except ImportError as exc:
+        logger.warning("[marketing_cron] email_drip not available: %s", exc)
+
 
 # ── Standalone run ────────────────────────────────────────────────────────────
 if __name__ == "__main__":

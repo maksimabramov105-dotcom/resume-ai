@@ -1,0 +1,12 @@
+[Unit]
+Description=Run ResumeAI Self-Healer every 6 hours
+Requires=self-healer.service
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=6h
+Persistent=true
+Unit=self-healer.service
+
+[Install]
+WantedBy=timers.target

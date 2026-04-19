@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import Script from "next/script";
+import { PHProvider } from "./providers";
 import "./globals.css";
 
 const inter = Inter({
@@ -141,7 +142,9 @@ export default function RootLayout({
         `}</Script>
       </head>
       <body className="bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100">
-        {children}
+        <PHProvider>
+          {children}
+        </PHProvider>
         <GoogleAnalytics gaId="G-LSSCM2MPNG" />
       </body>
     </html>

@@ -61,6 +61,14 @@ async def cmd_start(message: Message, state: FSMContext):
     # Track join source for analytics (never raises)
     await track_start(user.telegram_id, args, _ANALYTICS_DB_PATH)
 
+    # PostHog analytics
+    try:
+        from bot.utils.posthog_tracker import track as _ph_track, identify as _ph_identify
+        _ph_identify(user.telegram_id, {'username': user.username, 'language': user.language or ''})
+        _ph_track(user.telegram_id, 'bot_started', {'source': 'telegram', 'referral': args})
+    except Exception:
+        pass
+
     # First-time user: ask language before showing main menu
     if not user.language:
         await message.answer(
@@ -155,3 +163,53 @@ async def cmd_upgrade(message: Message):
             "После оплаты план активируется <b>мгновенно</b> ✅"
         )
     await message.answer(text, reply_markup=kb)
+
+
+# ── Tracker command ────────────────────────────────────────────────────────────
+
+@router.message(Command("tracker"))
+@router.message(Command("stats"))
+async def cmd_tracker(message: Message):
+    """Show user's application stats."""
+    import sqlite3
+    import os as _os
+    db_path = _os.getenv("AUTOAPPLY_DB", "/opt/resumeaibot/autoapply.db")
+    uid = message.from_user.id
+    user = await get_or_create_user(uid)
+    lang = user.language or 'ru'
+    try:
+        conn = sqlite3.connect(db_path)
+        row = conn.execute(
+            "SELECT COUNT(*), SUM(CASE WHEN status='sent' THEN 1 ELSE 0 END), "
+            "SUM(CASE WHEN status='viewed' THEN 1 ELSE 0 END), "
+            "SUM(CASE WHEN status='interview' THEN 1 ELSE 0 END) "
+            "FROM applications WHERE user_id=?",
+            (uid,)
+        ).fetchone()
+        conn.close()
+        total, sent, viewed, interview = row if row else (0, 0, 0, 0)
+        total    = total    or 0
+        sent     = sent     or 0
+        viewed   = viewed   or 0
+        interview = interview or 0
+    except Exception:
+        total = sent = viewed = interview = 0
+
+    if lang == 'en':
+        text = (
+            f"📊 <b>Your application stats:</b>\n\n"
+            f"📬 Total sent: <b>{total}</b>\n"
+            f"👀 Viewed by recruiter: <b>{viewed}</b>\n"
+            f"🎯 Interviews: <b>{interview}</b>\n\n"
+            f"<i>Tip: apply more to get more responses!</i>"
+        )
+    else:
+        text = (
+            f"📊 <b>Ваша статистика откликов:</b>\n\n"
+            f"📬 Всего отправлено: <b>{total}</b>\n"
+            f"👀 Просмотрено рекрутером: <b>{viewed}</b>\n"
+            f"🎯 Приглашений на интервью: <b>{interview}</b>\n\n"
+            f"<i>Подсказка: больше откликов = больше ответов!</i>"
+        )
+    from utils.keyboards import main_menu_kb
+    await message.answer(text, reply_markup=main_menu_kb(lang))

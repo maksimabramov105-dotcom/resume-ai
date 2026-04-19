@@ -12,3 +12,14 @@ greenlet
 apscheduler
 stripe>=7.0.0
 dnspython>=2.6.0
+httpx
+playwright
+posthog
+tweepy
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart
+reportlab
+beautifulsoup4
+aiofiles
+requests

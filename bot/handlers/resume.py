@@ -120,6 +120,8 @@ async def _generate_and_send(message: Message, state: FSMContext, user):
             sys.path.insert(0, _ROOT)
         from analytics_tracker import track_feature, DB_PATH as _ADB
         await track_feature(message.from_user.id, "resume", _ADB)
+        from bot.utils.posthog_tracker import track as _ph_track
+        _ph_track(message.from_user.id, 'resume_completed', {'tokens': tokens})
     except Exception:
         pass
 

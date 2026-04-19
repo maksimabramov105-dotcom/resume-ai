@@ -64,6 +64,19 @@ run_remote "echo 'connection OK'" || fail "Cannot connect to VPS"
 ok "VPS reachable"
 
 # ────────────────────────────────────────────────────────────
+# Step 0: Build Next.js frontend
+# ────────────────────────────────────────────────────────────
+step "Step 0/14: Building Next.js frontend..."
+if [ -d "$LOCAL_PATH/frontend" ]; then
+    (cd "$LOCAL_PATH/frontend" && npm run build) || fail "Next.js build failed"
+    # Copy static export to landing/
+    cp -r "$LOCAL_PATH/frontend/out/." "$LOCAL_PATH/landing/"
+    ok "Next.js built and output copied to landing/"
+else
+    echo "   ⚠️  No frontend/ directory found — skipping Next.js build"
+fi
+
+# ────────────────────────────────────────────────────────────
 # Step 1: Upload landing files
 # ────────────────────────────────────────────────────────────
 step "Step 1/14: Uploading landing page files..."
@@ -116,6 +129,26 @@ fi
 # ────────────────────────────────────────────────────────────
 step "Step 5/14: Uploading utility scripts and service files..."
 
+# Upload self_healer and scripts/
+for f in self_healer.py marketing_cron.py; do
+    if [ -f "$LOCAL_PATH/$f" ]; then
+        scp_file "$LOCAL_PATH/$f" "$VPS_PATH/$f"
+        ok "$f uploaded"
+    fi
+done
+
+if [ -d "$LOCAL_PATH/scripts" ]; then
+    run_remote "mkdir -p $VPS_PATH/scripts"
+    scp_dir "$LOCAL_PATH/scripts/." "$VPS_PATH/scripts/"
+    ok "scripts/ uploaded"
+fi
+
+if [ -d "$LOCAL_PATH/data" ]; then
+    run_remote "mkdir -p $VPS_PATH/data"
+    scp_dir "$LOCAL_PATH/data/." "$VPS_PATH/data/"
+    ok "data/ uploaded"
+fi
+
 for f in health_check.py bug_report.py; do
     if [ -f "$LOCAL_PATH/$f" ]; then
         scp_file "$LOCAL_PATH/$f" "$VPS_PATH/$f"
@@ -125,9 +158,11 @@ for f in health_check.py bug_report.py; do
     fi
 done
 
-for f in autoapply.service autoapply-worker.service health-check.service health-check.timer; do
-    if [ -f "$LOCAL_PATH/$f" ]; then
-        scp_file "$LOCAL_PATH/$f" "/tmp/$f"
+for f in autoapply.service autoapply-worker.service health-check.service health-check.timer self-healer.service self-healer.timer; do
+    src="$LOCAL_PATH/deploy/$f"
+    [ -f "$src" ] || src="$LOCAL_PATH/$f"
+    if [ -f "$src" ]; then
+        scp_file "$src" "/tmp/$f"
         run_remote "cp /tmp/$f /etc/systemd/system/$f"
         ok "$f copied to /etc/systemd/system/"
     else
@@ -226,6 +261,7 @@ run_remote "
     systemctl enable autoapply.service 2>/dev/null || true
     systemctl enable autoapply-worker.service 2>/dev/null || true
     systemctl enable health-check.timer 2>/dev/null || true
+    systemctl enable self-healer.timer 2>/dev/null || true
 
     echo 'systemd services enabled'
 "
@@ -262,6 +298,7 @@ run_remote "
     systemctl start autoapply.service || true
     systemctl start autoapply-worker.service || true
     systemctl start health-check.timer || true
+    systemctl start self-healer.timer || true
 
     sleep 3
     echo ''
