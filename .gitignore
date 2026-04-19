@@ -6,6 +6,9 @@ bot.db
 *.pdf
 bot.log
 webapp/node_modules/
+frontend/node_modules/
+frontend/.next/
+frontend/out/
 credentials.json
 autoapply/autoapply.db
 *.db

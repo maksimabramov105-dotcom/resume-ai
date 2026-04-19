@@ -58,10 +58,11 @@ AUTOAPPLY_HOST = os.getenv("AUTOAPPLY_HOST", "0.0.0.0")
 
 # ── Plans ────────────────────────────────────────────────────────────────
 PLANS = {
-    "free":      {"daily_limit": 3,    "price_rub": 0,    "price_usd": 0,     "label": "Free"},
-    "start":     {"daily_limit": 50,   "price_rub": 990,  "price_usd": 9.99,  "label": "Starter"},
-    "pro":       {"daily_limit": 200,  "price_rub": 2490, "price_usd": 24.99, "label": "Pro"},
-    "unlimited": {"daily_limit": 9999, "price_rub": 4990, "price_usd": 49.99, "label": "Unlimited"},
+    "free":      {"daily_limit": 3,    "price_usd": 0,     "trial_days": 0,  "label": "Free"},
+    "trial":     {"daily_limit": 30,   "price_usd": 2.99,  "trial_days": 14, "label": "Trial"},
+    "start":     {"daily_limit": 25,   "price_usd": 12.99, "trial_days": 0,  "label": "Starter"},
+    "pro":       {"daily_limit": 50,   "price_usd": 19.99, "trial_days": 0,  "label": "Pro"},
+    "unlimited": {"daily_limit": 9999, "price_usd": 29.99, "trial_days": 0,  "label": "Unlimited"},
 }
 
 # ── Delays between applications (seconds) ────────────────────────────────

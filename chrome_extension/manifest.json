@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "АвтоОтклик — Auto Apply Jobs",
-  "version": "1.0.2",
-  "description": "Automatically applies to LinkedIn Easy Apply jobs from your AutoApply campaign",
+  "name": "ResumeAI — Auto Apply Jobs",
+  "version": "1.1.0",
+  "description": "Auto-apply to LinkedIn Easy Apply, Greenhouse, Lever, and Workable jobs from your ResumeAI campaign",
   "permissions": ["activeTab", "storage", "alarms", "notifications"],
   "host_permissions": [
     "https://www.linkedin.com/*",

@@ -1638,13 +1638,13 @@ async def create_stripe_checkout(payload: dict, request: Request):
         ("premium", "annual"):  os.getenv("STRIPE_PRICE_PREMIUM_ANNUAL",  ""),
     }
     PRICE_FALLBACK = {
-        ("trial",     "monthly"): {"amount": 299,   "currency": "usd", "name": "ResumeAI Trial — 7 days",       "recurring": None},
-        ("start",     "monthly"): {"amount": 999,   "currency": "usd", "name": "ResumeAI Starter — 1 month",    "recurring": "month"},
-        ("pro",       "monthly"): {"amount": 2499,  "currency": "usd", "name": "ResumeAI Pro — 1 month",        "recurring": "month"},
-        ("pro",       "annual"):  {"amount": 23990, "currency": "usd", "name": "ResumeAI Pro — 1 year",         "recurring": "year"},
-        ("unlimited", "monthly"): {"amount": 4999,  "currency": "usd", "name": "ResumeAI Unlimited — 1 month",  "recurring": "month"},
-        ("premium",   "monthly"): {"amount": 3999,  "currency": "usd", "name": "ResumeAI Premium — 1 month",    "recurring": "month"},
-        ("premium",   "annual"):  {"amount": 29900, "currency": "usd", "name": "ResumeAI Premium — 1 year",     "recurring": "year"},
+        ("trial",     "monthly"): {"amount": 299,   "currency": "usd", "name": "ResumeAI Trial — 14 days / 30 apps", "recurring": None},
+        ("start",     "monthly"): {"amount": 1299,  "currency": "usd", "name": "ResumeAI Starter — 25 apps/day",     "recurring": "month"},
+        ("start",     "annual"):  {"amount": 12470, "currency": "usd", "name": "ResumeAI Starter — 1 year",          "recurring": "year"},
+        ("pro",       "monthly"): {"amount": 1999,  "currency": "usd", "name": "ResumeAI Pro — 50 apps/day",         "recurring": "month"},
+        ("pro",       "annual"):  {"amount": 19190, "currency": "usd", "name": "ResumeAI Pro — 1 year",              "recurring": "year"},
+        ("unlimited", "monthly"): {"amount": 2999,  "currency": "usd", "name": "ResumeAI Unlimited — no cap",        "recurring": "month"},
+        ("unlimited", "annual"):  {"amount": 28790, "currency": "usd", "name": "ResumeAI Unlimited — 1 year",        "recurring": "year"},
     }
 
     price_id = PRICE_ID_MAP.get((plan, period), "")
