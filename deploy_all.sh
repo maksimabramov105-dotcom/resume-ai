@@ -70,7 +70,7 @@ step "Step 0/14: Building Next.js frontend..."
 if [ -d "$LOCAL_PATH/frontend" ]; then
     (cd "$LOCAL_PATH/frontend" && npm run build) || fail "Next.js build failed"
     # Copy static export to landing/
-    cp -r "$LOCAL_PATH/frontend/out/." "$LOCAL_PATH/landing/"
+    rsync -a "$LOCAL_PATH/frontend/out/." "$LOCAL_PATH/landing/"
     ok "Next.js built and output copied to landing/"
 else
     echo "   ⚠️  No frontend/ directory found — skipping Next.js build"
