@@ -1,5 +1,8 @@
+"use client"
+
 import Link from "next/link";
 import StatsBar from "./StatsBar";
+import { posthog } from "../providers";
 
 export default function Hero() {
   return (
@@ -28,6 +31,7 @@ export default function Hero() {
             href="https://t.me/topbestworkerbot"
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => posthog.capture("cta_clicked", { cta: "hero_telegram", position: "hero" })}
             className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-lg font-bold px-8 py-4 rounded-xl shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5 min-h-[56px]"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
