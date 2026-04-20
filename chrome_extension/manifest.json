@@ -6,6 +6,10 @@
   "permissions": ["activeTab", "storage", "alarms", "notifications"],
   "host_permissions": [
     "https://www.linkedin.com/*",
+    "https://boards.greenhouse.io/*",
+    "https://jobs.lever.co/*",
+    "https://apply.workable.com/*",
+    "https://jobs.ashbyhq.com/*",
     "https://resumeai.bot/*",
     "http://resumeai-bot.ru/*",
     "https://resumeai-bot.ru/*"
@@ -16,6 +20,26 @@
   "content_scripts": [
     {
       "matches": ["https://www.linkedin.com/jobs/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://boards.greenhouse.io/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://jobs.lever.co/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://apply.workable.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://jobs.ashbyhq.com/*"],
       "js": ["content.js"],
       "run_at": "document_idle"
     }

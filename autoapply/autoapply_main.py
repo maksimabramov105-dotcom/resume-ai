@@ -1660,7 +1660,7 @@ async def create_stripe_checkout(payload: dict, request: Request):
                 mode="subscription" if is_recurring else "payment",
                 success_url="https://resumeai-bot.ru/app?payment=success",
                 cancel_url="https://resumeai-bot.ru/app?payment=cancelled",
-                metadata={"plan": plan, "period": period},
+                metadata={"plan": plan, "period": period, "user_id": str(payload.get("user_id", ""))},
             )
         elif price_cfg["recurring"]:
             session = stripe.checkout.Session.create(
@@ -1677,7 +1677,7 @@ async def create_stripe_checkout(payload: dict, request: Request):
                 mode="subscription",
                 success_url="https://resumeai-bot.ru/app?payment=success",
                 cancel_url="https://resumeai-bot.ru/app?payment=cancelled",
-                metadata={"plan": plan, "period": period},
+                metadata={"plan": plan, "period": period, "user_id": str(payload.get("user_id", ""))},
             )
         else:
             session = stripe.checkout.Session.create(
@@ -1693,7 +1693,7 @@ async def create_stripe_checkout(payload: dict, request: Request):
                 mode="payment",
                 success_url="https://resumeai-bot.ru/app?payment=success",
                 cancel_url="https://resumeai-bot.ru/app?payment=cancelled",
-                metadata={"plan": plan, "period": period},
+                metadata={"plan": plan, "period": period, "user_id": str(payload.get("user_id", ""))},
             )
         return {"url": session.url}
     except Exception as e:
@@ -2441,6 +2441,10 @@ async def blog_article(slug: str):
 @app.get("/app", include_in_schema=False)
 @app.get("/app/{path:path}", include_in_schema=False)
 async def serve_app(path: str = ""):
+    # Block common exploit scanner paths
+    _BLOCKED = ("vendor/", "phpunit", "wp-", ".php", "eval-stdin", ".env", "adminer")
+    if any(b in path for b in _BLOCKED):
+        raise HTTPException(status_code=404, detail="Not found")
     if APP_HTML.exists():
         return FileResponse(str(APP_HTML))
     return JSONResponse(
