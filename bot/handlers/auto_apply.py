@@ -4,20 +4,18 @@ auto_apply.py — Telegram handler for the 🚀 Auto-Apply button.
 Opens the web dashboard /app where users manage auto-apply campaigns.
 Also shows quick tips so users know what to expect.
 """
-import os
-
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
-from database.user_service import get_or_create_user
+from config import WEBAPP_URL
+from database.db import get_or_create_user
 from utils.bot_translations import t
 
 router = Router()
 
-WEBAPP_BASE_URL = os.getenv("WEBAPP_BASE_URL", "https://resumeai-bot.ru")
-APP_URL = WEBAPP_BASE_URL.rstrip("/") + "/app"
+APP_URL = (WEBAPP_URL or "https://resumeai-bot.ru").rstrip("/") + "/app"
 
 
 def _auto_apply_kb(lang: str) -> InlineKeyboardMarkup:

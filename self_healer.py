@@ -17,7 +17,7 @@ BOT_TOKEN   = os.getenv("BOT_TOKEN", "")
 ADMIN_ID    = os.getenv("ADMIN_ID", "")
 APP_DIR     = Path(os.getenv("APP_DIR", "/opt/resumeaibot"))
 LOGS_DIR    = APP_DIR / "logs"
-DB_AUTOAPPLY = APP_DIR / "autoapply" / "autoapply.db"
+DB_AUTOAPPLY = APP_DIR / "autoapply.db"
 DB_BOT       = APP_DIR / "bot.db"
 
 SERVICES = ["resumeaibot", "autoapply", "autoapply-worker"]
