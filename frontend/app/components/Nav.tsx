@@ -11,12 +11,11 @@ export default function Nav() {
           <a href="#how-it-works" className="hover:text-blue-600 transition-colors">How it works</a>
           <a href="#pricing" className="hover:text-blue-600 transition-colors">Pricing</a>
           <a href="#faq" className="hover:text-blue-600 transition-colors">FAQ</a>
+          <a href="/app" className="hover:text-blue-600 transition-colors font-medium">Dashboard</a>
         </div>
         <a
-          href="https://t.me/topbestworkerbot"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors min-h-[40px] flex items-center"
+          href="/app"
+          className="bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors min-h-[40px] flex items-center"
         >
           Try Free
         </a>

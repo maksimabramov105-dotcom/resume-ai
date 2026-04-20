@@ -110,6 +110,7 @@ async def _generate_and_send(message: Message, state: FSMContext, user):
         experience=data.get("experience", ""),
         education=data.get("education", ""),
         skills=data.get("skills", ""),
+        lang=lang,
     )
 
     # Track feature usage for analytics (never raises)

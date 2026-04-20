@@ -399,7 +399,7 @@
 
 <!-- NAVBAR -->
 <nav id="navbar" style="display:none;">
-  <a class="nav-logo" onclick="navigate('#dashboard')">АвтоОтклик</a>
+  <a class="nav-logo" onclick="navigate('#dashboard')" data-i18n="login.title">АвтоОтклик</a>
   <div class="nav-links">
     <button class="nav-link" onclick="navigate('#dashboard')" data-i18n="nav.campaigns">Кампании</button>
     <button class="nav-link" onclick="navigate('#applications')" data-i18n="nav.applications">Заявки</button>
@@ -421,28 +421,28 @@
   </div>
 </nav>
 <div class="mobile-menu" id="mobile-menu">
-  <button class="nav-link" onclick="navigate('#dashboard');toggleMobile()">Кампании</button>
-  <button class="nav-link" onclick="navigate('#applications');toggleMobile()">Заявки</button>
-  <button class="nav-link" onclick="navigate('#resume');toggleMobile()">📄 Резюме</button>
-  <button class="nav-link" onclick="navigate('#cover');toggleMobile()">✉️ Письма</button>
-  <button class="nav-link" onclick="navigate('#jobs');toggleMobile()">🔍 Вакансии</button>
-  <button class="nav-link" onclick="navigate('#tracker');toggleMobile()">📋 Трекер</button>
-  <button class="nav-link" onclick="navigate('#settings');toggleMobile()">Настройки</button>
-  <button class="nav-link" onclick="navigate('#interview');toggleMobile()">🎯 Интервью</button>
-  <button class="nav-link" onclick="navigate('#billing');toggleMobile()">💳 Тарифы</button>
-  <button class="nav-link" onclick="logout()">Выйти</button>
+  <button class="nav-link" onclick="navigate('#dashboard');toggleMobile()" data-i18n="nav.campaigns">Кампании</button>
+  <button class="nav-link" onclick="navigate('#applications');toggleMobile()" data-i18n="nav.applications">Заявки</button>
+  <button class="nav-link" onclick="navigate('#resume');toggleMobile()" data-i18n="nav.resume">📄 Резюме</button>
+  <button class="nav-link" onclick="navigate('#cover');toggleMobile()" data-i18n="nav.cover">✉️ Письма</button>
+  <button class="nav-link" onclick="navigate('#jobs');toggleMobile()" data-i18n="nav.jobs">🔍 Вакансии</button>
+  <button class="nav-link" onclick="navigate('#tracker');toggleMobile()" data-i18n="nav.tracker">📋 Трекер</button>
+  <button class="nav-link" onclick="navigate('#settings');toggleMobile()" data-i18n="nav.settings">Настройки</button>
+  <button class="nav-link" onclick="navigate('#interview');toggleMobile()" data-i18n="nav.interview">🎯 Интервью</button>
+  <button class="nav-link" onclick="navigate('#billing');toggleMobile()" data-i18n="nav.billing">💳 Тарифы</button>
+  <button class="nav-link" onclick="logout()" data-i18n="nav.logout">Выйти</button>
 </div>
 
 <!-- ============================== PAGE: LOGIN ============================== -->
 <div class="page" id="page-login">
   <div class="login-box">
     <div class="login-logo">
-      <h1>АвтоОтклик</h1>
-      <p>Автоматические заявки на работу</p>
+      <h1 data-i18n="login.title">АвтоОтклик</h1>
+      <p data-i18n="login.subtitle">Автоматические заявки на работу</p>
     </div>
     <div class="tabs">
-      <button class="tab-btn active" onclick="switchTab('login')">Войти</button>
-      <button class="tab-btn" onclick="switchTab('register')">Зарегистрироваться</button>
+      <button class="tab-btn active" onclick="switchTab('login')" data-i18n="login.sign_in">Войти</button>
+      <button class="tab-btn" onclick="switchTab('register')" data-i18n="login.sign_up">Зарегистрироваться</button>
     </div>
 
     <!-- Email verified banner -->
@@ -458,13 +458,13 @@
       </div>
       <div class="form-group">
         <label style="display:flex;justify-content:space-between;align-items:center;">
-          Пароль
-          <a href="#" onclick="switchTab('forgot');return false;" style="font-size:0.8rem;color:var(--accent1);font-weight:400;">Забыли пароль?</a>
+          <span data-i18n="login.password">Пароль</span>
+          <a href="#" onclick="switchTab('forgot');return false;" style="font-size:0.8rem;color:var(--accent1);font-weight:400;" data-i18n="login.forgot">Забыли пароль?</a>
         </label>
         <input type="password" class="input" id="login-password" placeholder="••••••••" />
       </div>
       <div class="error-msg" id="login-error"></div>
-      <button class="btn-primary" style="width:100%; justify-content:center; margin-top:4px;" onclick="doLogin()">Войти</button>
+      <button class="btn-primary" style="width:100%; justify-content:center; margin-top:4px;" onclick="doLogin()" data-i18n="login.sign_in">Войти</button>
       <!-- VK One Tap Login (F1) -->
       <div style="display:flex;align-items:center;gap:10px;margin:16px 0 8px;">
         <div style="flex:1;height:1px;background:#2a2a2a;"></div>
@@ -482,7 +482,7 @@
         <input type="email" class="input" id="reg-email" placeholder="you@example.com" />
       </div>
       <div class="form-group">
-        <label>Пароль</label>
+        <label data-i18n="login.password">Пароль</label>
         <input type="password" class="input" id="reg-password" placeholder="Минимум 6 символов" />
       </div>
       <div class="form-group">
@@ -491,7 +491,7 @@
         <div class="note">Telegram ID можно найти через @userinfobot</div>
       </div>
       <div class="error-msg" id="reg-error"></div>
-      <button class="btn-primary" style="width:100%; justify-content:center; margin-top:4px;" onclick="doRegister()">Зарегистрироваться</button>
+      <button class="btn-primary" style="width:100%; justify-content:center; margin-top:4px;" onclick="doRegister()" data-i18n="login.sign_up">Зарегистрироваться</button>
     </div>
 
     <!-- Forgot password tab -->
@@ -642,16 +642,16 @@
 
     <!-- Stats -->
     <div class="stats-grid" id="stats-grid">
-      <div class="stat-card"><div class="stat-icon">📤</div><div class="stat-value" id="stat-today">—</div><div class="stat-label">Заявок сегодня</div></div>
-      <div class="stat-card"><div class="stat-icon">📊</div><div class="stat-value" id="stat-total">—</div><div class="stat-label">Всего заявок</div></div>
-      <div class="stat-card"><div class="stat-icon">📬</div><div class="stat-value" id="stat-responses">—</div><div class="stat-label">Ответов</div></div>
-      <div class="stat-card"><div class="stat-icon">🗓️</div><div class="stat-value" id="stat-interviews">—</div><div class="stat-label">Собеседований</div></div>
+      <div class="stat-card"><div class="stat-icon">📤</div><div class="stat-value" id="stat-today">—</div><div class="stat-label" data-i18n="stats.today">Заявок сегодня</div></div>
+      <div class="stat-card"><div class="stat-icon">📊</div><div class="stat-value" id="stat-total">—</div><div class="stat-label" data-i18n="stats.total">Всего заявок</div></div>
+      <div class="stat-card"><div class="stat-icon">📬</div><div class="stat-value" id="stat-responses">—</div><div class="stat-label" data-i18n="stats.responses">Ответов</div></div>
+      <div class="stat-card"><div class="stat-icon">🗓️</div><div class="stat-value" id="stat-interviews">—</div><div class="stat-label" data-i18n="stats.interviews">Собеседований</div></div>
     </div>
 
     <!-- Campaigns -->
     <div class="section-header">
-      <span class="section-title">Мои кампании</span>
-      <button class="btn-primary btn-sm" onclick="navigate('#new-campaign')">+ Создать кампанию</button>
+      <span class="section-title" data-i18n="dashboard.campaigns">Мои кампании</span>
+      <button class="btn-primary btn-sm" onclick="navigate('#new-campaign')" data-i18n="dashboard.new_campaign">+ Создать кампанию</button>
     </div>
     <div class="campaigns-grid" id="campaigns-grid">
       <div class="loading-overlay"><div class="loading-spinner"></div></div>
@@ -660,7 +660,7 @@
     <!-- Activity chart -->
     <div class="card" style="padding:20px;margin-bottom:24px;">
       <div class="section-header" style="margin-bottom:16px;">
-        <span class="section-title">Активность за 30 дней</span>
+        <span class="section-title" data-i18n="dashboard.activity">Активность за 30 дней</span>
       </div>
       <canvas id="activity-chart" height="110"></canvas>
     </div>
@@ -669,21 +669,21 @@
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;" class="funnel-row">
       <div class="stat-card" style="text-align:center;"><div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:4px;">Отправлено</div><div class="stat-value" id="funnel-sent">—</div></div>
       <div class="stat-card" style="text-align:center;"><div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:4px;">Просмотрено</div><div class="stat-value" id="funnel-viewed">—</div></div>
-      <div class="stat-card" style="text-align:center;"><div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:4px;">Интервью</div><div class="stat-value" id="funnel-interview">—</div></div>
-      <div class="stat-card" style="text-align:center;"><div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:4px;">Оффер</div><div class="stat-value" id="funnel-offer">—</div></div>
+      <div class="stat-card" style="text-align:center;"><div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:4px;" data-i18n="funnel.interview">Интервью</div><div class="stat-value" id="funnel-interview">—</div></div>
+      <div class="stat-card" style="text-align:center;"><div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:4px;" data-i18n="funnel.offer">Оффер</div><div class="stat-value" id="funnel-offer">—</div></div>
     </div>
 
     <!-- Recent applications -->
     <div class="section-header">
-      <span class="section-title">Последние заявки</span>
-      <a href="#applications" class="view-all" onclick="navigate('#applications')">Все заявки →</a>
+      <span class="section-title" data-i18n="dashboard.recent">Последние заявки</span>
+      <a href="#applications" class="view-all" onclick="navigate('#applications')" data-i18n="dashboard.all">Все заявки →</a>
     </div>
     <div class="card" style="padding:0; overflow:hidden;">
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Компания</th><th>Должность</th><th>Платформа</th><th>Статус</th><th>Дата</th>
+              <th data-i18n="table.company">Компания</th><th data-i18n="table.position">Должность</th><th data-i18n="table.platform">Платформа</th><th data-i18n="table.status">Статус</th><th data-i18n="table.date">Дата</th>
             </tr>
           </thead>
           <tbody id="recent-apps-body">
@@ -920,11 +920,11 @@
           <div style="font-size:1.25rem;margin-bottom:8px;">⚡️</div>
           <div style="font-weight:600;font-size:0.9rem;margin-bottom:4px;">Быстрый отклик</div>
           <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:12px;">Бот присылает вакансию — нажми «Откликнуться» прямо в чате</div>
-          <a href="https://t.me/topbestworkerbot?start=quickapply" target="_blank" style="font-size:0.85rem;color:#0088CC;">Настроить в боте →</a>
+          <a href="https://t.me/topbestworkerbot?start=quickapply" target="_blank" style="font-size:0.85rem;color:#0088CC;" data-i18n="settings.setup_bot">Настроить в боте →</a>
         </div>
         <div style="background:var(--card2);border-radius:var(--r);padding:16px;">
           <div style="font-size:1.25rem;margin-bottom:8px;">📄</div>
-          <div style="font-weight:600;font-size:0.9rem;margin-bottom:4px;">Загрузка резюме</div>
+          <div style="font-weight:600;font-size:0.9rem;margin-bottom:4px;" data-i18n="settings.upload">Загрузка резюме</div>
           <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:12px;">Отправь PDF/DOCX прямо в бот — сохранится в аккаунт</div>
           <a href="https://t.me/topbestworkerbot" target="_blank" style="font-size:0.85rem;color:#0088CC;">Открыть бота →</a>
         </div>
@@ -949,15 +949,15 @@
           <textarea class="textarea" id="resume-textarea" rows="6" placeholder="Здесь появится ваше резюме после синхронизации с ботом..."></textarea>
         </div>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-          <button class="btn-secondary" onclick="syncResume()">🔄 Синхронизировать с Telegram ботом</button>
-          <span style="font-size:0.82rem;color:var(--text-muted);">Основной профиль создаётся в @topbestworkerbot</span>
+          <button class="btn-secondary" onclick="syncResume()" data-i18n="settings.sync">🔄 Синхронизировать с Telegram ботом</button>
+          <span style="font-size:0.82rem;color:var(--text-muted);" data-i18n="settings.sync_hint">Основной профиль создаётся в @topbestworkerbot</span>
         </div>
       </div>
     </div>
 
     <!-- Current Plan -->
     <div class="settings-section">
-      <div class="settings-section-title">Текущий тариф</div>
+      <div class="settings-section-title" data-i18n="settings.plan">Текущий тариф</div>
       <div class="card" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
         <div>
           <div style="font-size:1.1rem;font-weight:700;" id="settings-plan-name">FREE</div>
@@ -1232,11 +1232,11 @@
         <div class="form-group">
           <label>Статус</label>
           <select class="select" id="new-app-status">
-            <option value="Сохранено">Сохранено</option>
-            <option value="Откликнулся">Откликнулся</option>
-            <option value="Интервью">Интервью</option>
-            <option value="Оффер">Оффер</option>
-            <option value="Отказ">Отказ</option>
+            <option value="Saved">Saved</option>
+            <option value="Applied">Applied</option>
+            <option value="Interview">Interview</option>
+            <option value="Offer">Offer</option>
+            <option value="Rejected">Rejected</option>
           </select>
         </div>
         <div class="form-group">
@@ -2370,11 +2370,11 @@
 
   function statusBadge(s) {
     const map = {
-      sent: ['badge-sent', 'Отправлено'],
-      viewed: ['badge-viewed', 'Просмотрено'],
-      response: ['badge-response', 'Ответ'],
-      rejected: ['badge-rejected', 'Отказ'],
-      interview: ['badge-interview', 'Собеседование'],
+      sent: ['badge-sent', 'Sent'],
+      viewed: ['badge-viewed', 'Viewed'],
+      response: ['badge-response', 'Response'],
+      rejected: ['badge-rejected', 'Rejected'],
+      interview: ['badge-interview', 'Interview'],
     };
     const [cls, label] = map[s] || ['badge-paused', s || '—'];
     return `<span class="badge ${cls}">${label}</span>`;
@@ -2636,10 +2636,10 @@
   // ===== PAGE: JOB SEARCH =====
   // ================================================================
   const MOCK_JOBS = [
-    {title:"Python Backend Developer", company:"Яндекс", location:"Москва", salary:"250 000 — 350 000 ₽", remote:true, match:94, url:"#"},
-    {title:"Full Stack Developer", company:"Сбер", location:"Москва", salary:"180 000 — 260 000 ₽", remote:false, match:87, url:"#"},
+    {title:"Python Backend Developer", company:"Google", location:"San Francisco", salary:"$120,000–$160,000", remote:true, match:94, url:"#"},
+    {title:"Full Stack Developer", company:"Amazon", location:"San Francisco", salary:"$90,000–$130,000", remote:false, match:87, url:"#"},
     {title:"Data Engineer", company:"Тинькофф", location:"Санкт-Петербург", salary:"200 000 — 300 000 ₽", remote:true, match:81, url:"#"},
-    {title:"DevOps Engineer", company:"VK", location:"Москва", salary:"220 000 — 320 000 ₽", remote:true, match:76, url:"#"},
+    {title:"DevOps Engineer", company:"Meta", location:"San Francisco", salary:"220 000 — 320 000 ₽", remote:true, match:76, url:"#"},
     {title:"Product Manager", company:"Авито", location:"Москва", salary:"200 000 — 280 000 ₽", remote:false, match:72, url:"#"},
     {title:"UX Designer", company:"Lamoda", location:"Москва", salary:"120 000 — 180 000 ₽", remote:true, match:68, url:"#"},
     {title:"Android Developer", company:"Wildberries", location:"Москва", salary:"180 000 — 250 000 ₽", remote:false, match:65, url:"#"},
@@ -2727,7 +2727,7 @@
     showToast(`Вакансия "${title}" сохранена`, 'success');
     // Also add to tracker
     const apps = getTrackerApps();
-    apps.push({ id: Date.now(), company, title, status: 'Сохранено', date: new Date().toISOString().slice(0,10), notes: '' });
+    apps.push({ id: Date.now(), company, title, status: 'Saved', date: new Date().toISOString().slice(0,10), notes: '' });
     saveTrackerApps(apps);
   }
 
@@ -2738,11 +2738,11 @@
   // ================================================================
   // ===== PAGE: APPLICATION TRACKER =====
   // ================================================================
-  const KANBAN_COLS = ['Сохранено', 'Откликнулся', 'Интервью', 'Оффер', 'Отказ'];
+  const KANBAN_COLS = ['Saved', 'Applied', 'Interview', 'Offer', 'Rejected'];
   const SAMPLE_APPS = [
-    {id:1, company:"Яндекс", title:"Python Developer", status:"Интервью", date:"2026-04-08", notes:""},
-    {id:2, company:"Сбер", title:"Backend Engineer", status:"Откликнулся", date:"2026-04-09", notes:""},
-    {id:3, company:"VK", title:"Full Stack Dev", status:"Сохранено", date:"2026-04-10", notes:""},
+    {id:1, company:"Google", title:"Python Developer", status:"Interview", date:"2026-04-08", notes:""},
+    {id:2, company:"Amazon", title:"Backend Engineer", status:"Applied", date:"2026-04-09", notes:""},
+    {id:3, company:"Meta", title:"Full Stack Dev", status:"Saved", date:"2026-04-10", notes:""},
   ];
 
   function getTrackerApps() {
@@ -2789,8 +2789,8 @@
     const board = document.getElementById('kanban-board');
     if (!board) return;
     const apps = getTrackerApps();
-    const colColors = { 'Сохранено': 'rgba(107,114,128,0.15)', 'Откликнулся': 'rgba(37,99,235,0.15)', 'Интервью': 'rgba(124,58,237,0.15)', 'Оффер': 'rgba(16,185,129,0.15)', 'Отказ': 'rgba(239,68,68,0.1)' };
-    const colHeaderColors = { 'Сохранено': '#9ca3af', 'Откликнулся': '#60a5fa', 'Интервью': '#a78bfa', 'Оффер': '#34d399', 'Отказ': '#f87171' };
+    const colColors = { 'Saved': 'rgba(107,114,128,0.15)', 'Applied': 'rgba(37,99,235,0.15)', 'Interview': 'rgba(124,58,237,0.15)', 'Offer': 'rgba(16,185,129,0.15)', 'Rejected': 'rgba(239,68,68,0.1)' };
+    const colHeaderColors = { 'Saved': '#9ca3af', 'Applied': '#60a5fa', 'Interview': '#a78bfa', 'Offer': '#34d399', 'Rejected': '#f87171' };
 
     board.innerHTML = KANBAN_COLS.map(col => {
       const colApps = apps.filter(a => a.status === col);
@@ -2815,9 +2815,9 @@
 
     // Update analytics
     const total = apps.length;
-    const interviewed = apps.filter(a => a.status === 'Интервью' || a.status === 'Оффер').length;
-    const offered = apps.filter(a => a.status === 'Оффер').length;
-    const applied = apps.filter(a => a.status !== 'Сохранено').length;
+    const interviewed = apps.filter(a => a.status === 'Interview' || a.status === 'Offer').length;
+    const offered = apps.filter(a => a.status === 'Offer').length;
+    const applied = apps.filter(a => a.status !== 'Saved').length;
     const el = id => document.getElementById(id);
     if (el('tracker-total')) el('tracker-total').textContent = total;
     if (el('tracker-response-rate')) el('tracker-response-rate').textContent = applied ? Math.round(interviewed/applied*100)+'%' : '0%';
@@ -3577,7 +3577,34 @@ function useQFromLib(idx) {
       'nav.settings':     'Настройки',
       'nav.billing':      '💳 Тарифы',
       'nav.interview':    '🎯 Интервью',
-      'nav.logout':       'Выйти'
+      'nav.logout':       'Выйти',
+      'login.title':      'АвтоОтклик',
+      'login.subtitle':   'Автоматические заявки на работу',
+      'login.sign_in':    'Войти',
+      'login.sign_up':    'Зарегистрироваться',
+      'login.password':   'Пароль',
+      'login.forgot':     'Забыли пароль?',
+      'settings.plan':    'Текущий тариф',
+      'settings.upload':  'Загрузка резюме',
+      'settings.sync':    '🔄 Синхронизировать с Telegram ботом',
+      'settings.sync_hint': 'Основной профиль создаётся в @topbestworkerbot',
+      'settings.setup_bot': 'Настроить в боте →',
+      'dashboard.campaigns':    'Мои кампании',
+      'dashboard.new_campaign': '+ Создать кампанию',
+      'dashboard.activity':     'Активность за 30 дней',
+      'dashboard.recent':       'Последние заявки',
+      'dashboard.all':          'Все заявки →',
+      'stats.today':      'Заявок сегодня',
+      'stats.total':      'Всего заявок',
+      'stats.responses':  'Ответов',
+      'stats.interviews': 'Собеседований',
+      'table.company':    'Компания',
+      'table.position':   'Должность',
+      'table.platform':   'Платформа',
+      'table.status':     'Статус',
+      'table.date':       'Дата',
+      'funnel.interview': 'Интервью',
+      'funnel.offer':     'Оффер'
     },
     en: {
       'nav.campaigns':    'Campaigns',
@@ -3589,7 +3616,34 @@ function useQFromLib(idx) {
       'nav.settings':     'Settings',
       'nav.billing':      '💳 Plans',
       'nav.interview':    '🎯 Interview',
-      'nav.logout':       'Logout'
+      'nav.logout':       'Logout',
+      'login.title':      'AutoApply',
+      'login.subtitle':   'Automated job applications',
+      'login.sign_in':    'Sign In',
+      'login.sign_up':    'Sign Up',
+      'login.password':   'Password',
+      'login.forgot':     'Forgot password?',
+      'settings.plan':    'Current Plan',
+      'settings.upload':  'Upload Resume',
+      'settings.sync':    '🔄 Sync with Telegram bot',
+      'settings.sync_hint': 'Main profile syncs from @topbestworkerbot',
+      'settings.setup_bot': 'Set up in bot →',
+      'dashboard.campaigns':    'My Campaigns',
+      'dashboard.new_campaign': '+ New Campaign',
+      'dashboard.activity':     'Activity (30 days)',
+      'dashboard.recent':       'Recent Applications',
+      'dashboard.all':          'All Applications →',
+      'stats.today':      'Applied Today',
+      'stats.total':      'Total Applied',
+      'stats.responses':  'Responses',
+      'stats.interviews': 'Interviews',
+      'table.company':    'Company',
+      'table.position':   'Position',
+      'table.platform':   'Platform',
+      'table.status':     'Status',
+      'table.date':       'Date',
+      'funnel.interview': 'Interview',
+      'funnel.offer':     'Offer'
     }
   };
 

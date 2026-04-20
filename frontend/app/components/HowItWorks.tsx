@@ -1,23 +1,23 @@
 const STEPS = [
   {
     number: "1",
-    title: "Upload your resume",
+    title: "Go to /app and upload your resume",
     description:
-      "Paste your resume or upload a PDF. Our AI extracts all your experience, skills, and education.",
+      "Open the web dashboard, paste your resume or upload a PDF. Our AI extracts your experience, skills, and education instantly.",
     icon: "📄",
   },
   {
     number: "2",
-    title: "Set your preferences",
+    title: "Set your job preferences",
     description:
-      "Choose job titles, locations, salary range, and which platforms to target. Takes 2 minutes.",
+      "Choose target job titles, locations, salary range, and which platforms to apply on (LinkedIn, Greenhouse, Lever, Workable…). Takes 2 minutes.",
     icon: "⚙️",
   },
   {
     number: "3",
-    title: "Let it run",
+    title: "Auto-apply runs 24/7",
     description:
-      "The bot applies round-the-clock — filling forms, writing cover letters, and tracking every application.",
+      "The AI fills application forms, writes a tailored cover letter for each job, and logs every application in your tracker — while you focus on interviews.",
     icon: "🚀",
   },
 ];
@@ -31,7 +31,7 @@ export default function HowItWorks() {
             Up and running in 2 minutes
           </h2>
           <p className="text-slate-500 dark:text-slate-400 text-lg">
-            No Chrome extension required to get started. Just open the Telegram bot.
+            Start on the web — or use the Telegram bot as a companion.
           </p>
         </div>
 
@@ -52,6 +52,15 @@ export default function HowItWorks() {
               </p>
             </div>
           ))}
+        </div>
+
+        <div className="text-center mt-10">
+          <a
+            href="/app"
+            className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-bold px-6 py-3 rounded-xl transition-colors shadow"
+          >
+            🚀 Open Dashboard
+          </a>
         </div>
       </div>
     </section>

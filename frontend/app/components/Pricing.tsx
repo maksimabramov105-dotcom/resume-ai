@@ -21,6 +21,7 @@ const PLANS = [
     ],
     cta: "Start $2.99 Trial",
     badge: null,
+    href: "/app",
   },
   {
     id: "starter",
@@ -38,6 +39,7 @@ const PLANS = [
     ],
     cta: "Get Starter",
     badge: null,
+    href: "/app#pricing",
   },
   {
     id: "pro",
@@ -56,6 +58,7 @@ const PLANS = [
     ],
     cta: "Get Pro",
     badge: "Most popular",
+    href: "/app#pricing",
   },
   {
     id: "unlimited",
@@ -74,6 +77,7 @@ const PLANS = [
     ],
     cta: "Get Unlimited",
     badge: null,
+    href: "/app#pricing",
   },
 ] as const;
 
@@ -184,17 +188,26 @@ export default function Pricing() {
               </ul>
 
               <a
-                href={TELEGRAM_URL}
-                target="_blank"
-                rel="noopener noreferrer"
+                href={plan.href}
                 className={`block text-center font-semibold py-3 rounded-xl transition-colors ${
                   plan.highlight
                     ? "bg-white text-blue-600 hover:bg-blue-50"
-                    : "bg-blue-600 hover:bg-blue-700 text-white"
+                    : "bg-amber-500 hover:bg-amber-600 text-white"
                 }`}
               >
                 {plan.cta}
               </a>
+              <p className={`text-center text-xs mt-2 ${plan.highlight ? "text-blue-200" : "text-slate-400 dark:text-slate-500"}`}>
+                or{" "}
+                <a
+                  href={TELEGRAM_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:opacity-80"
+                >
+                  use Telegram bot
+                </a>
+              </p>
             </div>
           ))}
         </div>

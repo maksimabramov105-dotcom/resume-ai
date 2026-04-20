@@ -7,6 +7,9 @@ export default function Footer() {
           <span className="ml-2">© {new Date().getFullYear()} All rights reserved.</span>
         </div>
         <div className="flex flex-wrap gap-4 justify-center">
+          <a href="/app" className="hover:text-white transition-colors font-medium">
+            Dashboard
+          </a>
           <a
             href="https://t.me/topbestworkerbot"
             target="_blank"
@@ -21,13 +24,16 @@ export default function Footer() {
           <a href="#faq" className="hover:text-white transition-colors">
             FAQ
           </a>
+          <a
+            href="mailto:support@resumeai-bot.ru"
+            className="hover:text-white transition-colors"
+          >
+            Support
+          </a>
         </div>
         <div className="text-xs text-slate-500 text-center sm:text-right">
           No spam. No data selling.{" "}
-          <a
-            href="https://t.me/topbestworkerbot"
-            className="underline hover:text-slate-300 transition-colors"
-          >
+          <a href="/app" className="underline hover:text-slate-300 transition-colors">
             Cancel anytime.
           </a>
         </div>

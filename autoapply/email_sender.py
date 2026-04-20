@@ -408,19 +408,86 @@ DRIP_BODIES = [
 ]
 
 
-def send_drip_email(to: str, step: int) -> bool:
+DRIP_SUBJECTS_EN = [
+    "Welcome! Create your first resume in 30 seconds",
+    "Does your resume pass ATS filters? Check now",
+    "Resume ready — need a cover letter?",
+    "5 interview questions you'll definitely be asked",
+    "Special offer: Try the Pro plan",
+    "Last chance: 20% off your first month",
+]
+
+DRIP_BODIES_EN = [
+    lambda email: f"""
+<h2>Welcome to ResumeAI! 🎉</h2>
+<p>Your account is ready. Here's how to get started in 30 seconds:</p>
+<ol>
+  <li>Open your <a href="{WEBAPP_URL}/app">personal dashboard</a></li>
+  <li>Or message the bot: <a href="https://t.me/topbestworkerbot">@topbestworkerbot</a></li>
+  <li>Paste a job link → AI builds a tailored resume in 30 sec</li>
+</ol>
+<p><strong>Available for free:</strong> 1 resume + 1 cover letter + 3 AI messages</p>
+<p><a href="{WEBAPP_URL}/app" style="background:#7c3aed;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Create your first resume →</a></p>
+""",
+    lambda email: f"""
+<h2>Does your resume pass ATS filters? 🤔</h2>
+<p>Most companies use ATS systems. Average ATS score without optimization: <strong>42/100</strong>.</p>
+<p>Our users average <strong>89/100</strong> after optimization.</p>
+<p><a href="{WEBAPP_URL}/app">Check your ATS score for free →</a></p>
+""",
+    lambda email: f"""
+<h2>Resume done — need a cover letter? ✉️</h2>
+<p>Candidates with a personalized cover letter get a reply 2.5× more often.</p>
+<p><a href="{WEBAPP_URL}/app">Write a cover letter →</a></p>
+""",
+    lambda email: f"""
+<h2>Ready for your interview? 🎯</h2>
+<p>5 questions you will definitely be asked:</p>
+<ol>
+  <li>"Tell me about yourself"</li>
+  <li>"Why do you want to work here?"</li>
+  <li>"Where do you see yourself in 5 years?"</li>
+  <li>"Tell me about a challenging project"</li>
+  <li>"Why did you leave your last job?"</li>
+</ol>
+<p><a href="{WEBAPP_URL}/app">AI interview prep with STAR method →</a></p>
+""",
+    lambda email: f"""
+<h2>Special offer 🎁</h2>
+<ul>
+  <li>50 auto-applications per day</li>
+  <li>Unlimited resumes and cover letters</li>
+  <li>Full ATS analysis</li>
+</ul>
+<p>Write <strong>/upgrade</strong> to <a href="https://t.me/topbestworkerbot">@topbestworkerbot</a></p>
+""",
+    lambda email: f"""
+<h2>Last chance: 20% off 🔥</h2>
+<p>Promo code: <strong>RESUME20</strong></p>
+<p>Valid for 48 hours. <a href="{WEBAPP_URL}/app">Activate →</a></p>
+""",
+]
+
+
+def send_drip_email(to: str, step: int, lang: str = 'ru') -> bool:
     if step >= len(DRIP_SUBJECTS):
         return False
-    subject = f"[РезюмеАИ] {DRIP_SUBJECTS[step]}"
-    body_html = DRIP_BODIES[step](to)
+    use_en = (lang == 'en')
+    subjects = DRIP_SUBJECTS_EN if use_en else DRIP_SUBJECTS
+    bodies = DRIP_BODIES_EN if use_en else DRIP_BODIES
+    brand = 'ResumeAI' if use_en else 'РезюмеАИ'
+    unsub_text = 'Unsubscribe' if use_en else 'Отписаться'
+
+    subject = f"[{brand}] {subjects[step]}"
+    body_html = bodies[step](to)
     import re as _re
     plain = _re.sub(r'<[^>]+>', '', body_html).strip()
     full_html = (
         f"<html><body style='font-family:Inter,sans-serif;max-width:600px;margin:0 auto;"
         f"padding:24px;color:#334155;'>{body_html}"
         f"<hr style='margin-top:32px;border-color:#E2E8F0;'>"
-        f"<p style='font-size:12px;color:#94A3B8;'>РезюмеАИ · "
+        f"<p style='font-size:12px;color:#94A3B8;'>{brand} · "
         f"<a href='{WEBAPP_URL}'>resumeai-bot.ru</a> · "
-        f"<a href='{WEBAPP_URL}/app?unsubscribe=1'>Отписаться</a></p></body></html>"
+        f"<a href='{WEBAPP_URL}/app?unsubscribe=1'>{unsub_text}</a></p></body></html>"
     )
     return _send(to, subject, full_html, plain)

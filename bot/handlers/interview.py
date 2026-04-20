@@ -41,7 +41,7 @@ async def got_vacancy(message: Message, state: FSMContext):
 
     status_msg = await message.answer(t(lang, 'interview.starting'))
 
-    first_question, tokens = await start_interview(vacancy, candidate_summary)
+    first_question, tokens = await start_interview(vacancy, candidate_summary, lang=lang)
 
     history = [{"role": "assistant", "content": first_question}]
     await state.set_state(InterviewStates.active)
@@ -80,7 +80,9 @@ async def handle_answer(message: Message, state: FSMContext):
 
     await message.chat.do("typing")
 
-    response, tokens = await continue_interview(vacancy, candidate_summary, history, message.text)
+    user_for_lang = await get_or_create_user(message.from_user.id)
+    _lang = user_for_lang.language or 'ru'
+    response, tokens = await continue_interview(vacancy, candidate_summary, history, message.text, lang=_lang)
     history.append({"role": "assistant", "content": response})
 
     question_count += 1
@@ -111,7 +113,7 @@ async def finish_interview_handler(callback: CallbackQuery, state: FSMContext):
     await callback.message.edit_text(t(lang, 'interview.finish_prompt'))
 
     try:
-        final_text, tokens = await finish_interview(vacancy, candidate_summary, history)
+        final_text, tokens = await finish_interview(vacancy, candidate_summary, history, lang=lang)
 
         # Track feature usage for analytics (never raises)
         try:

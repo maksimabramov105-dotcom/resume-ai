@@ -45,13 +45,20 @@ async def chat_completion(
         tokens = response.usage.total_tokens
         return text, tokens
     except asyncio.TimeoutError:
-        return "⚠️ AI не ответил вовремя. Попробуйте ещё раз.", 0
+        return "⚠️ AI did not respond in time. Please try again.", 0
     except Exception as e:
-        return f"Произошла ошибка при обращении к AI: {str(e)}", 0
+        return f"⚠️ AI error: {str(e)}", 0
+
+
+_EN_LANG_PREFIX = "IMPORTANT: Respond entirely in English. Do not use any Russian text.\n\n"
+
+
+def _sys(prompt: str, lang: str) -> str:
+    return (_EN_LANG_PREFIX + prompt) if lang == 'en' else prompt
 
 
 async def generate_resume(
-    vacancy: str, experience: str, education: str, skills: str
+    vacancy: str, experience: str, education: str, skills: str, lang: str = 'ru'
 ) -> tuple[str, int]:
     from prompts.resume_prompt import RESUME_SYSTEM_PROMPT, RESUME_USER_PROMPT_TEMPLATE
 
@@ -64,7 +71,7 @@ async def generate_resume(
     )
     return await chat_completion(
         messages=[
-            {"role": "system", "content": RESUME_SYSTEM_PROMPT},
+            {"role": "system", "content": _sys(RESUME_SYSTEM_PROMPT, lang)},
             {"role": "user", "content": user_prompt},
         ],
         max_tokens=2000,
@@ -72,12 +79,12 @@ async def generate_resume(
     )
 
 
-async def generate_cover_letter(vacancy: str, candidate_summary: str) -> tuple[str, int]:
+async def generate_cover_letter(vacancy: str, candidate_summary: str, lang: str = 'ru') -> tuple[str, int]:
     from prompts.cover_letter_prompt import COVER_LETTER_SYSTEM_PROMPT, COVER_LETTER_USER_PROMPT
 
     return await chat_completion(
         messages=[
-            {"role": "system", "content": COVER_LETTER_SYSTEM_PROMPT},
+            {"role": "system", "content": _sys(COVER_LETTER_SYSTEM_PROMPT, lang)},
             {
                 "role": "user",
                 "content": COVER_LETTER_USER_PROMPT.format(
@@ -90,12 +97,12 @@ async def generate_cover_letter(vacancy: str, candidate_summary: str) -> tuple[s
     )
 
 
-async def start_interview(vacancy: str, candidate_summary: str) -> tuple[str, int]:
+async def start_interview(vacancy: str, candidate_summary: str, lang: str = 'ru') -> tuple[str, int]:
     from prompts.interview_prompt import INTERVIEW_SYSTEM_PROMPT, INTERVIEW_START_PROMPT
 
     return await chat_completion(
         messages=[
-            {"role": "system", "content": INTERVIEW_SYSTEM_PROMPT},
+            {"role": "system", "content": _sys(INTERVIEW_SYSTEM_PROMPT, lang)},
             {
                 "role": "user",
                 "content": INTERVIEW_START_PROMPT.format(
@@ -109,12 +116,12 @@ async def start_interview(vacancy: str, candidate_summary: str) -> tuple[str, in
 
 
 async def continue_interview(
-    vacancy: str, candidate_summary: str, history: list[dict], user_answer: str
+    vacancy: str, candidate_summary: str, history: list[dict], user_answer: str, lang: str = 'ru'
 ) -> tuple[str, int]:
     from prompts.interview_prompt import INTERVIEW_SYSTEM_PROMPT, INTERVIEW_START_PROMPT
 
     messages = [
-        {"role": "system", "content": INTERVIEW_SYSTEM_PROMPT},
+        {"role": "system", "content": _sys(INTERVIEW_SYSTEM_PROMPT, lang)},
         {
             "role": "user",
             "content": INTERVIEW_START_PROMPT.format(
@@ -128,12 +135,12 @@ async def continue_interview(
 
 
 async def finish_interview(
-    vacancy: str, candidate_summary: str, history: list[dict]
+    vacancy: str, candidate_summary: str, history: list[dict], lang: str = 'ru'
 ) -> tuple[str, int]:
     from prompts.interview_prompt import INTERVIEW_SYSTEM_PROMPT, INTERVIEW_START_PROMPT
 
     messages = [
-        {"role": "system", "content": INTERVIEW_SYSTEM_PROMPT},
+        {"role": "system", "content": _sys(INTERVIEW_SYSTEM_PROMPT, lang)},
         {
             "role": "user",
             "content": INTERVIEW_START_PROMPT.format(
@@ -144,7 +151,7 @@ async def finish_interview(
     messages.extend(history)
     messages.append({
         "role": "user",
-        "content": "Пожалуйста, завершите собеседование и дайте финальную оценку кандидату: оценка 1-10, сильные стороны, слабые стороны и конкретные рекомендации.",
+        "content": "Please end the interview and give a final evaluation: score 1-10, strengths, weaknesses, and specific recommendations.",
     })
     return await chat_completion(messages=messages, max_tokens=1000, temperature=0.7)
 

@@ -48,7 +48,7 @@ async def got_vacancy(message: Message, state: FSMContext):
     if not candidate_summary:
         candidate_summary = "Информация о кандидате не указана. Напиши общее письмо."
 
-    letter_text, tokens = await generate_cover_letter(vacancy, candidate_summary)
+    letter_text, tokens = await generate_cover_letter(vacancy, candidate_summary, lang=lang)
 
     # Track feature usage for analytics (never raises)
     try:

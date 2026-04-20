@@ -62,6 +62,8 @@ STRINGS: dict[str, dict[str, str]] = {
         'btn.clear_history':   "🗑 Очистить историю",
         'btn.share':           "🎁 Поделиться → получить бесплатное резюме",
         'btn.top_up':          "💳 Пополнить баланс",
+        'share.text':          "Попробуй РезюмеАИ — резюме за 30 секунд!",
+        'menu.auto_apply':     "🚀 Авто-отклик на вакансии",
 
         # Resume flow
         'resume.ask_vacancy':  "📋 Отправьте <b>текст вакансии</b> (скопируйте с hh.ru или другого сайта):",
@@ -257,6 +259,18 @@ STRINGS: dict[str, dict[str, str]] = {
             "💰 <b>Пополнить баланс</b>\n\n"
             "Выбери пакет:"
         ),
+
+        # Auto-apply
+        'auto_apply.info': (
+            "🚀 <b>Авто-отклик на вакансии</b>\n\n"
+            "Загрузи резюме один раз — бот откликается на сотни вакансий в день на Greenhouse, Lever, Workable, LinkedIn и других платформах.\n\n"
+            "<b>Как начать:</b>\n"
+            "1. Открой личный кабинет по кнопке ниже\n"
+            "2. Загрузи резюме и выбери должности\n"
+            "3. Авто-отклик запускается автоматически\n\n"
+            "Весь трекинг заявок — тоже в кабинете."
+        ),
+        'auto_apply.open_btn': "🌐 Открыть кабинет → /app",
     },
     # ────────────────────────────────────────────────────────────────────────
     'en': {
@@ -311,6 +325,8 @@ STRINGS: dict[str, dict[str, str]] = {
         'btn.clear_history':   "🗑 Clear History",
         'btn.share':           "🎁 Share → get a free resume",
         'btn.top_up':          "💳 Top Up Balance",
+        'share.text':          "Try ResumeAI — AI resume in 30 seconds!",
+        'menu.auto_apply':     "🚀 Auto-Apply to Jobs",
 
         # Resume flow
         'resume.ask_vacancy':  "📋 Paste the <b>job description</b> (copy it from LinkedIn, Indeed, or another site):",
@@ -506,6 +522,18 @@ STRINGS: dict[str, dict[str, str]] = {
             "💰 <b>Top Up Balance</b>\n\n"
             "Choose a package:"
         ),
+
+        # Auto-apply
+        'auto_apply.info': (
+            "🚀 <b>Auto-Apply to Jobs</b>\n\n"
+            "Upload your resume once — the bot applies to hundreds of jobs per day on Greenhouse, Lever, Workable, LinkedIn, and more.\n\n"
+            "<b>How to start:</b>\n"
+            "1. Open your dashboard using the button below\n"
+            "2. Upload your resume and choose target roles\n"
+            "3. Auto-apply starts automatically\n\n"
+            "All application tracking is also in your dashboard."
+        ),
+        'auto_apply.open_btn': "🌐 Open Dashboard → /app",
     },
 }
 

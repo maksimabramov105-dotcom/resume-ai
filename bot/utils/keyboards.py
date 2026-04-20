@@ -35,6 +35,12 @@ def main_menu_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
             ),
         ],
     ]
+    # Auto-apply link — opens web dashboard /app
+    import os as _os
+    _auto_url = _os.getenv("WEBAPP_BASE_URL", "https://resumeai-bot.ru").rstrip('/') + '/app'
+    rows.insert(-1, [
+        InlineKeyboardButton(text=t(lang, 'menu.auto_apply'), url=_auto_url),
+    ])
     if WEBAPP_URL:
         rows.insert(0, [
             InlineKeyboardButton(text=t(lang, 'menu.webapp'), web_app=WebAppInfo(url=WEBAPP_URL)),
@@ -47,10 +53,12 @@ def after_resume_kb(
     referral_code: str = "",
     lang: str = 'ru',
 ) -> InlineKeyboardMarkup:
+    import urllib.parse
+    share_text = t(lang, 'share.text')
     share_url = (
         f"https://t.me/share/url"
-        f"?url=https://t.me/{bot_username}?start=ref_{referral_code}"
-        f"&text=Попробуй%20РезюмеАИ%20—%20резюме%20за%2030%20секунд%21"
+        f"?url={urllib.parse.quote(f'https://t.me/{bot_username}?start=ref_{referral_code}', safe='')}"
+        f"&text={urllib.parse.quote(share_text, safe='')}"
     )
     rows = [
         [
