@@ -257,6 +257,29 @@ async def attempt_restart_and_recheck(
     return False, f"{failure_label}: still down after restart — {msg}"
 
 
+STATE_FILE = os.path.join(os.getenv("LOGS_DIR", "/opt/resumeaibot/logs"), ".health_state")
+
+
+def _read_state() -> set[str]:
+    """Return set of check names that were failing in the previous run."""
+    try:
+        data = open(STATE_FILE).read().strip()
+        return set(data.split(",")) if data else set()
+    except FileNotFoundError:
+        return set()
+    except Exception:
+        return set()
+
+
+def _write_state(failing: set[str]) -> None:
+    """Persist current failing check names to disk."""
+    try:
+        os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
+        open(STATE_FILE, "w").write(",".join(sorted(failing)))
+    except Exception as e:
+        log.warning("Could not write state file: %s", e)
+
+
 async def main() -> None:
     log.info("=== Health check started at %s ===", datetime.now().isoformat())
 
@@ -296,8 +319,23 @@ async def main() -> None:
     failures = {name: msg for name, (ok, msg) in results.items()
                 if not ok and name not in {n for n, _ in info_checks}}
 
+    prev_failing = _read_state()
+
     if not failures:
         log.info("All checks passed — system healthy.")
+        if prev_failing:
+            # Was failing before → send recovery notification
+            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            recovered_names = ", ".join(f"<code>{n}</code>" for n in sorted(prev_failing))
+            msg = (
+                f"✅ <b>All systems recovered</b>\n"
+                f"🕐 {ts}\n\n"
+                f"Previously failing: {recovered_names}\n"
+                f"Status: all checks passing ✓"
+            )
+            await send_alert(msg)
+            log.info("Recovery notification sent (was failing: %s)", prev_failing)
+        _write_state(set())
         return
 
     # --- Auto-restart logic ---
@@ -349,6 +387,9 @@ async def main() -> None:
     alert_text = "\n".join(lines)
     log.warning("Sending alert:\n%s", alert_text)
     await send_alert(alert_text)
+
+    # Persist which checks are still failing so next run can detect recovery
+    _write_state(set(failures.keys()))
 
     # Send email ONLY for critical unrecovered failures (service down, disk full)
     critical_failures = {k: v for k, v in failures.items() if k in CRITICAL_CHECKS}
