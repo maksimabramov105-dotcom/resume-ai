@@ -429,7 +429,7 @@ async def register(body: RegisterRequest):
     logger.info("[api/register] attempt for email=%s", body.email)
 
     if len(body.password) < 6:
-        raise HTTPException(status_code=400, detail="Пароль должен быть не менее 6 символов")
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
 
     # Validate email domain has real MX records (rejects fake/disposable addresses)
     from autoapply.email_sender import validate_email_mx
@@ -453,7 +453,7 @@ async def register(body: RegisterRequest):
         )
     except Exception as exc:
         logger.error("[api/register] DB error: %s", exc)
-        raise HTTPException(status_code=500, detail="Ошибка регистрации")
+        raise HTTPException(status_code=500, detail="Registration error")
 
     # Start email drip sequence
     try:
@@ -464,7 +464,7 @@ async def register(body: RegisterRequest):
     # Send verification email (non-blocking — don't fail registration if SMTP is not set up)
     try:
         verify_token = await create_email_token(user_id, kind="verify", ttl_hours=24)
-        sent = send_verification_email(body.email, verify_token)
+        sent = await asyncio.to_thread(send_verification_email, body.email, verify_token)
         if sent:
             logger.info("[api/register] verification email sent to %s", body.email)
         else:
@@ -490,7 +490,7 @@ async def verify_email(token: str):
     user = await get_user_by_id(user_id, AUTOAPPLY_DB)
     if user:
         try:
-            send_welcome_email(user["email"])
+            await asyncio.to_thread(send_welcome_email, user["email"])
         except Exception:
             pass
 
@@ -506,11 +506,11 @@ async def resend_verification(current_user: dict = Depends(get_current_user)):
         return {"ok": True, "message": "Уже подтверждён"}
     try:
         verify_token = await create_email_token(current_user["id"], kind="verify", ttl_hours=24)
-        send_verification_email(current_user["email"], verify_token)
+        await asyncio.to_thread(send_verification_email, current_user["email"], verify_token)
         logger.info("[api/resend-verification] sent to user_id=%s", current_user["id"])
     except Exception as exc:
         logger.error("[api/resend-verification] error: %s", exc)
-        raise HTTPException(status_code=500, detail="Ошибка отправки")
+        raise HTTPException(status_code=500, detail="Send error")
     return {"ok": True}
 
 
@@ -521,7 +521,7 @@ async def forgot_password(body: ForgotPasswordRequest):
     if user:
         try:
             reset_token = await create_email_token(user["id"], kind="reset", ttl_hours=1)
-            send_password_reset_email(body.email, reset_token)
+            await asyncio.to_thread(send_password_reset_email, body.email, reset_token)
             logger.info("[api/forgot-password] reset email sent to %s", body.email)
         except Exception as exc:
             logger.error("[api/forgot-password] email error: %s", exc)
@@ -576,7 +576,7 @@ async def vk_login(payload: dict):
                 await db.commit()
         except Exception as exc:
             logger.error("[vk-login] create_user error: %s", exc)
-            raise HTTPException(status_code=500, detail="Ошибка создания аккаунта")
+            raise HTTPException(status_code=500, detail="Account creation error")
 
     token = _create_token(user_id)
     logger.info("[vk-login] user_id=%s vk_user_id=%s", user_id, vk_user_id)
@@ -586,7 +586,7 @@ async def vk_login(payload: dict):
 @app.post("/api/reset-password", summary="Set new password using reset token")
 async def reset_password(body: ResetPasswordRequest):
     if len(body.password) < 6:
-        raise HTTPException(status_code=400, detail="Пароль должен быть не менее 6 символов")
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
 
     user_id = await consume_email_token(body.token, kind="reset")
     if not user_id:
@@ -604,7 +604,7 @@ async def login(body: LoginRequest):
 
     user = await get_user_by_email(body.email, AUTOAPPLY_DB)
     if not user or not _verify_password(body.password, user["password_hash"]):
-        raise HTTPException(status_code=401, detail="Неверный email или пароль")
+        raise HTTPException(status_code=401, detail="Invalid email or password")
 
     token = _create_token(user["id"])
     logger.info("[api/login] success user_id=%s", user["id"])

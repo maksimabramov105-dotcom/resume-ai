@@ -45,7 +45,7 @@ SMTP_FROM     = os.getenv("SMTP_FROM", RESEND_FROM)
 SMTP_USE_SSL  = os.getenv("SMTP_USE_SSL", "1").strip() in ("1", "true", "yes")
 
 ADMIN_BOT_TOKEN = os.getenv("BOT_TOKEN", "")
-ADMIN_CHAT_ID   = os.getenv("ADMIN_CHAT_ID", "")
+ADMIN_CHAT_ID   = os.getenv("ADMIN_CHAT_ID") or os.getenv("ADMIN_ID", "")
 WEBAPP_URL      = os.getenv("WEBAPP_BASE_URL", "https://resumeai-bot.ru")
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@([^@\s]+\.[^@\s]+)$")
@@ -96,6 +96,7 @@ def _send_via_resend_api(to: str, subject: str, html: str, text: str) -> bool:
         headers={
             "Authorization": f"Bearer {RESEND_API_KEY}",
             "Content-Type": "application/json",
+            "User-Agent": "ResumeAI/1.0 (https://resumeai-bot.ru)",
         },
         method="POST",
     )
@@ -136,11 +137,11 @@ def _send_via_smtp(to: str, subject: str, html: str, text: str) -> bool:
     try:
         context = ssl.create_default_context()
         if SMTP_USE_SSL:
-            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, context=context) as srv:
+            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, context=context, timeout=10) as srv:
                 srv.login(SMTP_USER, SMTP_PASSWORD)
                 srv.sendmail(from_addr, to, msg.as_string())
         else:
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as srv:
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as srv:
                 srv.ehlo()
                 srv.starttls(context=context)
                 srv.login(SMTP_USER, SMTP_PASSWORD)

@@ -1,14 +1,18 @@
 [Unit]
-Description=АвтоОтклик Web Service (AutoApply)
+Description=AutoApply Web Service
 After=network.target resumeaibot.service
 
 [Service]
 User=root
 WorkingDirectory=/opt/resumeaibot
 EnvironmentFile=-/opt/resumeaibot/.env
-ExecStart=/opt/resumeaibot/.venv/bin/python3 -m uvicorn autoapply.autoapply_main:app --host 0.0.0.0 --port 8080 --workers 2
+ExecStartPre=/bin/bash -c 'fuser -k 8080/tcp 2>/dev/null || true'
+ExecStart=/opt/resumeaibot/.venv/bin/python3 -m uvicorn autoapply.autoapply_main:app --host 0.0.0.0 --port 8080 --workers 1
 Restart=always
 RestartSec=5
+TimeoutStopSec=15
+KillMode=mixed
+KillSignal=SIGTERM
 StandardOutput=append:/opt/resumeaibot/logs/autoapply.log
 StandardError=append:/opt/resumeaibot/logs/autoapply.log
 
