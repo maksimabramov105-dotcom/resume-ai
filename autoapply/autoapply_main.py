@@ -611,6 +611,21 @@ async def login(body: LoginRequest):
     return {"token": token, "user_id": user["id"]}
 
 
+@app.get("/api/auth/me", summary="Get current authenticated user")
+async def auth_me(current_user: dict = Depends(get_current_user)):
+    plan_name = current_user.get("plan", "free")
+    plan_info = PLANS.get(plan_name, PLANS["free"])
+    return {
+        "id": current_user["id"],
+        "email": current_user.get("email"),
+        "plan": plan_name,
+        "applications_count": current_user.get("applications_today", 0),
+        "applications_limit": plan_info["daily_limit"],
+        "created_at": current_user.get("created_at", ""),
+        "is_verified": bool(current_user.get("is_verified")),
+    }
+
+
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 @app.get("/api/dashboard", summary="Get dashboard stats")
 async def dashboard(current_user: dict = Depends(get_current_user)):
