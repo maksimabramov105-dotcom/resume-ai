@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>АвтоОтклик — Автоматические заявки на работу</title>
+  <title>AutoApply — Automated Job Applications</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- VK ID SDK (F1: One Tap Login) -->
@@ -407,14 +407,14 @@
     <button class="nav-link" onclick="navigate('#cover')" data-i18n="nav.cover">✉️ Письма</button>
     <button class="nav-link" onclick="navigate('#jobs')" data-i18n="nav.jobs">🔍 Вакансии</button>
     <button class="nav-link" onclick="navigate('#tracker')" data-i18n="nav.tracker">📋 Трекер</button>
-    <button class="nav-link" onclick="navigate('#settings')" data-i18n="nav.settings">Настройки</button>
+    <button class="nav-link" onclick="navigate('#settings')" data-i18n="nav.settings">Settings</button>
     <button class="nav-link" onclick="navigate('#interview')" data-i18n="nav.interview">🎯 Интервью</button>
   </div>
   <div class="nav-right">
     <span class="plan-badge plan-free" id="nav-plan">FREE</span>
-    <button class="nav-link" onclick="navigate('#billing')" data-i18n="nav.billing">💳 Тарифы</button>
+    <button class="nav-link" onclick="navigate('#billing')" data-i18n="nav.billing">💳 Plans</button>
     <button class="btn-logout" onclick="toggleAppLang()" id="appLangBtn" title="Switch language" style="font-size:15px;padding:5px 10px;">🇷🇺</button>
-    <button class="btn-logout" onclick="logout()" data-i18n="nav.logout">Выйти</button>
+    <button class="btn-logout" onclick="logout()" data-i18n="nav.logout">Sign Out</button>
   </div>
   <div class="hamburger" onclick="toggleMobile()">
     <span></span><span></span><span></span>
@@ -427,10 +427,10 @@
   <button class="nav-link" onclick="navigate('#cover');toggleMobile()" data-i18n="nav.cover">✉️ Письма</button>
   <button class="nav-link" onclick="navigate('#jobs');toggleMobile()" data-i18n="nav.jobs">🔍 Вакансии</button>
   <button class="nav-link" onclick="navigate('#tracker');toggleMobile()" data-i18n="nav.tracker">📋 Трекер</button>
-  <button class="nav-link" onclick="navigate('#settings');toggleMobile()" data-i18n="nav.settings">Настройки</button>
+  <button class="nav-link" onclick="navigate('#settings');toggleMobile()" data-i18n="nav.settings">Settings</button>
   <button class="nav-link" onclick="navigate('#interview');toggleMobile()" data-i18n="nav.interview">🎯 Интервью</button>
-  <button class="nav-link" onclick="navigate('#billing');toggleMobile()" data-i18n="nav.billing">💳 Тарифы</button>
-  <button class="nav-link" onclick="logout()" data-i18n="nav.logout">Выйти</button>
+  <button class="nav-link" onclick="navigate('#billing');toggleMobile()" data-i18n="nav.billing">💳 Plans</button>
+  <button class="nav-link" onclick="logout()" data-i18n="nav.logout">Sign Out</button>
 </div>
 
 <!-- ============================== PAGE: LOGIN ============================== -->
@@ -587,7 +587,7 @@
       </div>
       <div class="form-group">
         <label>Исключить компании</label>
-        <input type="text" class="input" id="ob-exclude" placeholder="Компания А, Компания Б..." />
+        <input type="text" class="input" id="ob-exclude" placeholder="Company A, Company B..." />
       </div>
       <button class="btn-primary" style="width:100%;justify-content:center;margin-top:8px;" onclick="obGoStep(3)">Продолжить →</button>
       <div style="text-align:center;margin-top:16px;"><button onclick="obGoStep(1)" style="background:none;border:none;color:var(--text-muted);font-size:0.88rem;cursor:pointer;">← Назад</button></div>
@@ -618,7 +618,7 @@
         </div>
       </div>
       <button class="btn-primary" style="width:100%;justify-content:center;" onclick="finishOnboarding()">🚀 Начать работу →</button>
-      <div style="text-align:center;margin-top:12px;color:var(--text-muted);font-size:0.82rem;">Тариф можно изменить в разделе Тарифы</div>
+      <div style="text-align:center;margin-top:12px;color:var(--text-muted);font-size:0.82rem;">You can change your plan in the Plans section</div>
       <div style="text-align:center;margin-top:8px;"><button onclick="obGoStep(2)" style="background:none;border:none;color:var(--text-muted);font-size:0.88rem;cursor:pointer;">← Назад</button></div>
     </div>
   </div>
@@ -651,7 +651,7 @@
     <!-- Campaigns -->
     <div class="section-header">
       <span class="section-title" data-i18n="dashboard.campaigns">Мои кампании</span>
-      <button class="btn-primary btn-sm" onclick="navigate('#new-campaign')" data-i18n="dashboard.new_campaign">+ Создать кампанию</button>
+      <button class="btn-primary btn-sm" onclick="navigate('#new-campaign')" data-i18n="dashboard.new_campaign">+ New Campaign</button>
     </div>
     <div class="campaigns-grid" id="campaigns-grid">
       <div class="loading-overlay"><div class="loading-spinner"></div></div>
@@ -683,7 +683,7 @@
         <table>
           <thead>
             <tr>
-              <th data-i18n="table.company">Компания</th><th data-i18n="table.position">Должность</th><th data-i18n="table.platform">Платформа</th><th data-i18n="table.status">Статус</th><th data-i18n="table.date">Дата</th>
+              <th data-i18n="table.company">Company</th><th data-i18n="table.position">Position</th><th data-i18n="table.platform">Platform</th><th data-i18n="table.status">Status</th><th data-i18n="table.date">Date</th>
             </tr>
           </thead>
           <tbody id="recent-apps-body">
@@ -706,7 +706,7 @@
     <div class="card">
       <div class="form-row">
         <div class="form-group">
-          <label>Должность</label>
+          <label>Position / Role</label>
           <input type="text" class="input" id="camp-title" placeholder="Python разработчик, UX дизайнер..." oninput="updatePreview(); debounceSalaryHint(this.value)" />
           <div id="salary-hint" style="display:none;margin-top:6px;">
             <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(167,139,250,0.12);border:1px solid rgba(167,139,250,0.3);border-radius:20px;padding:3px 10px;font-size:0.78rem;color:var(--text-muted);">
@@ -721,7 +721,7 @@
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>Зарплата от</label>
+          <label>Salary from</label>
           <input type="number" class="input" id="camp-salary" placeholder="150000" />
         </div>
         <div class="form-group">
@@ -758,7 +758,7 @@
 
       <!-- Platform connections -->
       <div class="form-group" style="margin-top:8px;">
-        <label>Статус подключений</label>
+        <label>Connection status</label>
         <div class="connection-status">
           <div class="conn-label">🔴 hh.ru</div>
           <div id="hh-conn-status">
@@ -786,7 +786,7 @@
       <!-- Limit notice -->
       <div class="limit-notice" id="limit-notice">
         <span id="limit-text">Ваш план: <strong>3 заявки/день</strong>. Обновите для большего</span>
-        <a onclick="navigate('#pricing')" style="color:#a78bfa;cursor:pointer;font-weight:600;white-space:nowrap;">Обновить →</a>
+        <a onclick="navigate('#pricing')" style="color:#a78bfa;cursor:pointer;font-weight:600;white-space:nowrap;">Upgrade →</a>
       </div>
 
       <button class="btn-primary" style="width:100%;justify-content:center;font-size:1rem;padding:14px;" onclick="createCampaign()">
@@ -831,7 +831,7 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>#</th><th>Компания</th><th>Должность</th><th>Платформа</th><th>Статус</th><th>Дата</th><th>Ссылка</th></tr>
+            <tr><th>#</th><th>Company</th><th>Position</th><th>Platform</th><th>Status</th><th>Date</th><th>Link</th></tr>
           </thead>
           <tbody id="apps-body">
             <tr><td colspan="7"><div id="apps-skeleton">
@@ -855,7 +855,7 @@
 <div class="page" id="page-settings">
   <div class="container" style="max-width:700px;">
     <div style="margin-bottom:28px;">
-      <h2 style="font-size:1.4rem;font-weight:800;">Настройки</h2>
+      <h2 style="font-size:1.4rem;font-weight:800;">Settings</h2>
     </div>
 
     <!-- Connected Accounts -->
@@ -887,7 +887,7 @@
             <div class="conn-name">🤖 Telegram</div>
             <div class="conn-sub" id="tg-status-text">Не привязан</div>
           </div>
-          <button class="btn-secondary btn-sm" onclick="syncResume()">Синхронизировать профиль</button>
+          <button class="btn-secondary btn-sm" onclick="syncResume()">Sync profile</button>
         </div>
       </div>
     </div>
@@ -913,7 +913,7 @@
           <div style="font-weight:600;font-size:0.9rem;margin-bottom:4px;">Уведомления</div>
           <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:12px;">Новые матчи, статус заявок, напоминания</div>
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:6px;"><input type="checkbox" id="tg-notify-matches" checked onchange="saveTgSettings()"> Матчи вакансий</label>
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:6px;"><input type="checkbox" id="tg-notify-status" checked onchange="saveTgSettings()"> Статус заявок</label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:6px;"><input type="checkbox" id="tg-notify-status" checked onchange="saveTgSettings()"> Application status</label>
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="tg-notify-digest" checked onchange="saveTgSettings()"> Еженедельный дайджест</label>
         </div>
         <div style="background:var(--card2);border-radius:var(--r);padding:16px;">
@@ -930,7 +930,7 @@
         </div>
         <div style="background:var(--card2);border-radius:var(--r);padding:16px;">
           <div style="font-size:1.25rem;margin-bottom:8px;">📊</div>
-          <div style="font-weight:600;font-size:0.9rem;margin-bottom:4px;">Статус заявок</div>
+          <div style="font-weight:600;font-size:0.9rem;margin-bottom:4px;">Application status</div>
           <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:12px;">Напиши /status в боте — последние 10 заявок</div>
           <a href="https://t.me/topbestworkerbot?start=status" target="_blank" style="font-size:0.85rem;color:#0088CC;">Проверить /status →</a>
         </div>
@@ -942,14 +942,14 @@
 
     <!-- Resume Profile -->
     <div class="settings-section">
-      <div class="settings-section-title">Профиль резюме</div>
+      <div class="settings-section-title">Resume Profile</div>
       <div class="card">
         <div class="form-group">
           <label>Текущее резюме</label>
           <textarea class="textarea" id="resume-textarea" rows="6" placeholder="Здесь появится ваше резюме после синхронизации с ботом..."></textarea>
         </div>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-          <button class="btn-secondary" onclick="syncResume()" data-i18n="settings.sync">🔄 Синхронизировать с Telegram ботом</button>
+          <button class="btn-secondary" onclick="syncResume()" data-i18n="settings.sync">🔄 Sync with Telegram bot</button>
           <span style="font-size:0.82rem;color:var(--text-muted);" data-i18n="settings.sync_hint">Основной профиль создаётся в @topbestworkerbot</span>
         </div>
       </div>
@@ -957,14 +957,14 @@
 
     <!-- Current Plan -->
     <div class="settings-section">
-      <div class="settings-section-title" data-i18n="settings.plan">Текущий тариф</div>
+      <div class="settings-section-title" data-i18n="settings.plan">Current Plan</div>
       <div class="card" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
         <div>
           <div style="font-size:1.1rem;font-weight:700;" id="settings-plan-name">FREE</div>
           <div style="color:var(--text-muted);font-size:0.88rem;" id="settings-plan-limit">3 заявки в день</div>
         </div>
         <div style="display:flex;gap:10px;">
-          <button class="btn-primary btn-sm" onclick="navigate('#pricing')">Обновить тариф</button>
+          <button class="btn-primary btn-sm" onclick="navigate('#pricing')">Upgrade Plan</button>
           <button class="btn-secondary btn-sm">Управление подпиской</button>
         </div>
       </div>
@@ -976,7 +976,7 @@
       <div class="danger-zone">
         <div class="danger-title">⚠️ Удаление данных</div>
         <div class="danger-desc">Это действие удалит все ваши кампании, заявки и настройки. Отменить невозможно.</div>
-        <button class="btn-danger" onclick="confirmDeleteData()">Удалить все данные</button>
+        <button class="btn-danger" onclick="confirmDeleteData()">Delete all data</button>
       </div>
     </div>
   </div>
@@ -986,7 +986,7 @@
 <div class="page" id="page-pricing">
   <div class="container">
     <div style="text-align:center;margin-bottom:40px;">
-      <h2 style="font-size:1.8rem;font-weight:800;margin-bottom:8px;">Тарифы</h2>
+      <h2 style="font-size:1.8rem;font-weight:800;margin-bottom:8px;">Plans</h2>
       <p style="color:var(--text-muted);">Выберите подходящий план для вашего поиска работы</p>
     </div>
 
@@ -1055,7 +1055,7 @@
     </div>
 
     <div class="payment-note">
-      💳 Оплата через CryptoBot — BTC, ETH, USDT и другие криптовалюты<br/>
+      💳 Pay via CryptoBot — BTC, ETH, USDT and other cryptocurrencies<br/>
       <span style="margin-top:4px;display:block;">Оплатил? Активация автоматическая в течение 1 минуты</span>
     </div>
   </div>
@@ -1161,7 +1161,7 @@
         <div style="font-weight:700;margin-bottom:12px;">Сгенерированное письмо</div>
         <textarea class="textarea" id="cover-output" rows="12" style="margin-bottom:12px;"></textarea>
         <div style="display:flex;gap:10px;">
-          <button class="btn-primary btn-sm" onclick="saveCoverLetter()">💾 Сохранить</button>
+          <button class="btn-primary btn-sm" onclick="saveCoverLetter()">💾 Save</button>
           <button class="btn-secondary btn-sm" onclick="copyCoverLetter()">📋 Копировать</button>
         </div>
       </div>
@@ -1186,7 +1186,7 @@
     <!-- Search bar -->
     <div class="card" style="margin-bottom:20px;">
       <div style="display:flex;gap:12px;flex-wrap:wrap;">
-        <input type="text" class="input" id="jobs-query" placeholder="Должность, навык..." style="flex:2;min-width:200px;" onkeydown="if(event.key==='Enter')searchJobs()" />
+        <input type="text" class="input" id="jobs-query" placeholder="Position, skill..." style="flex:2;min-width:200px;" onkeydown="if(event.key==='Enter')searchJobs()" />
         <input type="text" class="input" id="jobs-city" placeholder="Город (необязательно)" style="flex:1;min-width:150px;" onkeydown="if(event.key==='Enter')searchJobs()" />
         <button class="btn-primary" onclick="searchJobs()" style="white-space:nowrap;">🔍 Найти</button>
       </div>
@@ -1212,7 +1212,7 @@
         <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:4px;">📋 Трекер Заявок</h2>
         <p style="color:var(--text-muted);font-size:0.9rem;">Отслеживайте статус каждой заявки</p>
       </div>
-      <button class="btn-primary" onclick="showAddAppForm()">+ Добавить заявку</button>
+      <button class="btn-primary" onclick="showAddAppForm()">+ Add application</button>
     </div>
 
     <!-- Add application form -->
@@ -1220,17 +1220,17 @@
       <div style="font-weight:700;margin-bottom:14px;">Новая заявка</div>
       <div class="form-row">
         <div class="form-group">
-          <label>Компания</label>
+          <label>Company</label>
           <input type="text" class="input" id="new-app-company" placeholder="Название компании" />
         </div>
         <div class="form-group">
-          <label>Должность</label>
+          <label>Position / Role</label>
           <input type="text" class="input" id="new-app-title" placeholder="Название вакансии" />
         </div>
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>Статус</label>
+          <label>Status</label>
           <select class="select" id="new-app-status">
             <option value="Saved">Saved</option>
             <option value="Applied">Applied</option>
@@ -1240,13 +1240,13 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Дата</label>
+          <label>Date</label>
           <input type="date" class="input" id="new-app-date" />
         </div>
       </div>
       <div style="display:flex;gap:10px;">
-        <button class="btn-primary btn-sm" onclick="addTrackerApp()">Добавить</button>
-        <button class="btn-secondary btn-sm" onclick="document.getElementById('add-app-form').style.display='none'">Отмена</button>
+        <button class="btn-primary btn-sm" onclick="addTrackerApp()">Add</button>
+        <button class="btn-secondary btn-sm" onclick="document.getElementById('add-app-form').style.display='none'">Cancel</button>
       </div>
     </div>
 
@@ -1269,7 +1269,7 @@
 <div class="page" id="page-billing">
   <div class="container">
     <div style="text-align:center;margin-bottom:40px;">
-      <h2 style="font-size:1.8rem;font-weight:800;margin-bottom:8px;">💳 Тарифы и Оплата</h2>
+      <h2 style="font-size:1.8rem;font-weight:800;margin-bottom:8px;">💳 Plans & Billing</h2>
       <p style="color:var(--text-muted);">Выберите подходящий план для вашего поиска работы</p>
       <div style="margin-top:12px;">
         Текущий план: <span class="plan-badge plan-free" id="billing-plan-badge">FREE</span>
@@ -1460,7 +1460,7 @@
     <!-- Tab: URL -->
     <div id="lipane-url">
       <div class="form-group">
-        <label>Ссылка на ваш LinkedIn профиль</label>
+        <label>Your LinkedIn profile URL</label>
         <input class="input" id="li-import-url" placeholder="https://linkedin.com/in/your-profile" />
       </div>
       <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:8px;padding:10px 12px;font-size:0.82rem;color:#f59e0b;margin-bottom:16px;">
@@ -1468,7 +1468,7 @@
       </div>
       <div class="modal-actions">
         <button class="btn-primary" onclick="importLinkedInUrl()">Импортировать</button>
-        <button class="btn-secondary" onclick="closeModal('modal-linkedin-import')">Отмена</button>
+        <button class="btn-secondary" onclick="closeModal('modal-linkedin-import')">Cancel</button>
       </div>
     </div>
 
@@ -1476,7 +1476,7 @@
     <div id="lipane-zip" style="display:none;">
       <div style="background:rgba(37,99,235,0.08);border:1px solid rgba(37,99,235,0.2);border-radius:10px;padding:14px;margin-bottom:16px;font-size:0.85rem;line-height:1.6;color:var(--text-muted);">
         <strong style="color:var(--text);">Как получить файл экспорта:</strong><br>
-        1. Откройте LinkedIn → Настройки → Конфиденциальность данных<br>
+        1. Open LinkedIn → Settings → Privacy & Data<br>
         2. «Получить копию своих данных» → Выберите <strong>«Данные профиля»</strong><br>
         3. Нажмите «Запросить архив» → дождитесь письма (~10 мин)<br>
         4. Скачайте ZIP и загрузите ниже
@@ -1487,7 +1487,7 @@
       </div>
       <div class="modal-actions">
         <button class="btn-primary" onclick="importLinkedInZip()">Импортировать из ZIP</button>
-        <button class="btn-secondary" onclick="closeModal('modal-linkedin-import')">Отмена</button>
+        <button class="btn-secondary" onclick="closeModal('modal-linkedin-import')">Cancel</button>
       </div>
     </div>
 
@@ -1515,7 +1515,7 @@
     </div>
     <div class="modal-actions">
       <button class="btn-primary" onclick="connectLinkedIn()">Подключить</button>
-      <button class="btn-secondary" onclick="closeModal('modal-linkedin')">Отмена</button>
+      <button class="btn-secondary" onclick="closeModal('modal-linkedin')">Cancel</button>
     </div>
   </div>
 </div>
@@ -1523,11 +1523,11 @@
 <!-- Delete Data Confirm Modal -->
 <div class="modal-overlay" id="modal-delete">
   <div class="modal">
-    <div class="modal-title" style="color:#ef4444;">⚠️ Удалить все данные?</div>
+    <div class="modal-title" style="color:#ef4444;">⚠️ Delete all data?</div>
     <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:20px;">Это действие удалит все ваши кампании, заявки, настройки и аккаунт. Это необратимо.</p>
     <div class="modal-actions">
       <button class="btn-danger" onclick="deleteAllData()">Да, удалить всё</button>
-      <button class="btn-secondary" onclick="closeModal('modal-delete')">Отмена</button>
+      <button class="btn-secondary" onclick="closeModal('modal-delete')">Cancel</button>
     </div>
   </div>
 </div>
@@ -2004,12 +2004,12 @@
       grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">
         <div class="empty-icon">🚀</div>
         <p>У вас пока нет кампаний.<br/>Создайте первую, чтобы начать поиск работы!</p>
-        <button class="btn-primary" onclick="navigate('#new-campaign')">+ Создать кампанию</button>
+        <button class="btn-primary" onclick="navigate('#new-campaign')">+ New Campaign</button>
       </div>`;
       return;
     }
     const statusMap = { active: 'badge-active', paused: 'badge-paused', completed: 'badge-completed' };
-    const statusLabel = { active: 'Активна', paused: 'Пауза', completed: 'Завершена' };
+    const statusLabel = { active: 'Active', paused: 'Paused', completed: 'Completed' };
     grid.innerHTML = campaigns.map(c => {
       const pct = c.daily_limit > 0 ? Math.min(100, Math.round((c.applications_sent / c.daily_limit) * 100)) : 0;
       const failed = c.failed_today || 0;
@@ -2037,7 +2037,7 @@
         </div>
         <div class="campaign-actions">
           <button class="btn-secondary btn-sm" onclick="toggleCampaign('${c.id}', '${c.status}')">
-            ${c.status === 'active' ? '⏸ Пауза' : '▶ Продолжить'}
+            ${c.status === 'active' ? '⏸ Pause' : '▶ Resume'}
           </button>
           <button class="btn-secondary btn-sm" onclick="navigate('#applications')">📊 Все заявки</button>
         </div>
@@ -2159,7 +2159,7 @@
       showToast('Кампания запущена! 🚀', 'success');
       navigate('#dashboard');
     } else {
-      showToast(data?.detail || data?.error || 'Ошибка создания кампании', 'error');
+      showToast(data?.detail || data?.error || 'Error creating campaign', 'error');
     }
   }
 
@@ -2296,7 +2296,7 @@
     }
     const data = await api('/resume/connect', 'POST', { telegram_id });
     if (data && data.success) {
-      showToast('Профиль синхронизирован', 'success');
+      showToast('Profile synced', 'success');
       if (data.preview) document.getElementById('resume-textarea').value = data.preview;
     } else {
       showToast(data?.detail || data?.error || 'Sync error. Create a resume in @topbestworkerbot bot first', 'info');
@@ -2438,7 +2438,7 @@
     if (!resumes.length) {
       list.innerHTML = `<div class="empty-state" style="padding:40px 24px;">
         <div class="empty-icon">📄</div>
-        <p>Загрузите резюме чтобы начать</p>
+        <p>Upload a resume to get started</p>
       </div>`;
       return;
     }
@@ -2454,7 +2454,7 @@
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0;">
           ${!r.primary ? `<button class="btn-secondary btn-sm" onclick="setPrimaryResume(${r.id})">Использовать как основное</button>` : ''}
-          <button class="btn-danger btn-sm" style="padding:6px 12px;" onclick="deleteResume(${r.id})">Удалить</button>
+          <button class="btn-danger btn-sm" style="padding:6px 12px;" onclick="deleteResume(${r.id})">Delete</button>
         </div>
       </div>`).join('');
   }
@@ -2619,7 +2619,7 @@
           </div>
           <div style="display:flex;gap:8px;flex-shrink:0;">
             <button class="btn-secondary btn-sm" onclick="copySavedLetter(${l.id})">Копировать</button>
-            <button class="btn-danger btn-sm" style="padding:6px 12px;" onclick="deleteCoverLetter(${l.id})">Удалить</button>
+            <button class="btn-danger btn-sm" style="padding:6px 12px;" onclick="deleteCoverLetter(${l.id})">Delete</button>
           </div>
         </div>
       </div>`).join('');
@@ -2720,7 +2720,7 @@
           ${j.remote ? '<span class="badge badge-active" style="font-size:0.7rem;">Удалённо</span>' : '<span class="badge badge-paused" style="font-size:0.7rem;">В офисе</span>'}
         </div>
         <div style="display:flex;gap:8px;">
-          <button class="btn-secondary btn-sm" onclick="bookmarkJob('${esc(j.title)}','${esc(j.company)}')">🔖 Сохранить</button>
+          <button class="btn-secondary btn-sm" onclick="bookmarkJob('${esc(j.title)}','${esc(j.company)}')">🔖 Save</button>
           <button class="btn-primary btn-sm" onclick="quickApplyJob('${esc(j.title)}','${esc(j.company)}')">⚡ Откликнуться с AI</button>
         </div>
       </div>`;
@@ -2728,7 +2728,7 @@
   }
 
   function bookmarkJob(title, company) {
-    showToast(`Вакансия "${title}" сохранена`, 'success');
+    showToast(`Vacancy "${title}" saved`, 'success');
     // Also add to tracker
     const apps = getTrackerApps();
     apps.push({ id: Date.now(), company, title, status: 'Saved', date: new Date().toISOString().slice(0,10), notes: '' });
@@ -2883,7 +2883,7 @@
   }
 
   function showUpgradeToast(plan) {
-    showToast('Оплата через Telegram: напишите /upgrade в @topbestworkerbot', 'info');
+    showToast('To pay via Telegram: send /upgrade to @topbestworkerbot', 'info');
   }
 
   function copyReferralLink() {
@@ -2982,7 +2982,7 @@
     api('/onboarding', 'POST', prefs).catch(() => {});
 
     navigate('#dashboard');
-    showToast('Настройки сохранены. Добро пожаловать! 🎉', 'success');
+    showToast('Settings saved. Welcome! 🎉', 'success');
   }
 
   // ===== CHART =====
@@ -3052,7 +3052,7 @@
       digest: document.getElementById('tg-notify-digest')?.checked,
     };
     localStorage.setItem('tg_notify_prefs', JSON.stringify(prefs));
-    showToast('Настройки уведомлений сохранены');
+    showToast('Notification settings saved');
   }
 
   // ===== INIT =====
@@ -3100,10 +3100,10 @@
             localStorage.setItem('aa_token', result.token);
             navigate('#dashboard');
           } else {
-            showToast('Ошибка входа через VK: ' + (result.detail || 'неизвестная ошибка'));
+            showToast('VK login error: ' + (result.detail || 'unknown error'));
           }
         })
-        .catch(function(e){ showToast('Ошибка VK: ' + e.message); });
+        .catch(function(e){ showToast('VK error: ' + e.message); });
     });
   } catch(e) { console.warn('VK One Tap init error:', e); }
 })();
@@ -3198,7 +3198,7 @@
       URL.revokeObjectURL(url);
       showToast('PDF скачан!');
     })
-    .catch(function(e){ showToast('Ошибка генерации PDF: ' + e.message); });
+    .catch(function(e){ showToast('PDF generation error: ' + e.message); });
   };
   window.downloadPDF = function() { window.downloadTemplatePDF(currentTemplateId); };
 
@@ -3337,7 +3337,7 @@ async function importLinkedInZip() {
 function showLinkedInResult(data) {
   const lines = [];
   if (data.name) lines.push(`👤 Имя: ${data.name}`);
-  if (data.headline) lines.push(`💼 Должность: ${data.headline}`);
+  if (data.headline) lines.push(`💼 Position: ${data.headline}`);
   if (data.email) lines.push(`📧 Email: ${data.email}`);
   if (data.experience?.length) lines.push(`🏢 Опыт: ${data.experience.length} позиций`);
   if (data.education?.length) lines.push(`🎓 Образование: ${data.education.length} записей`);
@@ -3603,7 +3603,7 @@ function useQFromLib(idx) {
       'stats.responses':  'Ответов',
       'stats.interviews': 'Собеседований',
       'table.company':    'Компания',
-      'table.position':   'Должность',
+      'table.position':   'Position',
       'table.platform':   'Платформа',
       'table.status':     'Статус',
       'table.date':       'Дата',
