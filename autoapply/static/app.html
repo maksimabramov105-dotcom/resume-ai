@@ -447,7 +447,7 @@
 
     <!-- Email verified banner -->
     <div id="verified-banner" style="display:none;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);border-radius:8px;padding:12px 16px;margin-bottom:16px;color:#10b981;font-size:0.88rem;text-align:center;">
-      ✓ Email подтверждён! Теперь вы можете войти.
+      ✓ Email confirmed! You can now sign in.
     </div>
 
     <!-- Login tab -->
@@ -468,7 +468,7 @@
       <!-- VK One Tap Login (F1) -->
       <div style="display:flex;align-items:center;gap:10px;margin:16px 0 8px;">
         <div style="flex:1;height:1px;background:#2a2a2a;"></div>
-        <span style="color:#555;font-size:12px;">или</span>
+        <span style="color:#555;font-size:12px;">or</span>
         <div style="flex:1;height:1px;background:#2a2a2a;"></div>
       </div>
       <div id="vk-one-tap-container-login"></div>
@@ -503,7 +503,7 @@
         <input type="email" class="input" id="forgot-email" placeholder="you@example.com" />
       </div>
       <div class="error-msg" id="forgot-error"></div>
-      <button class="btn-primary" style="width:100%; justify-content:center; margin-top:4px;" onclick="doForgotPassword()">Отправить ссылку</button>
+      <button class="btn-primary" style="width:100%; justify-content:center; margin-top:4px;" onclick="doForgotPassword()">Send link</button>
       <div style="text-align:center;margin-top:14px;">
         <a href="#" onclick="switchTab('login');return false;" style="font-size:0.85rem;color:var(--accent1);">← Вернуться к входу</a>
       </div>
@@ -525,9 +525,9 @@
       <button class="btn-primary" style="width:100%; justify-content:center; margin-top:4px;" onclick="doResetPassword()">Установить пароль</button>
     </div>
 
-    <div class="divider" id="login-divider">или</div>
+    <div class="divider" id="login-divider">or</div>
     <a href="https://t.me/topbestworkerbot?start=connect" target="_blank" class="btn-tg" id="login-tg-btn">
-      🤖 Войти через Telegram бот
+      🤖 Sign in via Telegram Bot
     </a>
   </div>
 </div>
@@ -555,7 +555,7 @@
         <div id="ob-file-name" style="margin-top:10px;color:#10b981;font-size:0.88rem;"></div>
       </div>
       <input type="file" id="ob-file-input" accept=".pdf,.docx,.txt" style="display:none" onchange="handleObFile(this)">
-      <div style="text-align:center;color:var(--text-muted);margin:12px 0;font-size:0.85rem;">или</div>
+      <div style="text-align:center;color:var(--text-muted);margin:12px 0;font-size:0.85rem;">or</div>
       <textarea id="ob-resume-text" class="textarea" rows="6" placeholder="Вставьте текст резюме сюда..." style="margin-bottom:16px;" oninput="checkObStep1()"></textarea>
       <button class="btn-primary" id="ob-next-1" style="width:100%;justify-content:center;opacity:0.4;cursor:not-allowed;" disabled onclick="obGoStep(2)">Продолжить →</button>
       <div style="text-align:center;margin-top:16px;"><button onclick="obGoStep(2)" style="background:none;border:none;color:var(--text-muted);font-size:0.88rem;cursor:pointer;text-decoration:underline;">Пропустить этот шаг</button></div>
@@ -899,7 +899,7 @@
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
           <div>
             <div style="font-weight:700;font-size:1rem;">@topbestworkerbot</div>
-            <div id="tg-connection-status" style="color:var(--text-muted);font-size:0.88rem;margin-top:4px;">Не подключён</div>
+            <div id="tg-connection-status" style="color:var(--text-muted);font-size:0.88rem;margin-top:4px;">Not connected</div>
           </div>
           <button id="tg-connect-btn" onclick="connectTelegramDeep()" class="btn-primary btn-sm">Подключить Telegram</button>
         </div>
@@ -1329,7 +1329,7 @@
       <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:16px;">Пригласи друга — получи 1 месяц ПРО бесплатно</p>
       <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
         <input type="text" class="input" id="referral-link-input" readonly style="flex:1;min-width:200px;cursor:pointer;" onclick="this.select()" />
-        <button class="btn-secondary" onclick="copyReferralLink()">📋 Копировать ссылку</button>
+        <button class="btn-secondary" onclick="copyReferralLink()">📋 Copy link</button>
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;text-align:center;">
         <div><div style="font-size:1.5rem;font-weight:800;color:#a78bfa;" id="ref-invited">0</div><div style="color:var(--text-muted);font-size:0.82rem;">Приглашено</div></div>
@@ -1565,9 +1565,13 @@
     try {
       const r = await fetch('/api' + endpoint, opts);
       if (r.status === 401) {
-        localStorage.removeItem('aa_token');
-        navigate('#login');
-        return null;
+        const errData = await r.json().catch(() => null);
+        if (endpoint !== '/login' && endpoint !== '/register') {
+          localStorage.removeItem('aa_token');
+          navigate('#login');
+          return null;
+        }
+        return errData;
       }
       if (r.status === 403) {
         const data = await r.json().catch(() => ({}));
@@ -1592,16 +1596,16 @@
         <div class="container" style="display:flex;align-items:center;justify-content:center;min-height:80vh;">
           <div style="text-align:center;max-width:420px;padding:40px 24px;">
             <div style="font-size:48px;margin-bottom:16px;">✉️</div>
-            <h2 style="font-size:22px;font-weight:700;margin:0 0 12px;">Подтвердите email</h2>
+            <h2 style="font-size:22px;font-weight:700;margin:0 0 12px;">Confirm your email</h2>
             <p style="color:var(--text-muted);line-height:1.6;margin:0 0 24px;">
-              Мы отправили письмо на ваш email. Нажмите на ссылку в письме — и вы сразу попадёте в систему.
+              We sent a confirmation email. Click the link in the email to access your account.
             </p>
-            <p style="color:var(--text-muted);font-size:0.85rem;margin:0 0 24px;">Не нашли письмо? Проверьте папку «Спам».</p>
+            <p style="color:var(--text-muted);font-size:0.85rem;margin:0 0 24px;">Didn't receive it? Check your Spam folder.</p>
             <button class="btn-primary" onclick="resendVerification()" style="margin-bottom:12px;width:100%;justify-content:center;">
-              Отправить письмо повторно
+              Resend verification email
             </button>
             <button onclick="logout()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.88rem;">
-              Выйти из аккаунта
+              Sign out
             </button>
           </div>
         </div>`;
@@ -1620,7 +1624,7 @@
     if (r.ok) {
       showToast('Письмо отправлено! Проверьте inbox.', 'success');
     } else {
-      showToast('Ошибка отправки. Попробуйте позже.', 'error');
+      showToast('Error sending. Please try again.', 'error');
     }
   }
 
@@ -1721,7 +1725,7 @@
       // Clean URL then go to dashboard
       window.history.replaceState({}, '', '/app');
       navigate('#dashboard');
-      showToast('Email подтверждён! Добро пожаловать.', 'success');
+      showToast('Email confirmed! Welcome.', 'success');
       return;
     }
 
@@ -1733,7 +1737,7 @@
       errBanner.style.background = 'rgba(239,68,68,0.12)';
       errBanner.style.borderColor = 'rgba(239,68,68,0.3)';
       errBanner.style.color = '#ef4444';
-      errBanner.textContent = '✗ Ссылка устарела. Зарегистрируйтесь снова или войдите.';
+      errBanner.textContent = '✗ Link expired. Please register again or sign in.';
       errBanner.style.display = 'block';
       return;
     }
@@ -1758,15 +1762,15 @@
     const password = document.getElementById('login-password').value;
     const errEl    = document.getElementById('login-error');
     errEl.classList.remove('show');
-    if (!email || !password) { errEl.textContent = 'Заполните все поля'; errEl.classList.add('show'); return; }
+    if (!email || !password) { errEl.textContent = 'Please fill in all fields'; errEl.classList.add('show'); return; }
     const data = await api('/login', 'POST', { email, password });
-    if (!data) { errEl.textContent = 'Ошибка соединения с сервером'; errEl.classList.add('show'); return; }
+    if (!data) { errEl.textContent = 'Connection error. Please try again.'; errEl.classList.add('show'); return; }
     if (data.token) {
       localStorage.setItem('aa_token', data.token);
       if (data.plan) currentPlan = data.plan;
       navigate('#dashboard');
     } else {
-      errEl.textContent = data.detail || data.error || data.message || 'Неверный email или пароль';
+      errEl.textContent = data.detail || data.error || data.message || 'Invalid email or password';
       errEl.classList.add('show');
     }
   }
@@ -1779,20 +1783,20 @@
     const succEl   = document.getElementById('reg-success');
     errEl.classList.remove('show');
     succEl.style.display = 'none';
-    if (!email || !password) { errEl.textContent = 'Заполните обязательные поля'; errEl.classList.add('show'); return; }
-    if (password.length < 6) { errEl.textContent = 'Пароль должен быть не менее 6 символов'; errEl.classList.add('show'); return; }
+    if (!email || !password) { errEl.textContent = 'Please fill in required fields'; errEl.classList.add('show'); return; }
+    if (password.length < 6) { errEl.textContent = 'Password must be at least 6 characters'; errEl.classList.add('show'); return; }
     const body = { email, password };
     if (tgid) body.telegram_id = parseInt(tgid) || undefined;
     const data = await api('/register', 'POST', body);
-    if (!data) { errEl.textContent = 'Ошибка соединения с сервером'; errEl.classList.add('show'); return; }
+    if (!data) { errEl.textContent = 'Connection error. Please try again.'; errEl.classList.add('show'); return; }
     if (data.token) {
       localStorage.setItem('aa_token', data.token);
       if (data.plan) currentPlan = data.plan;
-      succEl.textContent = '✓ Аккаунт создан! Проверьте email — отправили письмо с подтверждением.';
+      succEl.textContent = '✓ Account created! Check your email for a confirmation link.';
       succEl.style.display = 'block';
       setTimeout(() => navigate('#dashboard'), 1500);
     } else {
-      errEl.textContent = data.detail || data.error || data.message || 'Ошибка регистрации';
+      errEl.textContent = data.detail || data.error || data.message || 'Registration error';
       errEl.classList.add('show');
     }
   }
@@ -1803,19 +1807,19 @@
     const succEl = document.getElementById('forgot-success');
     errEl.classList.remove('show');
     succEl.style.display = 'none';
-    if (!email) { errEl.textContent = 'Введите email'; errEl.classList.add('show'); return; }
+    if (!email) { errEl.textContent = 'Please enter your email'; errEl.classList.add('show'); return; }
     const btn = event.target;
     btn.disabled = true;
-    btn.textContent = 'Отправляем...';
+    btn.textContent = 'Sending...';
     const data = await api('/forgot-password', 'POST', { email });
     btn.disabled = false;
-    btn.textContent = 'Отправить ссылку';
+    btn.textContent = 'Send link';
     if (data) {
-      succEl.textContent = '✓ Если email зарегистрирован — письмо отправлено. Проверьте папку «Спам».';
+      succEl.textContent = '✓ If this email is registered, a reset link was sent. Check your Spam folder.';
       succEl.style.display = 'block';
       document.getElementById('forgot-email').value = '';
     } else {
-      errEl.textContent = 'Ошибка соединения. Попробуйте позже.';
+      errEl.textContent = 'Connection error. Please try again.';
       errEl.classList.add('show');
     }
   }
@@ -1827,11 +1831,11 @@
     const succEl    = document.getElementById('reset-success');
     errEl.classList.remove('show');
     succEl.style.display = 'none';
-    if (!password || !password2) { errEl.textContent = 'Заполните оба поля'; errEl.classList.add('show'); return; }
-    if (password.length < 6)     { errEl.textContent = 'Пароль должен быть не менее 6 символов'; errEl.classList.add('show'); return; }
+    if (!password || !password2) { errEl.textContent = 'Please fill in both fields'; errEl.classList.add('show'); return; }
+    if (password.length < 6)     { errEl.textContent = 'Password must be at least 6 characters'; errEl.classList.add('show'); return; }
     if (password !== password2)  { errEl.textContent = 'Пароли не совпадают'; errEl.classList.add('show'); return; }
     const token = window._resetToken;
-    if (!token) { errEl.textContent = 'Ссылка недействительна. Запросите новую.'; errEl.classList.add('show'); return; }
+    if (!token) { errEl.textContent = 'Invalid link. Please request a new one.'; errEl.classList.add('show'); return; }
     const btn = event.target;
     btn.disabled = true;
     btn.textContent = 'Сохраняем...';
@@ -1839,12 +1843,12 @@
     btn.disabled = false;
     btn.textContent = 'Установить пароль';
     if (data && data.ok) {
-      succEl.textContent = '✓ Пароль изменён! Теперь войдите с новым паролем.';
+      succEl.textContent = '✓ Password changed! You can now sign in.';
       succEl.style.display = 'block';
       window._resetToken = null;
       setTimeout(() => switchTab('login'), 2000);
     } else {
-      errEl.textContent = data?.detail || 'Ссылка недействительна или истекла. Запросите новую.';
+      errEl.textContent = data?.detail || 'Link is invalid or expired. Please request a new one.';
       errEl.classList.add('show');
     }
   }
@@ -2073,7 +2077,7 @@
       showToast(currentStatus === 'active' ? 'Кампания приостановлена' : 'Кампания возобновлена', 'success');
       loadDashboard();
     } else {
-      showToast(data?.detail || 'Ошибка обновления кампании', 'error');
+      showToast(data?.detail || 'Error updating campaign', 'error');
     }
   }
 
@@ -2174,7 +2178,7 @@
   async function connectLinkedIn() {
     const email = document.getElementById('li-email').value.trim();
     const pass = document.getElementById('li-pass').value;
-    if (!email || !pass) { showToast('Заполните поля', 'error'); return; }
+    if (!email || !pass) { showToast('Please fill in all fields', 'error'); return; }
     const data = await api('/oauth/linkedin/connect', 'POST', { email, password: pass });
     closeModal('modal-linkedin');
     if (data && data.success) {
@@ -2184,7 +2188,7 @@
       document.getElementById('li-status-badge').style.display = 'inline-flex';
       document.getElementById('li-action-btn').textContent = 'Отключить';
     } else {
-      showToast(data?.error || 'Ошибка подключения', 'error');
+      showToast(data?.error || 'Connection error', 'error');
     }
   }
 
@@ -2287,7 +2291,7 @@
       telegram_id = profile && profile.telegram_id;
     }
     if (!telegram_id) {
-      showToast('Укажите Telegram ID при регистрации или в настройках', 'info');
+      showToast('Please set your Telegram ID in registration or settings', 'info');
       return;
     }
     const data = await api('/resume/connect', 'POST', { telegram_id });
@@ -2295,7 +2299,7 @@
       showToast('Профиль синхронизирован', 'success');
       if (data.preview) document.getElementById('resume-textarea').value = data.preview;
     } else {
-      showToast(data?.detail || data?.error || 'Ошибка синхронизации. Создайте резюме в боте @topbestworkerbot', 'info');
+      showToast(data?.detail || data?.error || 'Sync error. Create a resume in @topbestworkerbot bot first', 'info');
     }
   }
 
@@ -2322,7 +2326,7 @@
       showToast('Данные удалены', 'info');
       navigate('#login');
     } else {
-      showToast(data?.error || 'Ошибка удаления', 'error');
+      showToast(data?.error || 'Delete error', 'error');
     }
   }
 
@@ -2335,7 +2339,7 @@
       window.open(url, '_blank');
       showToast('Открываем страницу оплаты...', 'info');
     } else {
-      showToast(data?.detail || data?.error || 'Ошибка создания счёта', 'error');
+      showToast(data?.detail || data?.error || 'Error creating invoice', 'error');
     }
   }
 
@@ -2521,7 +2525,7 @@
       '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">' +
       '<a href="' + tgUrl + '" target="_blank" style="background:#0088CC;color:#fff;padding:10px 20px;border-radius:8px;font-weight:600;font-size:.88rem;text-decoration:none;">✈ Поделиться в Telegram</a>' +
       '<a href="' + vkUrl + '" target="_blank" style="background:#4C75A3;color:#fff;padding:10px 20px;border-radius:8px;font-weight:600;font-size:.88rem;text-decoration:none;">ВК Поделиться</a>' +
-      '<button onclick="navigator.clipboard.writeText(\'' + shareUrl + '\').then(function(){showToast(\'Ссылка скопирована ✓\')})" style="background:rgba(255,255,255,.2);border:none;color:#fff;padding:10px 20px;border-radius:8px;font-weight:600;font-size:.88rem;cursor:pointer;">Копировать ссылку</button>' +
+      '<button onclick="navigator.clipboard.writeText(\'' + shareUrl + '\').then(function(){showToast(\'Link copied ✓\')})" style="background:rgba(255,255,255,.2);border:none;color:#fff;padding:10px 20px;border-radius:8px;font-weight:600;font-size:.88rem;cursor:pointer;">Copy link</button>' +
       '</div>';
 
     // Try to insert after ATS result area, or append to resume page
@@ -2774,7 +2778,7 @@
     const title = document.getElementById('new-app-title').value.trim();
     const status = document.getElementById('new-app-status').value;
     const date = document.getElementById('new-app-date').value;
-    if (!company || !title) { showToast('Заполните компанию и должность', 'error'); return; }
+    if (!company || !title) { showToast('Please fill in company and position', 'error'); return; }
     const apps = getTrackerApps();
     apps.push({ id: Date.now(), company, title, status, date, notes: '' });
     saveTrackerApps(apps);
@@ -3202,7 +3206,7 @@
     // Pull data from current profile state in the app
     var profile = window._cachedProfile || {};
     return {
-      name:     profile.name || (document.getElementById('profile-name') ? document.getElementById('profile-name').value : '') || 'Имя Фамилия',
+      name:     profile.name || (document.getElementById('profile-name') ? document.getElementById('profile-name').value : '') || 'Full Name',
       title:    profile.title || '',
       email:    profile.email || '',
       phone:    profile.phone || '',
@@ -3260,7 +3264,7 @@
   var msgs=document.getElementById('help-messages');
   var snd=document.getElementById('help-send');
   var cls=document.getElementById('help-close');
-  tog.onclick=function(){bub.style.display=bub.style.display==='none'?'block':'none';if(bub.style.display==='block'&&msgs.children.length===0)addMsg('bot','Привет! Чем могу помочь? Спросите о тарифах, функциях или возникших проблемах.');};
+  tog.onclick=function(){bub.style.display=bub.style.display==='none'?'block':'none';if(bub.style.display==='block'&&msgs.children.length===0)addMsg('bot','Hi! How can I help? Ask about plans, features or any issues you have.');};
   cls.onclick=function(){bub.style.display='none';};
   function addMsg(role,text){var d=document.createElement('div');d.style.cssText='padding:8px 12px;border-radius:10px;font-size:13px;line-height:1.5;max-width:85%;'+(role==='bot'?'background:#2a2a2a;color:#e0e0e0;align-self:flex-start;':'background:#7c3aed;color:#fff;align-self:flex-end;');d.textContent=text;msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;}
   function ask(){var q=inp.value.trim();if(!q)return;addMsg('user',q);inp.value='';snd.disabled=true;
