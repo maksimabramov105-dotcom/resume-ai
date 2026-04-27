@@ -46,6 +46,11 @@ class PaymentStates(StatesGroup):
 async def show_buy_menu(callback: CallbackQuery):
     user = await get_or_create_user(callback.from_user.id)
     lang = user.language or 'ru'
+    try:
+        from bot.analytics import track as _ph_track
+        _ph_track(callback.from_user.id, 'subscription_page_viewed', {})
+    except Exception:
+        pass
     await callback.message.edit_text(t(lang, 'buy.header'), reply_markup=buy_credits_kb(lang))
 
 

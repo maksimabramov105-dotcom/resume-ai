@@ -33,6 +33,11 @@ async def auto_apply_callback(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     user = await get_or_create_user(callback.from_user.id)
     lang = user.language or 'ru'
+    try:
+        from bot.analytics import track as _ph_track
+        _ph_track(callback.from_user.id, 'auto_apply_started', {'target_count': user.daily_limit if hasattr(user, 'daily_limit') else 0})
+    except Exception:
+        pass
     await callback.message.edit_text(
         t(lang, 'auto_apply.info'),
         parse_mode="HTML",
@@ -44,6 +49,11 @@ async def auto_apply_callback(callback: CallbackQuery, state: FSMContext):
 async def auto_apply_command(message: Message):
     user = await get_or_create_user(message.from_user.id)
     lang = user.language or 'ru'
+    try:
+        from bot.analytics import track as _ph_track
+        _ph_track(message.from_user.id, 'auto_apply_started', {'target_count': user.daily_limit if hasattr(user, 'daily_limit') else 0})
+    except Exception:
+        pass
     await message.answer(
         t(lang, 'auto_apply.info'),
         parse_mode="HTML",

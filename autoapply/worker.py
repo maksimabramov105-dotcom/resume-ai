@@ -293,6 +293,7 @@ async def process_campaign(campaign: dict) -> int:
         return 0
 
     sent_count = 0
+    failed_count = 0
 
     for platform in platforms:
         if sent_count >= remaining or _shutdown:
@@ -363,8 +364,23 @@ async def process_campaign(campaign: dict) -> int:
                     "[worker] logged application: campaign=%s vacancy_id=%s company=%s status=%s",
                     campaign_id, vacancy_id, company_name, apply_status,
                 )
+                try:
+                    from bot.analytics import track as _ph_track
+                    _ph_track(user_id, 'application_sent', {
+                        'job_board': platform,
+                        'job_title': vacancy_title,
+                        'company': company_name,
+                    })
+                except Exception:
+                    pass
             except Exception as exc:
                 logger.exception("[worker] log_application error: %s", exc)
+                failed_count += 1
+                try:
+                    from bot.analytics import track as _ph_track
+                    _ph_track(user_id, 'application_failed', {'error': str(exc), 'job_board': platform})
+                except Exception:
+                    pass
                 continue
 
             # Human-like delay between applications
@@ -374,6 +390,11 @@ async def process_campaign(campaign: dict) -> int:
                 await asyncio.sleep(delay)
 
     await update_campaign_last_run(campaign_id, AUTOAPPLY_DB)
+    try:
+        from bot.analytics import track as _ph_track
+        _ph_track(user_id, 'auto_apply_completed', {'sent': sent_count, 'failed': failed_count})
+    except Exception:
+        pass
     return sent_count
 
 

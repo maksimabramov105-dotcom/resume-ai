@@ -63,8 +63,13 @@ async def cmd_start(message: Message, state: FSMContext):
 
     # PostHog analytics
     try:
-        from bot.utils.posthog_tracker import track as _ph_track, identify as _ph_identify
-        _ph_identify(user.telegram_id, {'username': user.username, 'language': user.language or ''})
+        from datetime import datetime as _dt
+        from bot.analytics import track as _ph_track, identify as _ph_identify
+        _ph_identify(user.telegram_id, {
+            'username': user.username,
+            'first_seen': _dt.utcnow().isoformat(),
+            'language': message.from_user.language_code or user.language or '',
+        })
         _ph_track(user.telegram_id, 'bot_started', {'source': 'telegram', 'referral': args})
     except Exception:
         pass
@@ -162,6 +167,11 @@ async def cmd_upgrade(message: Message):
             "🇷🇺 <b>Карта РФ / Revolut</b> — свяжитесь с нами в Telegram\n\n"
             "После оплаты план активируется <b>мгновенно</b> ✅"
         )
+    try:
+        from bot.analytics import track as _ph_track
+        _ph_track(message.from_user.id, 'subscription_page_viewed', {})
+    except Exception:
+        pass
     await message.answer(text, reply_markup=kb)
 
 
