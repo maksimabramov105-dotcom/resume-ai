@@ -4,36 +4,28 @@ import { useState } from "react";
 
 const FAQ_ITEMS = [
   {
-    q: "Which job boards does ResumeAI support?",
-    a: "LinkedIn Easy Apply, Greenhouse, Lever, Workable, Ashby, SmartRecruiters, Adzuna, RemoteOK, The Muse, and Arbeitnow. More boards are added regularly.",
+    q: "Is this against LinkedIn's terms of service?",
+    a: "LinkedIn Easy Apply is designed for fast application — we fill the forms in your own browser using your own account. We don't scrape, don't store your LinkedIn credentials, and don't bypass any security. Thousands of people use autofill tools like this every day.",
   },
   {
-    q: "Is my data safe?",
-    a: "Yes. The Chrome Extension sends applications from your own browser using your existing logged-in sessions — we never store your job board passwords. Your resume data is encrypted at rest.",
+    q: "Will employers know I used a bot?",
+    a: "No. Applications are sent from your own IP, your own browser session, with your real resume. To employers, it looks exactly like a manual application — because technically it is one, just faster.",
   },
   {
-    q: "How many applications per day?",
-    a: "Trial: 30 over 14 days. Starter: 25/day. Pro: 50/day. Unlimited: no cap. The bot spaces applications naturally to avoid detection.",
+    q: "What job boards do you support?",
+    a: "Currently: Greenhouse, Lever, Workable, Ashby, SmartRecruiters, and LinkedIn Easy Apply. We're adding Indeed Apply and Glassdoor in May 2025.",
   },
   {
-    q: "What is the $2.99 trial?",
-    a: "30 applications over 14 days — enough to get real responses back. Credit card required, so upgrading later is one click. Cancel anytime before the 14 days end and you pay nothing more.",
+    q: "What happens to my resume and personal data?",
+    a: "Your resume is stored encrypted on our servers (AES-256). We never sell or share your data. You can delete your account and all data at any time with /delete in the Telegram bot.",
   },
   {
-    q: "Does it write personalized cover letters?",
-    a: "Yes. GPT-4 generates a unique cover letter for every application based on your resume and the specific job description. Each letter is different.",
+    q: "Can I try before paying?",
+    a: "Yes. Free tier: 10 applications/day, no credit card needed. Or start the $2.99 trial for 30 applications over 14 days — the fastest way to see if it works for you.",
   },
   {
-    q: "Does LinkedIn allow this?",
-    a: "LinkedIn Easy Apply works through our Chrome Extension that runs in your own browser — it's identical to you clicking buttons manually. Your IP, your session, your account. This is the same model used by Simplify.",
-  },
-  {
-    q: "Can I cancel anytime?",
-    a: "Yes. Cancel in one click from your account settings. No retention flows, no 'reason for leaving' forms. Instant.",
-  },
-  {
-    q: "What's the difference from Sonara or LazyApply?",
-    a: "ResumeAI is 17% cheaper than Sonara ($19.99 vs $23.95) and uses a Chrome Extension model — meaning no server-side credential storage and no proxy fees that competitors pass on to you.",
+    q: "What if I get no responses?",
+    a: "Volume helps — most users see their first response within 20-50 applications. We also optimize your resume for ATS keywords before applying. If you're not getting responses, message @yourtelegramhandle and we'll review your resume personally.",
   },
 ] as const;
 
