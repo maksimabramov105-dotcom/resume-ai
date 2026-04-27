@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { posthog } from "../providers";
 
 const TELEGRAM_URL = "https://t.me/topbestworkerbot";
 
@@ -189,6 +190,7 @@ export default function Pricing() {
 
               <a
                 href={plan.href}
+                onClick={() => posthog.capture('cta_clicked', { cta: 'pricing', tier: plan.name })}
                 className={`block text-center font-semibold py-3 rounded-xl transition-colors ${
                   plan.highlight
                     ? "bg-white text-blue-600 hover:bg-blue-50"
