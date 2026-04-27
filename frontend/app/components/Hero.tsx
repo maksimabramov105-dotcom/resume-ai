@@ -38,6 +38,10 @@ export default function Hero() {
           No spam. No data selling. Cancel anytime.
         </p>
 
+        <p className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-sm text-red-300 text-center max-w-[480px] mx-auto mb-4">
+          🔥 Beta pricing ends May 1st — lock in $19.99/mo before it goes up
+        </p>
+
         <p className="mb-10">
           <a
             href="/app"

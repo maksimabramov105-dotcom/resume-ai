@@ -7,40 +7,21 @@ const TELEGRAM_URL = "https://t.me/topbestworkerbot";
 
 const PLANS = [
   {
-    id: "trial",
-    name: "Trial",
-    price: "$2.99",
-    period: "for 14 days",
-    apps: "30 applications",
+    id: "free",
+    name: "Free",
+    price: "Free",
+    period: "",
+    apps: "10 apps/day",
     highlight: false,
     features: [
-      "30 applications in 14 days",
-      "Greenhouse, Lever, Workable",
-      "AI cover letter per job",
+      "10 applications/day",
+      "Greenhouse + Lever forms",
+      "AI resume tailoring",
       "Application tracker",
-      "Cancel anytime",
     ],
-    cta: "Start $2.99 Trial",
+    cta: "Start Free →",
     badge: null,
-    href: "/app",
-  },
-  {
-    id: "starter",
-    name: "Starter",
-    price: "$12.99",
-    period: "/ month",
-    apps: "25 apps/day",
-    highlight: false,
-    features: [
-      "25 applications/day",
-      "All supported platforms",
-      "AI cover letter per job",
-      "Application tracker",
-      "Email support",
-    ],
-    cta: "Get Starter",
-    badge: null,
-    href: "/app#pricing",
+    href: "https://t.me/topbestworkerbot",
   },
   {
     id: "pro",
@@ -51,15 +32,14 @@ const PLANS = [
     highlight: true,
     features: [
       "50 applications/day",
-      "All supported platforms",
-      "AI cover letter per job",
-      "Priority queue",
-      "Application tracker",
-      "Priority support",
+      "All job boards incl. LinkedIn Easy Apply",
+      "AI cover letters (personalized)",
+      "Priority application queue",
+      "Analytics dashboard",
     ],
-    cta: "Get Pro",
-    badge: "Most popular",
-    href: "/app#pricing",
+    cta: "Try for $2.99 →",
+    badge: "Most Popular",
+    href: "https://t.me/topbestworkerbot",
   },
   {
     id: "unlimited",
@@ -69,16 +49,14 @@ const PLANS = [
     apps: "Unlimited",
     highlight: false,
     features: [
-      "Unlimited applications/day",
-      "All supported platforms",
-      "AI cover letter per job",
-      "First in queue",
-      "Application tracker",
-      "Dedicated support",
+      "Unlimited applications",
+      "Everything in Pro",
+      "Dedicated proxy (faster, less blocked)",
+      "Priority support",
     ],
-    cta: "Get Unlimited",
+    cta: "Get Unlimited →",
     badge: null,
-    href: "/app#pricing",
+    href: "https://t.me/topbestworkerbot",
   },
 ] as const;
 
@@ -86,7 +64,7 @@ export default function Pricing() {
   const [annual, setAnnual] = useState(false);
 
   function getPrice(base: string): string {
-    if (!annual || base === "$2.99") return base;
+    if (!annual || base === "Free") return base;
     const num = parseFloat(base.replace("$", ""));
     return `$${(num * 0.8).toFixed(2)}`;
   }
@@ -130,7 +108,7 @@ export default function Pricing() {
           </div>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid sm:grid-cols-3 gap-5">
           {PLANS.map((plan) => (
             <div
               key={plan.id}
@@ -190,6 +168,8 @@ export default function Pricing() {
 
               <a
                 href={plan.href}
+                target="_blank"
+                rel="noopener noreferrer"
                 onClick={() => posthog.capture('cta_clicked', { cta: 'pricing', tier: plan.name })}
                 className={`block text-center font-semibold py-3 rounded-xl transition-colors ${
                   plan.highlight
