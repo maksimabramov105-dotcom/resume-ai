@@ -69,7 +69,7 @@ export default function TrackerPage() {
 
   useEffect(() => {
     api.get<TrackerCard[]>('/tracker').then(data => {
-      if (data) setCards(data as TrackerCard[]);
+      if (Array.isArray(data)) setCards(data);
       setLoading(false);
     });
   }, []);

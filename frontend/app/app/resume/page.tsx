@@ -14,7 +14,7 @@ export default function ResumePage() {
 
   const load = async () => {
     const data = await api.get<Resume[]>('/resumes');
-    if (data) setResumes(data as Resume[]);
+    if (Array.isArray(data)) setResumes(data);
     setLoading(false);
   };
 

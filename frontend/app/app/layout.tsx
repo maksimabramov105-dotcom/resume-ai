@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { AuthProvider, useAuth } from './components/AuthContext';
 import { ToastProvider } from './components/Toast';
 import AppNav from './components/AppNav';
+import ErrorBoundary from './components/ErrorBoundary';
 
 function Shell({ children }: { children: React.ReactNode }) {
   const { token, loading } = useAuth();
@@ -45,10 +46,12 @@ function Shell({ children }: { children: React.ReactNode }) {
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AuthProvider>
-      <ToastProvider>
-        <Shell>{children}</Shell>
-      </ToastProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <ToastProvider>
+          <Shell>{children}</Shell>
+        </ToastProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
