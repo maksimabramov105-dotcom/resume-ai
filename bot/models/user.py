@@ -84,3 +84,17 @@ class AssistantConversation(Base):
     content = Column(Text, nullable=False)
     tokens_used = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class Application(Base):
+    __tablename__ = "applications"
+
+    id = Column(Integer, primary_key=True)
+    telegram_id = Column(Integer, nullable=False, index=True)
+    job_title = Column(String, nullable=True)
+    company = Column(String, nullable=True)
+    job_board = Column(String, nullable=True)
+    job_url = Column(String, nullable=True)
+    status = Column(String, default="applied")  # applied | response | interviewing | offer | rejected
+    notes = Column(Text, nullable=True)
+    applied_at = Column(DateTime, default=datetime.utcnow)

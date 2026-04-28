@@ -27,7 +27,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from config import BOT_TOKEN  # flat import (bot/ is in sys.path)
 from database.db import init_db
-from handlers import start, resume, cover_letter, interview, vacancy_analysis, ai_assistant, payment, profile, support, language, auto_apply
+from handlers import start, resume, cover_letter, interview, vacancy_analysis, ai_assistant, payment, profile, support, language, auto_apply, tracker
 from utils.texts import BOT_DESCRIPTION, BOT_SHORT_DESCRIPTION
 from utils.bot_translations import t as _t
 
@@ -219,6 +219,7 @@ async def run_bot() -> None:
     dp.include_router(profile.router)
     dp.include_router(support.router)
     dp.include_router(auto_apply.router)
+    dp.include_router(tracker.router)
     # Weekly digest — every Monday 10:00 Moscow time (UTC+3 = 07:00 UTC)
     scheduler = AsyncIOScheduler()
     from services.digest import send_weekly_digest

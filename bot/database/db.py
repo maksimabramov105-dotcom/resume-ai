@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 import os
 from typing import Optional
 
-from models.user import Base, User, Payment, GenerationLog, AssistantConversation
+from models.user import Base, User, Payment, GenerationLog, AssistantConversation, Application
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./bot.db")
 
@@ -142,6 +142,33 @@ async def log_generation(
             cost_usd=cost_usd,
         )
         session.add(entry)
+
+
+async def get_application_stats(telegram_id: int) -> dict:
+    from sqlalchemy import func
+    async with get_session() as session:
+        def _count(status_val=None):
+            q = select(func.count()).select_from(Application).where(
+                Application.telegram_id == telegram_id
+            )
+            if status_val:
+                q = q.where(Application.status == status_val)
+            return q
+
+        total = (await session.execute(_count())).scalar() or 0
+        responses = (await session.execute(_count("response"))).scalar() or 0
+        interviewing = (await session.execute(_count("interviewing"))).scalar() or 0
+        offers = (await session.execute(_count("offer"))).scalar() or 0
+        rejected = (await session.execute(_count("rejected"))).scalar() or 0
+
+    return {
+        "total": total,
+        "responses": responses,
+        "interviewing": interviewing,
+        "offers": offers,
+        "rejected": rejected,
+        "response_rate": (responses / total * 100) if total else 0.0,
+    }
 
 
 async def save_payment(telegram_id: int, amount_rub: float, package: str, payment_id: str = None) -> Payment:

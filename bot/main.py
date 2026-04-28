@@ -13,7 +13,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from config import BOT_TOKEN
 from database.db import init_db
-from handlers import start, resume, cover_letter, interview, vacancy_analysis, ai_assistant, payment, profile, support, checkin, language
+from handlers import start, resume, cover_letter, interview, vacancy_analysis, ai_assistant, payment, profile, support, checkin, language, tracker
 from handlers.checkin import checkin_loop
 from utils.texts import BOT_DESCRIPTION, BOT_SHORT_DESCRIPTION
 
@@ -46,6 +46,7 @@ async def main():
     dp.include_router(profile.router)
     dp.include_router(support.router)
     dp.include_router(checkin.router)
+    dp.include_router(tracker.router)
 
     # Set bot description visible to users before pressing /start
     try:
