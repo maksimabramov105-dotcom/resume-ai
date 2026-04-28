@@ -25,8 +25,24 @@ export default function ApplicationsPage() {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    api.get<Application[]>('/applications').then(data => {
-      if (data) setApps(data as Application[]);
+    api.get<{ items?: Application[]; data?: Application[] } | Application[]>('/applications').then(raw => {
+      if (!raw) { setLoading(false); return; }
+      // API returns a paginated wrapper { items: [...] } or a raw array
+      const list: any[] = Array.isArray(raw)
+        ? raw
+        : ((raw as any).items ?? (raw as any).data ?? []);
+      // Normalize field names from DB (vacancy_title, company_name, vacancy_url, platform)
+      const normalized: Application[] = list.map((r: any) => ({
+        id: r.id,
+        campaign_id: r.campaign_id ?? 0,
+        company: r.company_name ?? r.company ?? '',
+        position: r.vacancy_title ?? r.position ?? '',
+        url: r.vacancy_url ?? r.url ?? '',
+        status: r.status ?? 'sent',
+        applied_at: r.applied_at ?? r.sent_at ?? '',
+        source: r.platform ?? r.source ?? '',
+      }));
+      setApps(normalized);
       setLoading(false);
     });
   }, []);
@@ -34,8 +50,8 @@ export default function ApplicationsPage() {
   const filtered = apps.filter(a => {
     const matchStatus = filter === 'all' || a.status === filter;
     const matchSearch = !search ||
-      a.company.toLowerCase().includes(search.toLowerCase()) ||
-      a.position.toLowerCase().includes(search.toLowerCase());
+      (a.company ?? '').toLowerCase().includes(search.toLowerCase()) ||
+      (a.position ?? '').toLowerCase().includes(search.toLowerCase());
     return matchStatus && matchSearch;
   });
 

@@ -30,11 +30,36 @@ export default function DashboardPage() {
 
   useEffect(() => {
     Promise.all([
-      api.get<Stats>('/stats'),
-      api.get<Campaign[]>('/campaigns'),
+      api.get<any>('/dashboard'),
+      api.get<any[]>('/campaigns'),
     ]).then(([s, c]) => {
-      if (s) setStats(s);
-      if (c) setCampaigns((c as Campaign[]).slice(0, 3));
+      if (s) {
+        // Normalize dashboard API response to Stats type
+        setStats({
+          total_applications: s.applications_total ?? s.total_applications ?? 0,
+          applications_today: s.applications_today ?? 0,
+          active_campaigns: s.active_campaigns ?? 0,
+          interviews: s.by_status?.interview ?? s.by_status?.interviewing ?? s.interviews ?? 0,
+          response_rate: s.response_rate ?? 0,
+        });
+      }
+      if (Array.isArray(c)) {
+        // Normalize campaign field names from DB schema
+        const normalized: Campaign[] = c.map((r: any) => ({
+          id: r.id,
+          name: r.job_title ?? r.name ?? '',
+          status: r.status === 'active' ? 'running' : (r.status ?? 'paused'),
+          source: Array.isArray(r.platforms)
+            ? (r.platforms[0] ?? 'all')
+            : (r.platforms ?? r.source ?? 'all'),
+          keywords: r.keywords ?? r.job_title ?? '',
+          location: r.location ?? '',
+          applications_sent: r.applications_sent ?? 0,
+          created_at: r.created_at ?? '',
+          updated_at: r.last_run ?? r.updated_at ?? r.created_at ?? '',
+        }));
+        setCampaigns(normalized.slice(0, 3));
+      }
       setLoading(false);
     });
   }, []);

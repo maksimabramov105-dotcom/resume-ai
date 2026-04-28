@@ -18,8 +18,24 @@ export default function CampaignsPage() {
   const { showToast } = useToast();
 
   const load = async () => {
-    const data = await api.get<Campaign[]>('/campaigns');
-    if (data) setCampaigns(data as Campaign[]);
+    const data = await api.get<any[]>('/campaigns');
+    if (Array.isArray(data)) {
+      // Normalize DB field names to Campaign type
+      const normalized: Campaign[] = data.map((r: any) => ({
+        id: r.id,
+        name: r.job_title ?? r.name ?? '',
+        status: r.status === 'active' ? 'running' : (r.status ?? 'paused'),
+        source: Array.isArray(r.platforms)
+          ? (r.platforms[0] ?? 'all')
+          : (r.platforms ?? r.source ?? 'all'),
+        keywords: r.keywords ?? r.job_title ?? '',
+        location: r.location ?? '',
+        applications_sent: r.applications_sent ?? 0,
+        created_at: r.created_at ?? '',
+        updated_at: r.last_run ?? r.updated_at ?? r.created_at ?? '',
+      }));
+      setCampaigns(normalized);
+    }
     setLoading(false);
   };
 
