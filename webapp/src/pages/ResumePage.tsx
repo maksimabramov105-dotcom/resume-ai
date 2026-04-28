@@ -63,7 +63,7 @@ export default function ResumePage() {
         <>
           <div className="form-group">
             <label className="form-label">Текст вакансии *</label>
-            <textarea className="text-input" rows={5} placeholder="Вставь описание вакансии с hh.ru..." value={vacancy} onChange={(e) => setVacancy(e.target.value)} />
+            <textarea className="text-input" rows={5} placeholder="Вставь описание вакансии с LinkedIn, Indeed..." value={vacancy} onChange={(e) => setVacancy(e.target.value)} />
           </div>
           <div className="form-group">
             <label className="form-label">Опыт работы *</label>

@@ -106,7 +106,7 @@ async def checkin_done(callback: CallbackQuery):
         "Несколько следующих шагов:\n"
         "• <b>Скачайте PDF</b> и сохраните копию\n"
         "• <b>Создайте сопроводительное письмо</b> — /cover\n"
-        "• <b>Настройте авто-отклики</b> на hh.ru — resumeai-bot.ru\n\n"
+        "• <b>Настройте авто-отклики</b> на LinkedIn, Indeed — resumeai-bot.ru\n\n"
         "Удачи в поиске работы! 💪",
         parse_mode="HTML",
     )

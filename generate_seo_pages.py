@@ -230,8 +230,8 @@ TEMPLATE = '''<!DOCTYPE html>
       <div class="faq-a">Для позиции {RU_TITLE} ключевые навыки: {KEYWORDS_STRING}. AI автоматически включает наиболее релевантные навыки из конкретной вакансии.</div>
     </div>
     <div class="faq-item">
-      <div class="faq-q" onclick="this.nextElementSibling.classList.toggle(\'open\')">Работает ли сервис с вакансиями на hh.ru? <span>+</span></div>
-      <div class="faq-a">Да, РезюмеАИ работает с вакансиями на hh.ru, SuperJob, LinkedIn, Indeed и других платформах. Просто вставьте ссылку.</div>
+      <div class="faq-q" onclick="this.nextElementSibling.classList.toggle(\'open\')">Does the service work with job postings from LinkedIn and Indeed? <span>+</span></div>
+      <div class="faq-a">Yes, ResumeAI works with vacancies from LinkedIn, Indeed, Adzuna, RemoteOK, and other job boards. Just paste the job description.</div>
     </div>
     <div class="faq-item">
       <div class="faq-q" onclick="this.nextElementSibling.classList.toggle(\'open\')">Это действительно бесплатно? <span>+</span></div>

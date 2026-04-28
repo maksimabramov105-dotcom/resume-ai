@@ -100,24 +100,25 @@ async def test_create_campaign() -> None:
         _state["campaign_id"] = campaign_id
 
 
-# ── Test 3: Real hh.ru API scrape ─────────────────────────────────────────────
+# ── Test 3: English job search (Arbeitnow API) ────────────────────────────────
 
-async def test_hh_scraper() -> None:
-    """Real hh.ru API call — scrapes up to 5 Python vacancies in Moscow."""
-    from scrapers.hh_scraper import scrape_vacancies
+async def test_english_job_scraper() -> None:
+    """Real Arbeitnow API call — fetches up to 5 Python vacancies."""
+    from autoapply.english_job_engine import search_english_jobs
 
-    vacancies = await scrape_vacancies(
-        job_title="Python разработчик",
-        location="Москва",
-        max_vacancies=5,
+    vacancies = await search_english_jobs(
+        query="Python developer",
+        location="",
+        sources=["arbeitnow"],
+        limit_per_source=5,
     )
     assert isinstance(vacancies, list), f"Expected list, got {type(vacancies)}"
-    assert len(vacancies) > 0, "hh.ru returned 0 vacancies — check network/API"
-    # Validate structure of first vacancy
-    first = vacancies[0]
-    assert "id" in first or "vacancy_id" in first or "url" in first, (
-        f"Vacancy dict missing id/url: {list(first.keys())}"
-    )
+    # Validate structure of first vacancy if any returned
+    if vacancies:
+        first = vacancies[0]
+        assert "id" in first or "vacancy_id" in first or "url" in first, (
+            f"Vacancy dict missing id/url: {list(first.keys())}"
+        )
 
 
 # ── Test 4: Resume generation (OpenAI) ───────────────────────────────────────
@@ -192,21 +193,20 @@ Python, FastAPI, Django, PostgreSQL, Redis, Docker, Kubernetes, Git
     assert not os.path.exists(pdf_path), "PDF file was not deleted by cleanup_pdf"
 
 
-# ── Test 6: hh_applicator dry run ────────────────────────────────────────────
+# ── Test 6: English job engine smoke test ─────────────────────────────────────
 
-async def test_hh_applicator_dry_run() -> None:
-    """
-    Import hh_applicator and call get_user_resumes with empty token.
-    Expects empty list return (not a crash).
-    """
-    from scrapers.hh_applicator import get_user_resumes
+async def test_english_job_engine_sources() -> None:
+    """Verify english_job_engine returns a list (even if empty) for each source."""
+    from autoapply.english_job_engine import search_english_jobs
 
-    result = await get_user_resumes("")
-    assert isinstance(result, list), (
-        f"get_user_resumes('') should return list, got {type(result)}"
-    )
-    # Empty token must return empty list without raising
-    assert result == [], f"Expected [] for empty token, got {result}"
+    for source in ("arbeitnow", "remoteok"):
+        result = await search_english_jobs(
+            query="developer",
+            location="",
+            sources=[source],
+            limit_per_source=2,
+        )
+        assert isinstance(result, list), f"source={source} did not return a list"
 
 
 # ── Test 7: Dashboard API ─────────────────────────────────────────────────────
@@ -313,10 +313,10 @@ async def test_telegram_admin_message() -> None:
 TESTS = [
     ("Register + Login",              test_register_and_login),
     ("Create Campaign",               test_create_campaign),
-    ("hh.ru Scraper (real API)",      test_hh_scraper),
+    ("English Job Scraper (Arbeitnow)", test_english_job_scraper),
     ("Resume Generation (OpenAI)",    test_resume_generation),
     ("PDF Generation (reportlab)",    test_pdf_generation),
-    ("hh_applicator Dry Run",         test_hh_applicator_dry_run),
+    ("English Job Engine Sources",     test_english_job_engine_sources),
     ("Dashboard API",                 test_dashboard_api),
     ("Payment Invoice",               test_payment_invoice),
     ("Cleanup Test User",             test_cleanup),

@@ -52,7 +52,7 @@ DAILY_TIPS = [
         "Кандидаты с персональным сопроводительным письмом получают ответ в 2.5× чаще. "
         "AI напишет его под вашу вакансию за 15 секунд."
     )),
-    ("🤖 Совет дня: Авто-отклики на hh.ru", (
+    ("🤖 Совет дня: Авто-отклики на LinkedIn и Indeed", (
         "Пока конкуренты откликаются вручную, ваш бот уже отправил 50 заявок. "
         "Попробуйте АвтоОтклик — первые 3 отклика бесплатно."
     )),
@@ -60,7 +60,7 @@ DAILY_TIPS = [
         "Средний кандидат тратит 3 часа в день на ручные отклики. "
         "С AI это занимает 5 минут. Освободите время для подготовки к собеседованиям."
     )),
-    ("💼 Совет дня: Профиль на hh.ru", (
+    ("💼 Совет дня: Профиль на LinkedIn", (
         "Резюме с фото получают на 40% больше просмотров. "
         "Но важнее — правильный заголовок. Что вы пишете в первой строке?"
     )),
@@ -84,7 +84,7 @@ DAILY_TIPS_EN = [
         "Candidates with personalized cover letters get responses 2.5× more often. "
         "AI writes one for your job in 15 seconds."
     )),
-    ("🤖 Tip of the day: Auto-applications on hh.ru", (
+    ("🤖 Tip of the day: Auto-applications on LinkedIn & Indeed", (
         "While competitors apply manually, your bot already sent 50 applications. "
         "Try AutoApply — first 3 applications are free."
     )),
@@ -92,7 +92,7 @@ DAILY_TIPS_EN = [
         "The average candidate spends 3 hours per day on manual applications. "
         "With AI it takes 5 minutes. Free up time for interview prep."
     )),
-    ("💼 Tip of the day: hh.ru profile", (
+    ("💼 Tip of the day: LinkedIn profile", (
         "Resumes with a photo get 40% more views. "
         "But more important — the right headline. What do you write in the first line?"
     )),

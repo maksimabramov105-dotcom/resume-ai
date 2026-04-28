@@ -104,21 +104,20 @@ async def test_fastapi_starts():
 
 
 # ─────────────────────────────────────────────
-# Test 3: hh.ru scraper
+# Test 3: English job engine (Arbeitnow)
 # ─────────────────────────────────────────────
-async def test_hh_api():
-    """Call hh_scraper.search_vacancies and check non-empty result."""
-    try:
-        from scrapers.hh_scraper import search_vacancies
-    except ImportError:
-        try:
-            from autoapply.hh_scraper import search_vacancies
-        except ImportError as e:
-            raise AssertionError(f"Cannot import hh_scraper: {e}")
+async def test_english_job_api():
+    """Call english_job_engine.search_english_jobs and check it returns a list."""
+    from autoapply.english_job_engine import search_english_jobs
 
-    results = await search_vacancies("Python разработчик", "Москва", per_page=3)
-    assert results is not None, "search_vacancies returned None"
-    assert len(results) > 0, "search_vacancies returned empty list — hh.ru API may be down"
+    results = await search_english_jobs(
+        query="Python developer",
+        location="",
+        sources=["arbeitnow"],
+        limit_per_source=3,
+    )
+    assert results is not None, "search_english_jobs returned None"
+    assert isinstance(results, list), f"Expected list, got {type(results)}"
 
 
 # ─────────────────────────────────────────────

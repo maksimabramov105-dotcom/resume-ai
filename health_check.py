@@ -85,22 +85,21 @@ async def check_autoapply_api() -> tuple[bool, str]:
         return False, f"autoapply API unreachable: {e}"
 
 
-async def check_hh_api() -> tuple[bool, str]:
-    """Check hh.ru API availability."""
+async def check_arbeitnow_api() -> tuple[bool, str]:
+    """Check Arbeitnow job board API availability."""
     try:
         timeout = aiohttp.ClientTimeout(total=10)
-        params = {"text": "python", "area": "1", "per_page": "1"}
         async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.get("https://api.hh.ru/vacancies", params=params) as resp:
+            async with session.get("https://www.arbeitnow.com/api/job-board-api?page=1", timeout=timeout) as resp:
                 if resp.status == 200:
                     data = await resp.json()
-                    count = data.get("found", "?")
-                    return True, f"hh.ru API OK (found={count})"
-                return False, f"hh.ru API returned HTTP {resp.status}"
+                    count = len(data.get("data", []))
+                    return True, f"Arbeitnow API OK (jobs={count})"
+                return False, f"Arbeitnow API returned HTTP {resp.status}"
     except asyncio.TimeoutError:
-        return False, "hh.ru API timeout (>10s)"
+        return False, "Arbeitnow API timeout (>10s)"
     except Exception as e:
-        return False, f"hh.ru API error: {e}"
+        return False, f"Arbeitnow API error: {e}"
 
 
 async def check_bot_service() -> tuple[bool, str]:
@@ -297,7 +296,7 @@ async def main() -> None:
     # Informational checks: logged but never trigger alerts
     # (external APIs outside our control — their downtime ≠ our failure)
     info_checks = [
-        ("hh_api", check_hh_api),
+        ("arbeitnow_api", check_arbeitnow_api),
     ]
 
     # Run all checks concurrently

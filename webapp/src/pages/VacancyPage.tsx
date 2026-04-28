@@ -35,7 +35,7 @@ export default function VacancyPage() {
         <>
           <div className="form-group">
             <label className="form-label">Текст вакансии</label>
-            <textarea className="text-input" rows={8} placeholder="Вставь описание вакансии с hh.ru..." value={vacancy} onChange={(e) => setVacancy(e.target.value)} />
+            <textarea className="text-input" rows={8} placeholder="Вставь описание вакансии с LinkedIn, Indeed..." value={vacancy} onChange={(e) => setVacancy(e.target.value)} />
           </div>
           {error && <p style={{ color: '#ff4d4f', marginBottom: 12, fontSize: 14 }}>{error}</p>}
           <button className="btn-primary" onClick={handleAnalyze} disabled={loading}>

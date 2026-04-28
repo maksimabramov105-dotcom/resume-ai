@@ -66,7 +66,7 @@ STRINGS: dict[str, dict[str, str]] = {
         'menu.auto_apply':     "🚀 Авто-отклик на вакансии",
 
         # Resume flow
-        'resume.ask_vacancy':  "📋 Отправьте <b>текст вакансии</b> (скопируйте с hh.ru или другого сайта):",
+        'resume.ask_vacancy':  "📋 Отправьте <b>текст вакансии</b> (скопируйте с LinkedIn, Indeed или другого сайта):",
         'resume.ask_experience':"💼 Расскажите о своём <b>опыте работы</b> (кратко, ключевые места и достижения):",
         'resume.ask_education':"🎓 <b>Образование</b> (ВУЗ, специальность, год окончания):",
         'resume.ask_skills':   "🛠 <b>Ключевые навыки</b> (через запятую):",
