@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routes import user, resume, cover_letter, interview, vacancy, assistant, payment
+from api.routes import user, resume, cover_letter, interview, vacancy, assistant, payment, stripe
 
 app = FastAPI(title="РезюмеАИ API", version="1.0")
 
@@ -27,6 +27,7 @@ app.include_router(interview.router,    prefix="/api/interview",     tags=["Inte
 app.include_router(vacancy.router,      prefix="/api/vacancy",       tags=["Vacancy"])
 app.include_router(assistant.router,    prefix="/api/assistant",     tags=["Assistant"])
 app.include_router(payment.router,      prefix="/api/payment",       tags=["Payment"])
+app.include_router(stripe.router,       prefix="/api/stripe",        tags=["Stripe"])
 
 
 @app.get("/api/health")

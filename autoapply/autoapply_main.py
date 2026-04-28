@@ -1716,9 +1716,119 @@ async def create_stripe_checkout(payload: dict, request: Request):
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
+async def _stripe_handle_event(event: dict) -> None:
+    """Shared logic for both webhook endpoints."""
+    from autoapply.payments import send_telegram_message
+
+    event_type = event["type"]
+    data = event["data"]["object"]
+
+    if event_type == "checkout.session.completed":
+        plan = data.get("metadata", {}).get("plan", "")
+        user_id_str = data.get("metadata", {}).get("user_id", "")
+        customer_email = data.get("customer_details", {}).get("email", "")
+        customer_id = data.get("customer", "")
+        logger.info(
+            "[stripe] checkout.session.completed plan=%s user_id=%s email=%s",
+            plan, user_id_str, customer_email,
+        )
+
+        # Resolve autoapply user record
+        user = None
+        if user_id_str:
+            try:
+                user = await get_user_by_id(int(user_id_str))
+            except Exception:
+                pass
+        if not user and customer_email:
+            try:
+                user = await get_user_by_email(customer_email)
+            except Exception:
+                pass
+
+        if user and plan:
+            try:
+                await update_user_plan(user["id"], plan)
+                logger.info("[stripe] upgraded user_id=%s to plan=%s", user["id"], plan)
+            except Exception as _e:
+                logger.error("[stripe] DB update failed: %s", _e)
+
+            # Persist stripe_customer_id for subscription cancellation lookup
+            if customer_id:
+                try:
+                    async with aiosqlite.connect(AUTOAPPLY_DB) as _db:
+                        try:
+                            await _db.execute(
+                                "ALTER TABLE autoapply_users ADD COLUMN stripe_customer_id TEXT"
+                            )
+                            await _db.commit()
+                        except Exception:
+                            pass
+                        await _db.execute(
+                            "UPDATE autoapply_users SET stripe_customer_id=? WHERE id=?",
+                            (customer_id, user["id"]),
+                        )
+                        await _db.commit()
+                except Exception as _e:
+                    logger.warning("[stripe] stripe_customer_id save error: %s", _e)
+
+            # Telegram notification
+            telegram_id = user.get("telegram_id")
+            if telegram_id:
+                plan_label = plan.title()
+                await send_telegram_message(
+                    telegram_id,
+                    f"✅ Payment confirmed! Your {plan_label} subscription is now active.\n\n"
+                    f"Open your dashboard: https://resumeai-bot.ru/app",
+                )
+
+    elif event_type == "customer.subscription.deleted":
+        customer_id = data.get("customer", "")
+        logger.info("[stripe] subscription.deleted customer_id=%s", customer_id)
+
+        if not customer_id:
+            return
+
+        # Look up user by stored stripe_customer_id
+        user = None
+        try:
+            async with aiosqlite.connect(AUTOAPPLY_DB) as _db:
+                _db.row_factory = aiosqlite.Row
+                async with _db.execute(
+                    "SELECT * FROM autoapply_users WHERE stripe_customer_id=?",
+                    (customer_id,),
+                ) as _cur:
+                    row = await _cur.fetchone()
+                    user = dict(row) if row else None
+        except Exception as _e:
+            logger.warning("[stripe] customer lookup error: %s", _e)
+
+        if not user:
+            logger.warning("[stripe] no user found for customer_id=%s", customer_id)
+            return
+
+        try:
+            await update_user_plan(user["id"], "free")
+            logger.info("[stripe] downgraded user_id=%s to free", user["id"])
+        except Exception as _e:
+            logger.error("[stripe] deactivation DB error: %s", _e)
+
+        telegram_id = user.get("telegram_id")
+        if telegram_id:
+            await send_telegram_message(
+                telegram_id,
+                "Your ResumeAI subscription has been cancelled. "
+                "You've been moved to the free plan.\n\n"
+                "Re-subscribe anytime at https://resumeai-bot.ru/app/pricing",
+            )
+
+    elif event_type == "customer.subscription.updated":
+        logger.info("[stripe] subscription.updated — no action needed")
+
+
 @app.post("/api/payments/webhook", summary="Stripe webhook handler")
 async def stripe_webhook(request: Request):
-    import os, stripe
+    import stripe
     stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
     webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 
@@ -1732,37 +1842,16 @@ async def stripe_webhook(request: Request):
             import json as _json_stripe
             event = stripe.Event.construct_from(_json_stripe.loads(payload), stripe.api_key)
     except Exception as e:
-        logger.error(f"Stripe webhook error: {e}")
+        logger.error("[stripe] webhook verification failed: %s", e)
         return JSONResponse({"error": str(e)}, status_code=400)
 
-    event_type = event["type"]
-    data = event["data"]["object"]
-
-    if event_type == "checkout.session.completed":
-        plan = data.get("metadata", {}).get("plan", "")
-        user_id_str = data.get("metadata", {}).get("user_id", "")
-        customer_email = data.get("customer_details", {}).get("email", "")
-        logger.info(f"Stripe payment completed: plan={plan} user_id={user_id_str} email={customer_email}")
-
-        if plan and user_id_str:
-            try:
-                await update_user_plan(int(user_id_str), plan)
-                logger.info(f"[stripe_webhook] user {user_id_str} upgraded to {plan}")
-            except Exception as _e:
-                logger.error(f"[stripe_webhook] DB update failed: {_e}")
-        elif customer_email and plan:
-            try:
-                user = await get_user_by_email(customer_email)
-                if user:
-                    await update_user_plan(user["id"], plan)
-                    logger.info(f"[stripe_webhook] user email={customer_email} upgraded to {plan}")
-            except Exception as _e:
-                logger.error(f"[stripe_webhook] DB update by email failed: {_e}")
-
-    elif event_type in ("customer.subscription.updated", "customer.subscription.deleted"):
-        logger.info(f"Stripe subscription event: {event_type}")
-
+    await _stripe_handle_event(dict(event))
     return {"status": "ok"}
+
+
+@app.post("/api/stripe-webhook", summary="Stripe webhook (alias for dashboard config)")
+async def stripe_webhook_alias(request: Request):
+    return await stripe_webhook(request)
 
 
 @app.get("/api/payments/status", summary="Get payment status info")
