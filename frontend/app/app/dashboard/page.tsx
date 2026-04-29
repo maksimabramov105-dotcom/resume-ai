@@ -27,39 +27,48 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
+  const [emailUnverified, setEmailUnverified] = useState(false);
 
   useEffect(() => {
     Promise.all([
       api.get<any>('/dashboard'),
       api.get<any[]>('/campaigns'),
     ]).then(([s, c]) => {
-      if (s) {
-        // Normalize dashboard API response to Stats type
-        setStats({
-          total_applications: s.applications_total ?? s.total_applications ?? 0,
-          applications_today: s.applications_today ?? 0,
-          active_campaigns: s.active_campaigns ?? 0,
-          interviews: s.by_status?.interview ?? s.by_status?.interviewing ?? s.interviews ?? 0,
-          response_rate: s.response_rate ?? 0,
-        });
+      try {
+        // Detect email-not-verified 403
+        if (s?.detail === 'email_not_verified') {
+          setEmailUnverified(true);
+        } else if (s && !s.detail) {
+          setStats({
+            total_applications: s.applications_total ?? s.total_applications ?? 0,
+            applications_today: s.applications_today ?? 0,
+            active_campaigns: s.active_campaigns ?? 0,
+            interviews: s.by_status?.interview ?? s.by_status?.interviewing ?? s.interviews ?? 0,
+            response_rate: s.response_rate ?? 0,
+          });
+        }
+        if (Array.isArray(c)) {
+          const normalized: Campaign[] = c.map((r: any) => ({
+            id: r.id,
+            name: r.job_title ?? r.name ?? '',
+            status: r.status === 'active' ? 'running' : (r.status ?? 'paused'),
+            source: Array.isArray(r.platforms)
+              ? (r.platforms[0] ?? 'all')
+              : (r.platforms ?? r.source ?? 'all'),
+            keywords: r.keywords ?? r.job_title ?? '',
+            location: r.location ?? '',
+            applications_sent: r.applications_sent ?? 0,
+            created_at: r.created_at ?? '',
+            updated_at: r.last_run ?? r.updated_at ?? r.created_at ?? '',
+          }));
+          setCampaigns(normalized.slice(0, 3));
+        }
+      } catch (e) {
+        console.error('[dashboard] normalization error:', e);
       }
-      if (Array.isArray(c)) {
-        // Normalize campaign field names from DB schema
-        const normalized: Campaign[] = c.map((r: any) => ({
-          id: r.id,
-          name: r.job_title ?? r.name ?? '',
-          status: r.status === 'active' ? 'running' : (r.status ?? 'paused'),
-          source: Array.isArray(r.platforms)
-            ? (r.platforms[0] ?? 'all')
-            : (r.platforms ?? r.source ?? 'all'),
-          keywords: r.keywords ?? r.job_title ?? '',
-          location: r.location ?? '',
-          applications_sent: r.applications_sent ?? 0,
-          created_at: r.created_at ?? '',
-          updated_at: r.last_run ?? r.updated_at ?? r.created_at ?? '',
-        }));
-        setCampaigns(normalized.slice(0, 3));
-      }
+      setLoading(false);
+    }).catch(err => {
+      console.error('[dashboard] fetch error:', err);
       setLoading(false);
     });
   }, []);
@@ -85,6 +94,19 @@ export default function DashboardPage() {
           + New Campaign
         </Link>
       </div>
+
+      {/* Email verification banner */}
+      {emailUnverified && (
+        <div className="mb-6 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl px-5 py-4 flex items-start gap-3">
+          <span className="text-yellow-400 text-lg shrink-0">⚠️</span>
+          <div>
+            <p className="text-sm font-semibold text-yellow-300">Please verify your email</p>
+            <p className="text-xs text-yellow-500 mt-0.5">
+              Check your inbox for a verification link. Stats will appear once your email is confirmed.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Stats grid */}
       {loading ? (

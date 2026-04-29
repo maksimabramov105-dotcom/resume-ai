@@ -89,41 +89,8 @@ import httpx as _httpx_module  # noqa: E402 — used in helpers below
 
 
 async def _fetch_job_text_from_url(url: str) -> tuple:
-    """Fetch job description from URL, with special hh.ru API support.
-    Returns (job_text, metadata_dict)."""
-    import re as _re
-    metadata = {}
-
-    # hh.ru public API (no auth needed for public vacancies)
-    hh_match = _re.search(r'hh\.ru/vacancy/(\d+)', url)
-    if hh_match:
-        vacancy_id = hh_match.group(1)
-        try:
-            async with _httpx_module.AsyncClient(timeout=10) as client:
-                r = await client.get(
-                    f"https://api.hh.ru/vacancies/{vacancy_id}",
-                    headers={"User-Agent": "ResumeAI/1.0 (resumeai-bot.ru)"}
-                )
-                if r.status_code == 200:
-                    vdata = r.json()
-                    title = vdata.get("name", "")
-                    company = vdata.get("employer", {}).get("name", "")
-                    sal = vdata.get("salary") or {}
-                    sal_from = sal.get("from") or ""
-                    sal_to = sal.get("to") or ""
-                    currency = sal.get("currency", "RUB")
-                    salary_str = f"{sal_from}–{sal_to} {currency}" if (sal_from or sal_to) else "Не указана"
-                    desc_html = vdata.get("description", "")
-                    desc_text = _re.sub(r'<[^>]+>', ' ', desc_html)
-                    desc_text = _re.sub(r'\s+', ' ', desc_text).strip()[:3000]
-                    key_skills = [s.get("name", "") for s in vdata.get("key_skills", [])]
-                    job_text = f"Должность: {title}\nКомпания: {company}\nЗарплата: {salary_str}\nКлючевые навыки: {', '.join(key_skills)}\n\n{desc_text}"
-                    metadata = {"job_title": title, "company": company, "salary": salary_str, "keywords": key_skills[:10]}
-                    return job_text, metadata
-        except Exception as e:
-            logger.warning(f"hh.ru API fetch failed for {vacancy_id}: {e}")
-
-    # Generic URL fetch for non-hh.ru or fallback
+    """Fetch job description from URL. Returns (job_text, metadata_dict)."""
+    # Generic URL fetch
     try:
         async with _httpx_module.AsyncClient(timeout=10, follow_redirects=True) as client:
             r = await client.get(url, headers={"User-Agent": "Mozilla/5.0 (compatible; ResumeAI/1.0)"})
@@ -245,8 +212,8 @@ async def security_headers_middleware(request, call_next):
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com data:; "
         "img-src 'self' data: https: blob:; "
-        "connect-src 'self' https://api.hh.ru https://vk.com https://api.openai.com; "
-        "frame-src https://vk.com https://oauth.vk.com; "
+        "connect-src 'self' https://api.openai.com https://openrouter.ai; "
+        "frame-src 'none'; "
         "object-src 'none'; "
         "base-uri 'self';"
     )
@@ -373,7 +340,7 @@ class CampaignCreateRequest(BaseModel):
     location: str
     salary_min: int = 0
     experience: str = ""
-    platforms: List[str] = ["hh"]
+    platforms: List[str] = ["all"]
     daily_limit: int = 10
 
 
@@ -611,6 +578,49 @@ async def login(body: LoginRequest):
     return {"token": token, "user_id": user["id"]}
 
 
+@app.post("/api/auth/login", summary="Login alias (returns access_token for frontend)")
+async def auth_login(body: LoginRequest):
+    user = await get_user_by_email(body.email, AUTOAPPLY_DB)
+    if not user or not _verify_password(body.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    token = _create_token(user["id"])
+    return {"access_token": token, "token": token, "user_id": user["id"]}
+
+
+@app.post("/api/auth/register", summary="Register alias (returns access_token for frontend)")
+async def auth_register(body: RegisterRequest):
+    if len(body.password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    from autoapply.email_sender import validate_email_mx
+    if not validate_email_mx(body.email):
+        raise HTTPException(status_code=400, detail="Please enter a valid email address")
+    existing = await get_user_by_email(body.email, AUTOAPPLY_DB)
+    if existing:
+        raise HTTPException(status_code=409, detail="Email already registered")
+    password_hash = _hash_password(body.password)
+    try:
+        user_id = await create_user(
+            email=body.email,
+            password_hash=password_hash,
+            telegram_id=body.telegram_id,
+            db_path=AUTOAPPLY_DB,
+        )
+    except Exception as exc:
+        logger.error("[api/auth/register] DB error: %s", exc)
+        raise HTTPException(status_code=500, detail="Registration error")
+    try:
+        await create_drip_sequence(user_id)
+    except Exception:
+        pass
+    try:
+        verify_token = await create_email_token(user_id, kind="verify", ttl_hours=24)
+        await asyncio.to_thread(send_verification_email, body.email, verify_token)
+    except Exception:
+        pass
+    token = _create_token(user_id)
+    return {"access_token": token, "token": token, "user_id": user_id, "email_sent": True}
+
+
 @app.get("/api/auth/me", summary="Get current authenticated user")
 async def auth_me(current_user: dict = Depends(get_current_user)):
     plan_name = current_user.get("plan", "free")
@@ -679,6 +689,50 @@ async def campaigns_list(current_user: dict = Depends(get_current_user)):
     return campaigns
 
 
+@app.post("/api/campaigns", summary="Create campaign (frontend-friendly alias)")
+async def campaigns_create_alias(
+    body: dict,
+    current_user: dict = Depends(get_current_user),
+):
+    """Accepts the frontend field schema and maps to internal create_campaign()."""
+    user_id = current_user["id"]
+    plan_name = current_user.get("plan", "free")
+    plan_info = PLANS.get(plan_name, PLANS["free"])
+
+    job_title = body.get("name") or body.get("job_title") or body.get("keywords") or ""
+    if not job_title:
+        raise HTTPException(status_code=400, detail="Campaign name or keywords required")
+
+    source = body.get("source", "all")
+    platforms = [source] if source and source != "all" else ["all"]
+
+    salary_raw = body.get("salary_from", 0)
+    try:
+        salary_min = int(salary_raw) if salary_raw else 0
+    except (ValueError, TypeError):
+        salary_min = 0
+
+    requested_limit = min(int(body.get("daily_limit", 10)), plan_info["daily_limit"])
+
+    try:
+        campaign_id = await create_campaign(
+            user_id=user_id,
+            job_title=job_title,
+            location=body.get("location", ""),
+            salary_min=salary_min,
+            experience=body.get("experience", ""),
+            platforms=platforms,
+            daily_limit=requested_limit,
+            db_path=AUTOAPPLY_DB,
+        )
+    except Exception as exc:
+        logger.error("[api/campaigns POST] error: %s", exc)
+        raise HTTPException(status_code=500, detail="Failed to create campaign")
+
+    asyncio.create_task(log_web_generation("autoapply", user_id))
+    return {"id": campaign_id, "campaign_id": campaign_id, "daily_limit": requested_limit}
+
+
 @app.get("/api/user/profile", summary="Get current user profile (plan, connections, resume)")
 async def user_profile(current_user: dict = Depends(get_current_user)):
     """Returns user profile with plan, connections status, and resume_text."""
@@ -690,7 +744,6 @@ async def user_profile(current_user: dict = Depends(get_current_user)):
         "telegram_id": current_user.get("telegram_id"),
         "resume_text": current_user.get("resume_text") or "",
         "connections": {
-            "hh": bool(current_user.get("hh_token")),
             "linkedin": bool(current_user.get("linkedin_email")),
             "telegram_id": current_user.get("telegram_id"),
         },
@@ -701,7 +754,6 @@ async def user_profile(current_user: dict = Depends(get_current_user)):
 async def user_connections(current_user: dict = Depends(get_current_user)):
     """Returns which external accounts are connected."""
     return {
-        "hh": bool(current_user.get("hh_token")),
         "linkedin": bool(current_user.get("linkedin_email")),
         "telegram_id": current_user.get("telegram_id"),
     }
@@ -759,6 +811,38 @@ async def campaign_resume(
         raise HTTPException(status_code=404, detail="Campaign not found")
     await update_campaign_status(campaign_id, "active", AUTOAPPLY_DB)
     return {"status": "active", "campaign_id": campaign_id}
+
+
+@app.patch("/api/campaigns/{campaign_id}", summary="Pause or resume a campaign")
+async def campaign_patch(
+    campaign_id: int,
+    body: dict,
+    current_user: dict = Depends(get_current_user),
+):
+    user_id = current_user["id"]
+    campaigns = await get_campaigns_for_user(user_id, AUTOAPPLY_DB)
+    if not any(c["id"] == campaign_id for c in campaigns):
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    requested = body.get("status", "")
+    # Normalise: frontend sends "running"/"paused", DB stores "active"/"paused"
+    db_status = "active" if requested in ("running", "active") else "paused"
+    await update_campaign_status(campaign_id, db_status, AUTOAPPLY_DB)
+    return {"status": requested, "campaign_id": campaign_id}
+
+
+@app.delete("/api/campaigns/{campaign_id}", summary="Delete a campaign")
+async def campaign_delete(
+    campaign_id: int,
+    current_user: dict = Depends(get_current_user),
+):
+    user_id = current_user["id"]
+    async with aiosqlite.connect(AUTOAPPLY_DB) as db:
+        await db.execute(
+            "DELETE FROM campaigns WHERE id = ? AND user_id = ?",
+            (campaign_id, user_id),
+        )
+        await db.commit()
+    return {"deleted": campaign_id}
 
 
 # ── Resume connect ────────────────────────────────────────────────────────────
@@ -1214,7 +1298,7 @@ async def demo_analyze(payload: dict, request: Request):
     if not url and not text:
         return JSONResponse({"error": "Укажите URL или текст вакансии"}, status_code=400)
 
-    # If URL provided, try to fetch page text (with hh.ru API support)
+    # If URL provided, try to fetch job page text
     job_text = text
     url_metadata = {}
     if url and not text:
@@ -1480,11 +1564,11 @@ async def admin_generate_blog_post(payload: dict, request: Request):
     topic = payload.get("topic", "")
     if not topic:
         topics = [
-            "Как получить оффер за 30 дней: пошаговый план поиска работы",
-            "Портфолио разработчика: что включить и как оформить",
-            "LinkedIn vs hh.ru: где искать работу в 2026",
-            "Как написать резюме на английском языке для международных компаний",
-            "5 причин почему рекрутеры не отвечают на ваш отклик",
+            "How to get a job offer in 30 days: a step-by-step plan",
+            "Developer portfolio: what to include and how to present it",
+            "LinkedIn vs Indeed: where to find jobs in 2026",
+            "How to write an English resume for international companies",
+            "5 reasons recruiters don't respond to your applications",
         ]
         import random
         topic = random.choice(topics)
@@ -1887,11 +1971,11 @@ async def help_question(body: HelpQuestionRequest):
     if not OPENROUTER_KEY:
         # Fallback FAQ
         faq = [
-            ("бесплатно", "Бесплатный план: 1 резюме, 1 письмо, 3 AI-запроса. Без кредитной карты."),
-            ("стоит", "Про-тариф — 990 ₽/месяц. Безлимит резюме, писем, ATS-анализ, авто-отклики."),
-            ("hh\\.ru|hh ", "Вставьте ссылку на вакансию с hh.ru — AI создаст резюме под неё за 30 секунд."),
-            ("пароль", "Нажмите «Забыли пароль?» на странице входа — пришлём ссылку на email."),
-            ("отмен", "Отменить подписку можно в личном кабинете в разделе «Тариф»."),
+            ("free", "Free plan: 10 applications/day, Greenhouse + Lever forms, AI resume tailoring. No credit card needed."),
+            ("price|cost|how much", "Pro plan — $19.99/month. 50 apps/day, all job boards, AI cover letters, priority queue."),
+            ("linkedin|greenhouse|lever|workable", "We support LinkedIn Easy Apply, Greenhouse, Lever, Workable, and Ashby forms."),
+            ("password", "Click 'Forgot password?' on the login page — we'll send a reset link to your email."),
+            ("cancel", "You can cancel your subscription anytime from the settings page."),
         ]
         import re as _re
         for kw, answer in faq:
@@ -2080,51 +2164,6 @@ async def serve_template_preview(template_id: str):
     return Response(content=html_ready, media_type="text/html")
 
 
-@app.get("/api/salary/insights", summary="Salary insights from hh.ru public data")
-async def salary_insights(title: str = Query(..., min_length=2), area: int = Query(1)):
-    """Returns min/max/median salary for a job title using hh.ru vacancy data."""
-    import httpx, statistics
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.get(
-                "https://api.hh.ru/vacancies",
-                params={"text": title, "area": area, "per_page": 100, "only_with_salary": True},
-                headers={"User-Agent": "ResumeAI/1.0 (resumeai-bot.ru)"},
-            )
-            data = resp.json()
-        items = data.get("items", [])
-        salaries = []
-        for item in items:
-            s = item.get("salary")
-            if not s:
-                continue
-            currency = s.get("currency", "RUR")
-            if currency not in ("RUR", "RUB"):
-                continue
-            low = s.get("from")
-            high = s.get("to")
-            if low and high:
-                salaries.append((low + high) / 2)
-            elif low:
-                salaries.append(low)
-            elif high:
-                salaries.append(high)
-
-        if not salaries:
-            return {"title": title, "area": area, "sample_size": 0, "message": "Данные о зарплате не найдены"}
-
-        return {
-            "title": title,
-            "area": area,
-            "currency": "RUB",
-            "min": int(min(salaries)),
-            "max": int(max(salaries)),
-            "median": int(statistics.median(salaries)),
-            "average": int(statistics.mean(salaries)),
-            "sample_size": len(salaries),
-        }
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"hh.ru API error: {exc}")
 
 
 # ── Interview Prep ────────────────────────────────────────────────────────────

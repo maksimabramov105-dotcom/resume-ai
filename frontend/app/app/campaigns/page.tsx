@@ -54,9 +54,13 @@ export default function CampaignsPage() {
 
   const deleteCampaign = async (id: number) => {
     if (!confirm('Delete this campaign?')) return;
-    await api.del(`/campaigns/${id}`);
-    setCampaigns(prev => prev.filter(c => c.id !== id));
-    showToast('Campaign deleted', 'info');
+    const res = await api.del(`/campaigns/${id}`);
+    if (res !== null) {
+      setCampaigns(prev => prev.filter(c => c.id !== id));
+      showToast('Campaign deleted', 'info');
+    } else {
+      showToast('Failed to delete campaign', 'error');
+    }
   };
 
   return (

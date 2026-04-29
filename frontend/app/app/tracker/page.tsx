@@ -71,7 +71,7 @@ export default function TrackerPage() {
     api.get<TrackerCard[]>('/tracker').then(data => {
       if (Array.isArray(data)) setCards(data);
       setLoading(false);
-    });
+    }).catch(() => setLoading(false));
   }, []);
 
   async function addCard(partial: Partial<TrackerCard>) {

@@ -26,25 +26,29 @@ export default function ApplicationsPage() {
 
   useEffect(() => {
     api.get<{ items?: Application[]; data?: Application[] } | Application[]>('/applications').then(raw => {
-      if (!raw) { setLoading(false); return; }
-      // API returns a paginated wrapper { items: [...] } or a raw array
-      const list: any[] = Array.isArray(raw)
-        ? raw
-        : ((raw as any).items ?? (raw as any).data ?? []);
-      // Normalize field names from DB (vacancy_title, company_name, vacancy_url, platform)
-      const normalized: Application[] = list.map((r: any) => ({
-        id: r.id,
-        campaign_id: r.campaign_id ?? 0,
-        company: r.company_name ?? r.company ?? '',
-        position: r.vacancy_title ?? r.position ?? '',
-        url: r.vacancy_url ?? r.url ?? '',
-        status: r.status ?? 'sent',
-        applied_at: r.applied_at ?? r.sent_at ?? '',
-        source: r.platform ?? r.source ?? '',
-      }));
-      setApps(normalized);
+      try {
+        if (!raw) { setLoading(false); return; }
+        // API returns a paginated wrapper { items: [...] } or a raw array
+        const list: any[] = Array.isArray(raw)
+          ? raw
+          : ((raw as any).items ?? (raw as any).data ?? []);
+        // Normalize field names from DB (vacancy_title, company_name, vacancy_url, platform)
+        const normalized: Application[] = list.map((r: any) => ({
+          id: r.id,
+          campaign_id: r.campaign_id ?? 0,
+          company: r.company_name ?? r.company ?? '',
+          position: r.vacancy_title ?? r.position ?? '',
+          url: r.vacancy_url ?? r.url ?? '',
+          status: r.status ?? 'sent',
+          applied_at: r.applied_at ?? r.sent_at ?? '',
+          source: r.platform ?? r.source ?? '',
+        }));
+        setApps(normalized);
+      } catch (e) {
+        console.error('[applications] normalization error:', e);
+      }
       setLoading(false);
-    });
+    }).catch(() => setLoading(false));
   }, []);
 
   const filtered = apps.filter(a => {
