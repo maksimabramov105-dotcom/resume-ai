@@ -20,6 +20,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
+from fastapi.exception_handlers import http_exception_handler
 from jose import JWTError, jwt
 from pydantic import BaseModel
 
@@ -84,6 +85,14 @@ logging.basicConfig(
     ],
 )
 logger = logging.getLogger("autoapply_main")
+
+# ── Sentry (graceful no-op if SENTRY_DSN not set) ────────────────────────────
+_sentry_dsn = os.getenv("SENTRY_DSN", "")
+if _sentry_dsn:
+    import sentry_sdk
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
+    sentry_sdk.init(dsn=_sentry_dsn, traces_sample_rate=0.1, integrations=[FastApiIntegration()])
+    logger.info("Sentry initialised (autoapply_main)")
 
 import httpx as _httpx_module  # noqa: E402 — used in helpers below
 
@@ -216,6 +225,15 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "Accept"],
 )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    logger.exception("Unhandled error on %s %s: %s", request.method, request.url.path, exc)
+    if _sentry_dsn:
+        import sentry_sdk
+        sentry_sdk.capture_exception(exc)
+    return JSONResponse(status_code=500, content={"error": "internal_server_error"})
 
 
 @app.middleware("http")

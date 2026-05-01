@@ -1,7 +1,8 @@
 import asyncio
+import os
 
 from openai import AsyncOpenAI
-import os
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 # Поддержка OpenRouter и обычного OpenAI
 # Если OPENROUTER_API_KEY задан — используем OpenRouter
@@ -21,26 +22,33 @@ else:
     client = AsyncOpenAI(api_key=_openai_key)
 
 
+@retry(
+    retry=retry_if_exception_type(Exception),
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    reraise=True,
+)
+async def _chat_completion_with_retry(model, messages, max_tokens, temperature):
+    return await asyncio.wait_for(
+        client.chat.completions.create(
+            model=model,
+            messages=messages,
+            max_tokens=max_tokens,
+            temperature=temperature,
+        ),
+        timeout=45.0,
+    )
+
+
 async def chat_completion(
     messages: list,
     model: str = "gpt-4o-mini",
     max_tokens: int = 2000,
     temperature: float = 0.7,
 ) -> tuple[str, int]:
-    """
-    Universal method for all bot features.
-    Returns (response text, tokens used).
-    """
+    """Universal method for all bot features. Returns (response text, tokens used)."""
     try:
-        response = await asyncio.wait_for(
-            client.chat.completions.create(
-                model=model,
-                messages=messages,
-                max_tokens=max_tokens,
-                temperature=temperature,
-            ),
-            timeout=45.0,
-        )
+        response = await _chat_completion_with_retry(model, messages, max_tokens, temperature)
         text = response.choices[0].message.content
         tokens = response.usage.total_tokens
         return text, tokens

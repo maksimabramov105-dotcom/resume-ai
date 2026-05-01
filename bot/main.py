@@ -10,6 +10,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.types import ErrorEvent
 
 from config import BOT_TOKEN
 from database.db import init_db
@@ -22,6 +23,13 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+# ── Sentry (graceful no-op if SENTRY_DSN not set) ────────────────────────────
+_sentry_dsn = os.getenv("SENTRY_DSN", "")
+if _sentry_dsn:
+    import sentry_sdk
+    sentry_sdk.init(dsn=_sentry_dsn, traces_sample_rate=0.1)
+    logger.info("Sentry initialised")
 
 
 async def main():
@@ -55,6 +63,19 @@ async def main():
         logger.info("Bot description updated.")
     except Exception as e:
         logger.warning("Could not set bot description: %s", e)
+
+    @dp.errors()
+    async def global_error_handler(event: ErrorEvent) -> bool:
+        logger.exception(
+            "Unhandled bot error in update %s: %s",
+            event.update.update_id if event.update else "?",
+            event.exception,
+            exc_info=event.exception,
+        )
+        if _sentry_dsn:
+            import sentry_sdk
+            sentry_sdk.capture_exception(event.exception)
+        return True  # mark handled — prevents aiogram from re-raising
 
     logger.info("Bot started.")
     asyncio.create_task(checkin_loop(bot))  # T+24h onboarding check-in background task

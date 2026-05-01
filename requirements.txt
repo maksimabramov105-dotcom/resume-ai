@@ -24,3 +24,5 @@ beautifulsoup4
 aiofiles
 requests
 praw
+sentry-sdk[fastapi]
+tenacity

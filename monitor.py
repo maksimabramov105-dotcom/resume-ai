@@ -52,8 +52,13 @@ DISK_MIN_MB    = 500   # alert if less than this many MB free
 
 SERVICES = ["resumeaibot", "autoapply", "autoapply-worker"]
 
+MAX_AUTO_RESTARTS = 5          # stop auto-restarting after this many consecutive failures
+RESTART_COOLDOWN_CYCLES = 12   # resume auto-restart after ~1 hour of not trying (12 × 5 min)
+
 # Tracks consecutive failure count per service/check
 _failure_counts: dict[str, int] = {}
+_restart_counts: dict[str, int] = {}   # auto-restarts since last recovery
+_cooldown_counts: dict[str, int] = {}  # cycles waited during cooldown
 _was_healthy = True   # used to send "recovered" message
 
 
@@ -155,13 +160,32 @@ def run_checks() -> list[str]:
     for service in SERVICES:
         if not is_service_active(service):
             _failure_counts[service] = _failure_counts.get(service, 0) + 1
-            log.warning("Service down: %s (failure #%d)", service, _failure_counts[service])
+            restarts = _restart_counts.get(service, 0)
+            cooldown = _cooldown_counts.get(service, 0)
+            log.warning("Service down: %s (failure #%d, restarts=%d)", service, _failure_counts[service], restarts)
 
-            restarted = restart_service(service)
-            status = "restarted ✅" if restarted else "restart FAILED ❌"
-            failures.append(f"<code>{service}</code> was down → {status}")
+            if restarts >= MAX_AUTO_RESTARTS:
+                # In cooldown — wait before trying again
+                _cooldown_counts[service] = cooldown + 1
+                if cooldown + 1 >= RESTART_COOLDOWN_CYCLES:
+                    log.info("Cooldown expired for %s — resetting restart counter", service)
+                    _restart_counts[service] = 0
+                    _cooldown_counts[service] = 0
+                failures.append(
+                    f"<code>{service}</code> down — auto-restart paused after {restarts} attempts"
+                )
+            else:
+                restarted = restart_service(service)
+                if restarted:
+                    _restart_counts[service] = restarts + 1
+                    status = f"restarted ✅ ({restarts + 1}/{MAX_AUTO_RESTARTS})"
+                else:
+                    status = "restart FAILED ❌"
+                failures.append(f"<code>{service}</code> was down → {status}")
         else:
             _failure_counts[service] = 0
+            _restart_counts[service] = 0
+            _cooldown_counts[service] = 0
 
     # 2. HTTP health endpoint
     if not check_http(API_HEALTH):
@@ -174,11 +198,17 @@ def run_checks() -> list[str]:
     if not check_bot_polling():
         _failure_counts["bot_polling"] = _failure_counts.get("bot_polling", 0) + 1
         if _failure_counts["bot_polling"] >= 2:  # two consecutive checks
-            log.warning("Bot polling appears stuck — restarting resumeaibot")
-            restart_service("resumeaibot")
-            failures.append("Bot polling stuck → resumeaibot restarted")
+            poll_restarts = _restart_counts.get("bot_polling", 0)
+            if poll_restarts < MAX_AUTO_RESTARTS:
+                log.warning("Bot polling appears stuck — restarting resumeaibot")
+                restart_service("resumeaibot")
+                _restart_counts["bot_polling"] = poll_restarts + 1
+                failures.append(f"Bot polling stuck → resumeaibot restarted ({poll_restarts + 1}/{MAX_AUTO_RESTARTS})")
+            else:
+                failures.append("Bot polling stuck — auto-restart paused (manual intervention needed)")
     else:
         _failure_counts["bot_polling"] = 0
+        _restart_counts["bot_polling"] = 0
 
     # 4. Disk space
     disk_ok, free_mb = check_disk()
