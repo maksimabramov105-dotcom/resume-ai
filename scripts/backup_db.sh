@@ -50,3 +50,15 @@ echo "[PRUNE] removed ${pruned} backup(s) older than ${KEEP_DAYS} days"
 # fi
 
 echo "=== Backup finished at $(date -u '+%Y-%m-%dT%H:%M:%SZ') ==="
+
+# ── Telegram notification (offsite awareness, no file transfer) ───────────────
+if [ -n "${BOT_TOKEN:-}" ] && [ -n "${ADMIN_TELEGRAM_ID:-}" ]; then
+    BOT_SIZE=$(du -sh "${BACKUP_DIR}/bot.${TIMESTAMP}.db"       2>/dev/null | cut -f1 || echo "?")
+    AA_SIZE=$(du -sh  "${BACKUP_DIR}/autoapply.${TIMESTAMP}.db" 2>/dev/null | cut -f1 || echo "?")
+    BOT_SHA=$(sha256sum "${BACKUP_DIR}/bot.${TIMESTAMP}.db"       2>/dev/null | cut -c1-12 || echo "?")
+    AA_SHA=$(sha256sum  "${BACKUP_DIR}/autoapply.${TIMESTAMP}.db" 2>/dev/null | cut -c1-12 || echo "?")
+    MSG="✅ DB backup ${TIMESTAMP}%0Abot.db: ${BOT_SIZE} (sha256: ${BOT_SHA}...)%0Aautoapply.db: ${AA_SIZE} (sha256: ${AA_SHA}...)%0APruned: ${pruned} old file(s)"
+    curl -fsS --max-time 10 \
+        "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${ADMIN_TELEGRAM_ID}&text=${MSG}" \
+        > /dev/null 2>&1 || echo "[WARN] Telegram notification failed (backup intact)"
+fi

@@ -88,9 +88,27 @@ logger = logging.getLogger("autoapply_main")
 import httpx as _httpx_module  # noqa: E402 — used in helpers below
 
 
+_JOB_URL_WHITELIST = (
+    "linkedin.com", "remotive.com", "adzuna.com", "adzuna.co.uk",
+    "headhunter.fi", "greenhouse.io", "lever.co", "workable.com",
+    "indeed.com", "glassdoor.com", "arbeitnow.com", "themuse.com",
+    "remoteok.com", "wellfound.com", "simplyhired.com",
+)
+
+
 async def _fetch_job_text_from_url(url: str) -> tuple:
-    """Fetch job description from URL. Returns (job_text, metadata_dict)."""
-    # Generic URL fetch
+    """Fetch job description from a whitelisted job-board URL."""
+    from urllib.parse import urlparse as _urlparse
+    try:
+        host = _urlparse(url).hostname or ""
+        host = host.lower().lstrip("www.")
+    except Exception:
+        host = ""
+
+    if not any(host == d or host.endswith("." + d) for d in _JOB_URL_WHITELIST):
+        logger.warning("[ssrf] blocked fetch for non-whitelisted host: %s", host)
+        raise HTTPException(status_code=400, detail=f"URL host not allowed: {host}")
+
     try:
         async with _httpx_module.AsyncClient(timeout=10, follow_redirects=True) as client:
             r = await client.get(url, headers={"User-Agent": "Mozilla/5.0 (compatible; ResumeAI/1.0)"})
@@ -99,8 +117,10 @@ async def _fetch_job_text_from_url(url: str) -> tuple:
             job_text = _re2.sub(r'<[^>]+>', ' ', raw)
             job_text = _re2.sub(r'\s+', ' ', job_text).strip()[:4000]
             return job_text, {}
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.warning(f"URL fetch failed for {url}: {e}")
+        logger.warning("URL fetch failed for %s: %s", url, e)
         return f"Job posting from URL: {url}", {}
 
 
@@ -227,6 +247,7 @@ from collections import defaultdict as _defaultdict
 _rate_windows: dict = _defaultdict(list)
 
 # Heavy AI paths → 20 req/min per IP.  General API → 100 req/min per IP.
+# Auth paths → 5 req/15 min per IP (brute-force protection).
 _AI_HEAVY_PATHS = {
     "/api/generate-cover-letter",
     "/api/interview/evaluate",
@@ -234,6 +255,13 @@ _AI_HEAVY_PATHS = {
     "/api/salary/insights",
     "/api/resume/templates",
     "/api/resume/generate-pdf",
+}
+_AUTH_PATHS = {
+    "/api/login",
+    "/api/auth/login",
+    "/api/register",
+    "/api/auth/register",
+    "/api/auth/vk-login",
 }
 _AI_GENERAL_TOKENS = {"generate", "ai", "resume", "interview", "cover", "salary"}
 
@@ -249,21 +277,34 @@ async def logging_and_rate_limit_middleware(request: Request, call_next):
 
     # Rate limiting for /api/* endpoints only
     if path.startswith("/api/"):
-        if path in _AI_HEAVY_PATHS:
-            limit = 20
+        if path in _AUTH_PATHS:
+            # Auth endpoints: 5 attempts per 15 minutes per IP
+            now = _time.time()
+            window_key = f"{client_ip}:{path}"
+            fresh = [t for t in _rate_windows[window_key] if now - t < 900]
+            if len(fresh) >= 5:
+                logger.warning("[rate_limit] auth brute-force %s blocked on %s (%d/15min)", client_ip, path, len(fresh))
+                return JSONResponse(
+                    {"error": "too_many_attempts", "retry_after": 900},
+                    status_code=429,
+                )
+            fresh.append(now)
+            _rate_windows[window_key] = fresh
+        elif path in _AI_HEAVY_PATHS:
+            limit, window = 20, 60
         elif any(tok in path for tok in _AI_GENERAL_TOKENS):
-            limit = 100
+            limit, window = 100, 60
         else:
             limit = None
 
-        if limit is not None:
+        if path not in _AUTH_PATHS and limit is not None:
             now = _time.time()
             window_key = f"{client_ip}:{path}"
-            fresh = [t for t in _rate_windows[window_key] if now - t < 60]
+            fresh = [t for t in _rate_windows[window_key] if now - t < window]
             if len(fresh) >= limit:
                 logger.warning("[rate_limit] %s blocked on %s (%d/%d req/min)", client_ip, path, len(fresh), limit)
                 return JSONResponse(
-                    {"error": "rate_limit_exceeded", "retry_after": 60},
+                    {"error": "rate_limit_exceeded", "retry_after": window},
                     status_code=429,
                 )
             fresh.append(now)

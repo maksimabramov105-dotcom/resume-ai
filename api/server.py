@@ -12,12 +12,21 @@ from api.routes import user, resume, cover_letter, interview, vacancy, assistant
 
 app = FastAPI(title="РезюмеАИ API", version="1.0")
 
+_ALLOWED_ORIGINS = [
+    o.strip()
+    for o in os.getenv(
+        "ALLOWED_ORIGINS",
+        "https://resumeai-bot.ru,https://www.resumeai-bot.ru,https://web.telegram.org",
+    ).split(",")
+    if o.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "X-Telegram-Init-Data"],
 )
 
 app.include_router(user.router,         prefix="/api/user",         tags=["User"])

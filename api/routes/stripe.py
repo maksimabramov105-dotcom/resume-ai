@@ -88,6 +88,43 @@ async def _telegram_id_from_customer(stripe_customer_id: str) -> Optional[int]:
         return None
 
 
+async def _ensure_stripe_events_table() -> None:
+    """Create stripe_events table for idempotency (once, on first webhook call)."""
+    async with aiosqlite.connect(AUTOAPPLY_DB) as db:
+        await db.execute(
+            """CREATE TABLE IF NOT EXISTS stripe_events (
+                event_id TEXT PRIMARY KEY,
+                processed_at TEXT NOT NULL
+            )"""
+        )
+        await db.commit()
+
+
+async def _is_event_processed(event_id: str) -> bool:
+    """Return True if this Stripe event_id was already handled."""
+    try:
+        async with aiosqlite.connect(AUTOAPPLY_DB) as db:
+            async with db.execute(
+                "SELECT 1 FROM stripe_events WHERE event_id=?", (event_id,)
+            ) as cur:
+                return await cur.fetchone() is not None
+    except Exception:
+        return False
+
+
+async def _mark_event_processed(event_id: str) -> None:
+    from datetime import datetime
+    try:
+        async with aiosqlite.connect(AUTOAPPLY_DB) as db:
+            await db.execute(
+                "INSERT OR IGNORE INTO stripe_events (event_id, processed_at) VALUES (?, ?)",
+                (event_id, datetime.utcnow().isoformat()),
+            )
+            await db.commit()
+    except Exception as exc:
+        logger.warning("[stripe] _mark_event_processed error: %s", exc)
+
+
 async def _activate_subscription(telegram_id: int, tier: str) -> None:
     from datetime import datetime, timedelta
     plan_info = PLANS.get(tier, PLANS.get("pro"))
@@ -196,7 +233,13 @@ async def stripe_webhook(
         raise HTTPException(status_code=400, detail="Invalid signature")
 
     event_type = event["type"]
-    logger.info("[stripe] event type=%s id=%s", event_type, event.get("id"))
+    event_id = event.get("id", "")
+    logger.info("[stripe] event type=%s id=%s", event_type, event_id)
+
+    await _ensure_stripe_events_table()
+    if event_id and await _is_event_processed(event_id):
+        logger.info("[stripe] duplicate event %s ignored", event_id)
+        return {"received": True}
 
     if event_type == "checkout.session.completed":
         session = event["data"]["object"]
@@ -214,6 +257,8 @@ async def stripe_webhook(
             await _save_customer_mapping(telegram_id, customer_id)
 
         await _activate_subscription(telegram_id, tier)
+        if event_id:
+            await _mark_event_processed(event_id)
 
         tier_label = tier.title()
         await send_telegram_message(
@@ -235,6 +280,8 @@ async def stripe_webhook(
             return {"received": True}
 
         await _deactivate_subscription(telegram_id)
+        if event_id:
+            await _mark_event_processed(event_id)
         await send_telegram_message(
             telegram_id,
             "Your ResumeAI subscription has been cancelled. "
