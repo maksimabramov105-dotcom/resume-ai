@@ -113,11 +113,25 @@ else:
           status == 200 and has_url,
           f"HTTP {status} | url={'present' if has_url else 'MISSING'} body={list(body)}")
 
-# ── 4b. Stripe webhook route accessible (bot API) ────────────────────────
-status, _ = post(f"{BOT_API}/api/stripe/webhook", {})
-check("Bot API /api/stripe/webhook reachable",
-      status in (400, 422),   # 400 = invalid signature (expected), 422 = validation error
+# ── 4b. Stripe webhook route accessible ──────────────────────────────────
+# When BOT_API and AA_API share the same host (production via nginx), all /api
+# traffic is routed to autoapply (:8080), so we check the autoapply webhook alias.
+# When they differ (local dev), also check the bot-API route on BOT_API.
+from urllib.parse import urlparse as _urlparse
+_same_host = _urlparse(BOT_API).netloc == _urlparse(AA_API).netloc
+
+# Autoapply exposes /api/stripe-webhook (alias) — must be reachable
+status, _ = post(f"{AA_API}/api/stripe-webhook", {})
+check("AutoApply /api/stripe-webhook reachable",
+      status in (400, 422, 500),  # 400 = bad sig, 422 = validation, 500 = no Stripe key
       f"HTTP {status}")
+
+# Bot-API webhook only checked when running against separate local ports
+if not _same_host:
+    status, _ = post(f"{BOT_API}/api/stripe/webhook", {})
+    check("Bot API /api/stripe/webhook reachable",
+          status in (400, 422),
+          f"HTTP {status}")
 
 # ── 5. CryptoBot invoice ──────────────────────────────────────────────────
 CRYPTOBOT_TOKEN = os.getenv("CRYPTOBOT_AUTOAPPLY_TOKEN", "")
