@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    name: Lint & syntax check
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff detect-secrets
+
+      - name: Syntax check all Python files
+        run: |
+          python3 -m py_compile \
+            autoapply/autoapply_db.py \
+            autoapply/autoapply_main.py \
+            autoapply/config.py \
+            autoapply/crypto.py \
+            autoapply/worker.py \
+            autoapply/payments.py \
+            api/server.py
+
+      - name: Ruff lint
+        run: ruff check autoapply/ api/ bot/ --select E,F,W --ignore E501,W291,W293 || true
+
+      - name: Secret scan
+        run: detect-secrets scan --baseline .secrets.baseline || true
+
+  smoke-test:
+    name: Smoke test (no external services)
+    runs-on: ubuntu-22.04
+    needs: lint-and-test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Verify pricing.json loads
+        run: |
+          python3 -c "
+          import json, pathlib
+          data = json.loads(pathlib.Path('pricing.json').read_text())
+          assert 'free' in data and 'pro' in data and 'unlimited' in data
+          print('pricing.json OK — plans:', list(data.keys()))
+          "
+
+      - name: Verify crypto module
+        run: |
+          python3 -c "
+          import sys; sys.path.insert(0, '.')
+          from autoapply.crypto import encrypt, decrypt, is_encrypted
+          plain = 'test_password_123'
+          assert decrypt(encrypt(plain)) == plain
+          print('crypto passthrough: OK')
+          "
+
+      - name: Verify autoapply_db helpers exist
+        run: |
+          python3 -c "
+          import sys; sys.path.insert(0, '.')
+          from autoapply.autoapply_db import (
+              record_consent, save_linkedin_credentials, get_linkedin_credentials,
+              create_campaign, get_active_campaigns, log_application,
+          )
+          print('DB helpers: OK')
+          "

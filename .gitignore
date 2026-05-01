@@ -19,7 +19,7 @@ seo/manual_submissions/
 content_marketing/content_output/
 content_marketing/logs/
 seo/.DS_Store
-.github/workflows/
+# .github/workflows tracked (CI pipelines live here)
 
 # Lead-gen data — may contain personal data / scraped content
 data/leads.csv

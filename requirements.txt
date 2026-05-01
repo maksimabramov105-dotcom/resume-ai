@@ -1,28 +1,56 @@
-aiogram
-openai
-sqlalchemy
-aiosqlite
-fpdf2
-aiocryptopay
-python-dotenv
-aiohttp
-fastapi
-uvicorn[standard]
-greenlet
-apscheduler
-stripe>=7.0.0
-dnspython>=2.6.0
-httpx
-playwright
-posthog
-tweepy
-python-jose[cryptography]
-passlib[bcrypt]
-python-multipart
-reportlab
-beautifulsoup4
-aiofiles
-requests
-praw
-sentry-sdk[fastapi]
-tenacity
+# ── Core bot / framework ─────────────────────────────────────────────────────
+aiogram==3.27.0
+aiosqlite==0.22.1
+aiohttp>=3.9,<4.0
+aiofiles>=23.2,<25.0
+
+# ── FastAPI / web ─────────────────────────────────────────────────────────────
+fastapi==0.136.1
+uvicorn[standard]==0.46.0
+python-multipart==0.0.27
+httpx==0.28.1
+requests>=2.31,<3.0
+
+# ── AI / LLM ─────────────────────────────────────────────────────────────────
+openai==2.33.0
+
+# ── Auth / tokens ─────────────────────────────────────────────────────────────
+python-jose[cryptography]==3.5.0
+bcrypt==5.0.0
+cryptography==47.0.0
+
+# ── Payments ─────────────────────────────────────────────────────────────────
+stripe==15.1.0
+aiocryptopay>=1.0,<2.0
+
+# ── Database / ORM ───────────────────────────────────────────────────────────
+sqlalchemy>=2.0,<3.0
+greenlet>=3.0,<4.0
+
+# ── Scheduling ───────────────────────────────────────────────────────────────
+apscheduler>=3.10,<4.0
+
+# ── PDF / documents ──────────────────────────────────────────────────────────
+fpdf2>=2.7,<3.0
+reportlab>=4.0,<5.0
+
+# ── Scraping / parsing ────────────────────────────────────────────────────────
+playwright>=1.40,<2.0
+beautifulsoup4>=4.12,<5.0
+
+# ── DNS / email validation ────────────────────────────────────────────────────
+dnspython==2.8.0
+
+# ── Observability ─────────────────────────────────────────────────────────────
+sentry-sdk[fastapi]==2.58.0
+posthog==7.13.2
+
+# ── Resilience ───────────────────────────────────────────────────────────────
+tenacity==9.1.4
+
+# ── Social / marketing ────────────────────────────────────────────────────────
+tweepy>=4.14,<5.0
+praw>=7.7,<8.0
+
+# ── Env ───────────────────────────────────────────────────────────────────────
+python-dotenv>=1.0,<2.0

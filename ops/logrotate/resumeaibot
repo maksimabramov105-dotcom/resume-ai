@@ -1,0 +1,19 @@
+# logrotate config for Resume AI Bot logs
+# Deploy: cp ops/logrotate/resumeaibot /etc/logrotate.d/resumeaibot
+# Test:   logrotate -d /etc/logrotate.d/resumeaibot
+
+/opt/resumeaibot/logs/*.log {
+    daily
+    missingok
+    rotate 14
+    compress
+    delaycompress
+    notifempty
+    create 0640 root root
+    sharedscripts
+    postrotate
+        # Signal uvicorn/FastAPI to reopen log files (no-op if already using syslog)
+        systemctl reload-or-restart autoapply 2>/dev/null || true
+        systemctl reload-or-restart resumeaibot 2>/dev/null || true
+    endscript
+}
