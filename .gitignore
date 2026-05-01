@@ -26,3 +26,6 @@ data/leads.csv
 data/drafts.csv
 data/outreach_log.csv
 data/tg_outreach_log.csv
+
+# Audit snapshots (local only, never commit)
+audit/
