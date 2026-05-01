@@ -89,37 +89,20 @@ async def _fetch_vacancies(
         )
         return cached
 
+    # Map legacy/CIS platforms to English job sources
+    _LEGACY_PLATFORM_MAP = {"hh": "all", "superjob": "all", "zarplata": "all"}
+    if platform in _LEGACY_PLATFORM_MAP:
+        new_platform = _LEGACY_PLATFORM_MAP[platform]
+        logger.warning(
+            "[worker] platform=%s is no longer supported, remapping to %s", platform, new_platform
+        )
+        platform = new_platform
+
     vacancies = []
     try:
-        if platform == "hh":
-            scrapers_path = os.path.join(ROOT, "scrapers")
-            if scrapers_path not in sys.path:
-                sys.path.insert(0, scrapers_path)
-            from hh_scraper import scrape_vacancies  # type: ignore
-            vacancies = await scrape_vacancies(
-                job_title=job_title,
-                location=location,
-                salary_min=salary_min,
-                experience=experience,
-                max_vacancies=200,
-            )
-        elif platform == "superjob":
-            scrapers_path = os.path.join(ROOT, "scrapers")
-            if scrapers_path not in sys.path:
-                sys.path.insert(0, scrapers_path)
-            from superjob_scraper import scrape_vacancies as sj_scrape  # type: ignore
-            sj_api_key = os.getenv("SUPERJOB_API_KEY", "")
-            vacancies = await sj_scrape(
-                job_title=job_title,
-                location=location,
-                salary_min=salary_min,
-                experience=experience,
-                max_vacancies=200,
-                api_key=sj_api_key,
-            )
-        elif platform in ("adzuna", "themuse", "arbeitnow", "remoteok") or platform == "english":
+        if platform in ("adzuna", "themuse", "arbeitnow", "remoteok", "linkedin", "all", "english"):
             from autoapply.english_job_engine import search_english_jobs
-            sources = [platform] if platform != "english" else ENGLISH_JOB_SOURCES
+            sources = ENGLISH_JOB_SOURCES if platform in ("all", "english") else [platform]
             vacancies = await search_english_jobs(
                 query=job_title,
                 location=location,
@@ -183,34 +166,6 @@ async def _generate_resume(user: dict, vacancy: dict) -> str:
         return base_resume
 
 
-async def _try_apply_hh(user: dict, vacancy: dict, resume_text: str) -> bool:
-    """
-    Attempt to submit an application via hh_applicator.
-    Returns True on success.
-    """
-    hh_token = user.get("hh_token")
-    hh_resume_id = user.get("hh_resume_id")
-    if not hh_token or not hh_resume_id:
-        return False
-
-    try:
-        applicator_path = os.path.join(ROOT, "scrapers")
-        if applicator_path not in sys.path:
-            sys.path.insert(0, applicator_path)
-        from hh_applicator import apply_to_vacancy  # type: ignore
-        success = await apply_to_vacancy(
-            vacancy_id=str(vacancy.get("id", "")),
-            resume_id=hh_resume_id,
-            access_token=hh_token,
-            cover_letter=resume_text[:500] if resume_text else "",
-        )
-        return bool(success)
-    except ImportError:
-        logger.debug("[worker] hh_applicator not available")
-        return False
-    except Exception as exc:
-        logger.warning("[worker] hh_applicator error: %s", exc)
-        return False
 
 
 async def _apply_english_job(user: dict, vacancy: dict, resume_text: str, cover_letter: str) -> bool:
@@ -266,7 +221,7 @@ async def process_campaign(campaign: dict) -> int:
     location = campaign.get("location", "")
     salary_min = campaign.get("salary_min", 0)
     experience = campaign.get("experience", "")
-    platforms = campaign.get("platforms", ["hh"])
+    platforms = campaign.get("platforms", ["all"])
     campaign_daily_limit = campaign.get("daily_limit", 10)
 
     logger.info(
@@ -331,19 +286,13 @@ async def process_campaign(campaign: dict) -> int:
 
             # Generate cover letter for English jobs
             cover_letter = ""
-            if platform in ("adzuna", "themuse", "arbeitnow", "remoteok", "english"):
-                try:
-                    from autoapply.english_job_engine import generate_cover_letter
-                    cover_letter = await generate_cover_letter(resume_text, vacancy)
-                except Exception as _cl_exc:
-                    logger.debug("[worker] cover letter generation failed: %s", _cl_exc)
+            try:
+                from autoapply.english_job_engine import generate_cover_letter
+                cover_letter = await generate_cover_letter(resume_text, vacancy)
+            except Exception as _cl_exc:
+                logger.debug("[worker] cover letter generation failed: %s", _cl_exc)
 
-            # Try actual API application
-            applied_via_api = False
-            if platform == "hh":
-                applied_via_api = await _try_apply_hh(user, vacancy, resume_text)
-            elif platform in ("adzuna", "themuse", "arbeitnow", "remoteok", "english"):
-                applied_via_api = await _apply_english_job(user, vacancy, resume_text, cover_letter)
+            applied_via_api = await _apply_english_job(user, vacancy, resume_text, cover_letter)
 
             apply_status = "sent" if applied_via_api else "queued"
 
