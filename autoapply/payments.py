@@ -51,10 +51,11 @@ async def create_invoice(user_id: int, plan: str, db_path: str = AUTOAPPLY_DB) -
         )
 
     plan_info = PLANS.get(plan)
-    if not plan_info or plan_info["price_rub"] == 0:
+    if not plan_info or plan_info.get("price_usd", 0) == 0:
         raise ValueError(f"Invalid or free plan: {plan!r}")
 
-    amount_rub = plan_info["price_rub"]
+    # Use price_rub if available, else convert from USD
+    amount_rub = plan_info.get("price_rub") or round(plan_info["price_usd"] * USDT_RUB_RATE, 0)
     amount_usdt = round(amount_rub / USDT_RUB_RATE, 2)
 
     payload_str = f"{user_id}_{plan}"
@@ -178,6 +179,37 @@ async def get_invoice_status(invoice_id: int) -> str:
 
 # ── Payment processing ────────────────────────────────────────────────────────
 
+async def _is_invoice_processed(invoice_id: int, db_path: str) -> bool:
+    """Return True if this CryptoBot invoice_id was already handled."""
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            await db.execute(
+                """CREATE TABLE IF NOT EXISTS cryptobot_events (
+                    invoice_id INTEGER PRIMARY KEY,
+                    processed_at TEXT NOT NULL
+                )"""
+            )
+            await db.commit()
+            async with db.execute(
+                "SELECT 1 FROM cryptobot_events WHERE invoice_id=?", (invoice_id,)
+            ) as cur:
+                return await cur.fetchone() is not None
+    except Exception:
+        return False
+
+
+async def _mark_invoice_processed(invoice_id: int, db_path: str) -> None:
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            await db.execute(
+                "INSERT OR IGNORE INTO cryptobot_events (invoice_id, processed_at) VALUES (?, ?)",
+                (invoice_id, datetime.utcnow().isoformat()),
+            )
+            await db.commit()
+    except Exception as exc:
+        logger.warning("[payments] _mark_invoice_processed error: %s", exc)
+
+
 async def process_payment(payload: dict, db_path: str = AUTOAPPLY_DB) -> bool:
     """
     Handle a confirmed CryptoBot webhook event (update_type == "invoice_paid").
@@ -189,6 +221,15 @@ async def process_payment(payload: dict, db_path: str = AUTOAPPLY_DB) -> bool:
     if update_type != "invoice_paid":
         logger.info("[payments] process_payment: ignoring update_type=%s", update_type)
         return False
+
+    # Idempotency: skip already-processed invoices
+    invoice = payload.get("payload", {})
+    if not isinstance(invoice, dict):
+        invoice = payload
+    invoice_id = invoice.get("invoice_id")
+    if invoice_id and await _is_invoice_processed(invoice_id, db_path):
+        logger.info("[payments] duplicate CryptoBot invoice %s ignored", invoice_id)
+        return True
 
     invoice = payload.get("payload", {})
     if not isinstance(invoice, dict):
@@ -241,6 +282,8 @@ async def process_payment(payload: dict, db_path: str = AUTOAPPLY_DB) -> bool:
         return False
 
     logger.info("[payments] user_id=%s upgraded to plan=%s (limit=%s)", user_id, plan, daily_limit)
+    if invoice_id:
+        await _mark_invoice_processed(invoice_id, db_path)
 
     # Fetch telegram_id for notification
     telegram_id: Optional[int] = None

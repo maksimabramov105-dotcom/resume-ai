@@ -1423,6 +1423,24 @@ Job posting:
 
 
 # ── Health check ──────────────────────────────────────────────────────────────
+@app.get("/api/pricing", summary="Get plan pricing (no auth)")
+async def get_pricing():
+    """Returns plan definitions from pricing.json — single source of truth for the frontend."""
+    from autoapply.config import PLANS
+    # Expose only fields safe for public consumption (no internal keys)
+    public = {}
+    for tier, info in PLANS.items():
+        public[tier] = {
+            "label":       info.get("label", tier.title()),
+            "daily_limit": info.get("daily_limit", 0),
+            "price_usd":   info.get("price_usd", 0),
+            "price_rub":   info.get("price_rub", 0),
+            "trial_days":  info.get("trial_days", 0),
+            "features":    info.get("features", []),
+        }
+    return public
+
+
 @app.get("/api/health", summary="Health check (no auth)")
 async def health():
     ts = datetime.utcnow().isoformat() + "Z"

@@ -1,0 +1,38 @@
+{
+  "_comment": "Single source of truth for plan pricing. Loaded by config.py and served at /api/pricing.",
+  "free": {
+    "label": "Free",
+    "daily_limit": 3,
+    "price_usd": 0,
+    "price_rub": 0,
+    "trial_days": 0,
+    "features": ["3 applications/day", "Basic job search", "CV matching score"]
+  },
+  "trial": {
+    "label": "Trial",
+    "daily_limit": 30,
+    "price_usd": 2.99,
+    "price_rub": 299,
+    "trial_days": 14,
+    "stripe_price_env": "STRIPE_PRICE_TRIAL",
+    "features": ["30 applications/day", "All job boards", "Cover letter generation", "14-day access"]
+  },
+  "pro": {
+    "label": "Pro",
+    "daily_limit": 50,
+    "price_usd": 19.99,
+    "price_rub": 1990,
+    "trial_days": 0,
+    "stripe_price_env": "STRIPE_PRICE_PRO_MONTHLY",
+    "features": ["50 applications/day", "All job boards", "Cover letter generation", "Priority support"]
+  },
+  "unlimited": {
+    "label": "Unlimited",
+    "daily_limit": 9999,
+    "price_usd": 29.99,
+    "price_rub": 2990,
+    "trial_days": 0,
+    "stripe_price_env": "STRIPE_PRICE_PREMIUM_MONTHLY",
+    "features": ["Unlimited applications", "All job boards", "Cover letter generation", "Priority support", "Early access to new features"]
+  }
+}

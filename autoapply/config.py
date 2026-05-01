@@ -2,7 +2,9 @@
 config.py — AutoApply configuration
 All secrets via environment variables, safe defaults for development.
 """
+import json
 import os
+from pathlib import Path
 
 # ── Database paths ──────────────────────────────────────────────────────
 AUTOAPPLY_DB = os.getenv("AUTOAPPLY_DB", "/opt/resumeaibot/autoapply.db")
@@ -47,14 +49,23 @@ STRIPE_PUBLISHABLE_KEY  = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
 AUTOAPPLY_PORT = int(os.getenv("AUTOAPPLY_PORT", "8080"))
 AUTOAPPLY_HOST = os.getenv("AUTOAPPLY_HOST", "0.0.0.0")
 
-# ── Plans ────────────────────────────────────────────────────────────────
-PLANS = {
-    "free":      {"daily_limit": 3,    "price_usd": 0,     "trial_days": 0,  "label": "Free"},
-    "trial":     {"daily_limit": 30,   "price_usd": 2.99,  "trial_days": 14, "label": "Trial"},
-    "start":     {"daily_limit": 25,   "price_usd": 12.99, "trial_days": 0,  "label": "Starter"},
-    "pro":       {"daily_limit": 50,   "price_usd": 19.99, "trial_days": 0,  "label": "Pro"},
-    "unlimited": {"daily_limit": 9999, "price_usd": 29.99, "trial_days": 0,  "label": "Unlimited"},
-}
+# ── Plans — loaded from pricing.json (single source of truth) ────────────
+_PRICING_FILE = Path(__file__).parent.parent / "pricing.json"
+try:
+    with open(_PRICING_FILE) as _f:
+        _raw = json.load(_f)
+    PLANS = {
+        k: v for k, v in _raw.items()
+        if not k.startswith("_")  # skip comment keys
+    }
+except (FileNotFoundError, json.JSONDecodeError):
+    # Hard fallback — should never be needed in production
+    PLANS = {
+        "free":      {"daily_limit": 3,    "price_usd": 0,     "price_rub": 0,    "trial_days": 0,  "label": "Free"},
+        "trial":     {"daily_limit": 30,   "price_usd": 2.99,  "price_rub": 299,  "trial_days": 14, "label": "Trial"},
+        "pro":       {"daily_limit": 50,   "price_usd": 19.99, "price_rub": 1990, "trial_days": 0,  "label": "Pro"},
+        "unlimited": {"daily_limit": 9999, "price_usd": 29.99, "price_rub": 2990, "trial_days": 0,  "label": "Unlimited"},
+    }
 
 # ── Delays between applications (seconds) ────────────────────────────────
 MIN_APPLY_DELAY = int(os.getenv("MIN_APPLY_DELAY", "30"))
