@@ -22,6 +22,7 @@ if ROOT not in sys.path:
 
 from autoapply.config import (
     AUTOAPPLY_DB,
+    AUTOAPPLY_ENABLED,
     ENGLISH_JOB_SOURCES,
     LOGS_DIR,
     MAX_APPLY_DELAY,
@@ -372,8 +373,69 @@ async def notify_user(user_id: int, sent_today: int) -> None:
 
 # ── Main loop ─────────────────────────────────────────────────────────────────
 
+async def _acquire_lock(db_path: str, ttl_seconds: int = 600) -> bool:
+    """
+    Acquire a distributed advisory lock using SQLite.
+    Returns True if the lock was acquired, False if another worker holds it.
+    Lock expires automatically after ttl_seconds to prevent deadlock if worker crashes.
+    """
+    import aiosqlite
+    from datetime import datetime, timezone
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            await db.execute(
+                """CREATE TABLE IF NOT EXISTS worker_lock (
+                    id INTEGER PRIMARY KEY CHECK(id = 1),
+                    locked_at TEXT NOT NULL,
+                    expires_at TEXT NOT NULL
+                )"""
+            )
+            await db.commit()
+            now = datetime.now(timezone.utc)
+            now_s = now.isoformat()
+            expires_s = now.replace(second=now.second + ttl_seconds % 60,
+                                    minute=(now.minute + ttl_seconds // 60) % 60).isoformat()
+            # Remove expired lock first
+            await db.execute("DELETE FROM worker_lock WHERE expires_at < ?", (now_s,))
+            await db.commit()
+            # Try to insert — fails if lock already held
+            await db.execute(
+                "INSERT INTO worker_lock (id, locked_at, expires_at) VALUES (1, ?, ?)",
+                (now_s, expires_s),
+            )
+            await db.commit()
+            return True
+    except Exception:
+        return False
+
+
+async def _release_lock(db_path: str) -> None:
+    import aiosqlite
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            await db.execute("DELETE FROM worker_lock WHERE id = 1")
+            await db.commit()
+    except Exception as exc:
+        logger.warning("[worker] _release_lock error: %s", exc)
+
+
 async def run_once() -> None:
     """Single worker pass: process all active campaigns."""
+    global _last_reset_date
+
+    # Distributed lock — prevents two worker processes from running in parallel
+    if not await _acquire_lock(AUTOAPPLY_DB):
+        logger.info("[worker] another worker instance holds the lock — skipping cycle")
+        return
+
+    try:
+        await _run_once_inner()
+    finally:
+        await _release_lock(AUTOAPPLY_DB)
+
+
+async def _run_once_inner() -> None:
+    """Inner logic of run_once — called only when the lock is held."""
     global _last_reset_date
 
     today = date.today()
@@ -415,6 +477,9 @@ async def main() -> None:
     """Main entry point. Loops forever with WORKER_INTERVAL sleep."""
     logger.info("[worker] AutoApply worker started. Interval=%ds", WORKER_INTERVAL)
 
+    if not AUTOAPPLY_ENABLED:
+        logger.warning("[worker] AUTOAPPLY_ENABLED=0 — worker running in standby mode (no applications will be sent)")
+
     # Ensure DB tables exist
     from autoapply.autoapply_db import init_db
     await init_db(AUTOAPPLY_DB)
@@ -422,7 +487,10 @@ async def main() -> None:
     while not _shutdown:
         start = asyncio.get_event_loop().time()
         try:
-            await run_once()
+            if not AUTOAPPLY_ENABLED:
+                logger.debug("[worker] standby — AUTOAPPLY_ENABLED=0, skipping cycle")
+            else:
+                await run_once()
         except Exception as exc:
             logger.exception("[worker] run_once top-level error: %s", exc)
 

@@ -102,6 +102,14 @@ _MIGRATE_IS_VERIFIED = """
 ALTER TABLE autoapply_users ADD COLUMN is_verified INTEGER DEFAULT 0
 """
 
+_MIGRATE_CONSENT_AT = """
+ALTER TABLE autoapply_users ADD COLUMN consent_at TEXT
+"""
+
+_MIGRATE_STRIPE_CUSTOMER_ID = """
+ALTER TABLE autoapply_users ADD COLUMN stripe_customer_id TEXT
+"""
+
 _CREATE_EMAIL_DRIP = """
 CREATE TABLE IF NOT EXISTS email_drip (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -203,11 +211,12 @@ async def init_db(db_path: str = AUTOAPPLY_DB) -> None:
                     await db.execute(_idx_sql)
                 except Exception:
                     pass  # partial-index syntax not supported on older SQLite
-            # Migration: add is_verified if column doesn't exist yet
-            try:
-                await db.execute(_MIGRATE_IS_VERIFIED)
-            except Exception:
-                pass  # column already exists
+            # Migrations — each wrapped individually so one failure doesn't block others
+            for _migration in (_MIGRATE_IS_VERIFIED, _MIGRATE_CONSENT_AT, _MIGRATE_STRIPE_CUSTOMER_ID):
+                try:
+                    await db.execute(_migration)
+                except Exception:
+                    pass  # column already exists
             await db.commit()
         logger.info("[autoapply_db] init_db: all tables ready at %s", db_path)
     except Exception as exc:
@@ -784,6 +793,73 @@ async def update_user_password(user_id: int, password_hash: str, db_path: str = 
     except Exception as exc:
         logger.exception("[autoapply_db] update_user_password error: %s", exc)
         raise
+
+
+async def record_consent(user_id: int, db_path: str = AUTOAPPLY_DB) -> None:
+    """Stamp consent_at = UTC now for a user (GDPR / ToS acceptance at campaign creation).
+    Idempotent: only sets the timestamp the first time (when consent_at IS NULL).
+    """
+    now = datetime.utcnow().isoformat()
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            await db.execute(
+                "UPDATE autoapply_users SET consent_at = ? WHERE id = ? AND consent_at IS NULL",
+                (now, user_id),
+            )
+            await db.commit()
+    except Exception as exc:
+        logger.exception("[autoapply_db] record_consent error: %s", exc)
+
+
+async def save_linkedin_credentials(
+    user_id: int,
+    email: str,
+    password: str,
+    db_path: str = AUTOAPPLY_DB,
+) -> None:
+    """Encrypt and persist LinkedIn credentials for a user.
+    Uses Fernet encryption via crypto.py (falls back to plaintext if ENCRYPTION_KEY unset).
+    """
+    from autoapply.crypto import encrypt
+    encrypted_pw = encrypt(password)
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            await db.execute(
+                "UPDATE autoapply_users SET linkedin_email = ?, linkedin_password_enc = ? WHERE id = ?",
+                (email, encrypted_pw, user_id),
+            )
+            await db.commit()
+        logger.info(
+            "[autoapply_db] linkedin credentials saved user_id=%s encrypted=%s",
+            user_id,
+            encrypted_pw != password,  # True when ENCRYPTION_KEY is set
+        )
+    except Exception as exc:
+        logger.exception("[autoapply_db] save_linkedin_credentials error: %s", exc)
+        raise
+
+
+async def get_linkedin_credentials(
+    user_id: int,
+    db_path: str = AUTOAPPLY_DB,
+) -> Optional[tuple]:
+    """Return (email, plaintext_password) or None if LinkedIn is not connected.
+    Decrypts linkedin_password_enc via crypto.py.
+    """
+    from autoapply.crypto import decrypt
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            async with db.execute(
+                "SELECT linkedin_email, linkedin_password_enc FROM autoapply_users WHERE id = ?",
+                (user_id,),
+            ) as cur:
+                row = await cur.fetchone()
+        if not row or not row[0] or not row[1]:
+            return None
+        return row[0], decrypt(row[1])
+    except Exception as exc:
+        logger.exception("[autoapply_db] get_linkedin_credentials error: %s", exc)
+        return None
 
 
 # ── Daily reset ───────────────────────────────────────────────────────────────

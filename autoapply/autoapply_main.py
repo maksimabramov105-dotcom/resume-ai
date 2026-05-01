@@ -42,12 +42,15 @@ from autoapply.autoapply_db import (
     get_applications_for_user,
     get_campaigns_for_user,
     get_dashboard_stats,
+    get_linkedin_credentials,
     get_pending_drip_users,
     get_user_by_email,
     get_user_by_id,
     init_db,
     log_web_generation,
     mark_user_verified,
+    record_consent,
+    save_linkedin_credentials,
     update_campaign_status,
     update_user_last_active,
     update_user_password,
@@ -737,6 +740,12 @@ async def campaign_create(
         logger.error("[api/campaign/create] error: %s", exc)
         raise HTTPException(status_code=500, detail="Failed to create campaign")
 
+    # Stamp consent_at on first campaign creation (idempotent — no-op if already set)
+    try:
+        await record_consent(user_id, AUTOAPPLY_DB)
+    except Exception:
+        pass
+
     logger.info("[api/campaign/create] user=%s campaign_id=%s", user_id, campaign_id)
     asyncio.create_task(log_web_generation("autoapply", user_id))
     return {"campaign_id": campaign_id, "daily_limit": requested_limit}
@@ -788,6 +797,12 @@ async def campaigns_create_alias(
         logger.error("[api/campaigns POST] error: %s", exc)
         raise HTTPException(status_code=500, detail="Failed to create campaign")
 
+    # Stamp consent_at on first campaign creation (idempotent — no-op if already set)
+    try:
+        await record_consent(user_id, AUTOAPPLY_DB)
+    except Exception:
+        pass
+
     asyncio.create_task(log_web_generation("autoapply", user_id))
     return {"id": campaign_id, "campaign_id": campaign_id, "daily_limit": requested_limit}
 
@@ -816,6 +831,50 @@ async def user_connections(current_user: dict = Depends(get_current_user)):
         "linkedin": bool(current_user.get("linkedin_email")),
         "telegram_id": current_user.get("telegram_id"),
     }
+
+
+# ── LinkedIn credential management ───────────────────────────────────────────
+class LinkedInCredentialsRequest(BaseModel):
+    email: str
+    password: str
+
+
+@app.post("/api/user/linkedin/connect", summary="Save LinkedIn credentials (Fernet-encrypted)")
+async def linkedin_connect(
+    body: LinkedInCredentialsRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """Store LinkedIn email + password for automated Easy Apply.
+    The password is encrypted at rest using Fernet (ENCRYPTION_KEY env var).
+    """
+    if not body.email or not body.password:
+        raise HTTPException(status_code=400, detail="email and password are required")
+    user_id = current_user["id"]
+    try:
+        await save_linkedin_credentials(user_id, body.email, body.password, AUTOAPPLY_DB)
+    except Exception as exc:
+        logger.error("[api/linkedin/connect] error: %s", exc)
+        raise HTTPException(status_code=500, detail="Failed to save LinkedIn credentials")
+    logger.info("[api/linkedin/connect] user_id=%s connected", user_id)
+    return {"success": True, "email": body.email}
+
+
+@app.delete("/api/user/linkedin/disconnect", summary="Remove LinkedIn credentials")
+async def linkedin_disconnect(current_user: dict = Depends(get_current_user)):
+    """Wipe stored LinkedIn credentials for the current user."""
+    user_id = current_user["id"]
+    try:
+        async with aiosqlite.connect(AUTOAPPLY_DB) as db:
+            await db.execute(
+                "UPDATE autoapply_users SET linkedin_email = NULL, linkedin_password_enc = NULL WHERE id = ?",
+                (user_id,),
+            )
+            await db.commit()
+    except Exception as exc:
+        logger.error("[api/linkedin/disconnect] error: %s", exc)
+        raise HTTPException(status_code=500, detail="Failed to disconnect LinkedIn")
+    logger.info("[api/linkedin/disconnect] user_id=%s disconnected", user_id)
+    return {"success": True}
 
 
 @app.get("/api/campaign/{campaign_id}/status", summary="Get campaign status and last applications")

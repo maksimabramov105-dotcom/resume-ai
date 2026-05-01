@@ -45,6 +45,11 @@ STRIPE_SECRET_KEY       = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET   = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 STRIPE_PUBLISHABLE_KEY  = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
 
+# ── Feature flags ────────────────────────────────────────────────────────
+# Set AUTOAPPLY_ENABLED=0 to pause all automatic job applications without
+# stopping the web service (users can still log in and manage campaigns).
+AUTOAPPLY_ENABLED: bool = os.getenv("AUTOAPPLY_ENABLED", "1").strip() not in ("0", "false", "no", "off")
+
 # ── Server ───────────────────────────────────────────────────────────────
 AUTOAPPLY_PORT = int(os.getenv("AUTOAPPLY_PORT", "8080"))
 AUTOAPPLY_HOST = os.getenv("AUTOAPPLY_HOST", "0.0.0.0")
