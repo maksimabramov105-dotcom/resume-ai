@@ -1,0 +1,12 @@
+[Unit]
+Description=ResumeAI DB Backup — every 6 hours
+Requires=backup-db.service
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=6h
+AccuracySec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

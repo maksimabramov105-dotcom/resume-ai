@@ -1,0 +1,12 @@
+[Unit]
+Description=ResumeAI DB Backup (bot.db + autoapply.db)
+After=network.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/resumeaibot
+EnvironmentFile=-/opt/resumeaibot/.env
+ExecStart=/bin/bash /opt/resumeaibot/scripts/backup_db.sh
+StandardOutput=append:/opt/resumeaibot/logs/backup.log
+StandardError=append:/opt/resumeaibot/logs/backup.log
