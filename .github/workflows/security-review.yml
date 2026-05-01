@@ -6,6 +6,10 @@ on:
   push:
     branches: [main, master]
 
+permissions:
+  contents: read
+  security-events: write  # required for SARIF upload (Bandit, CodeQL)
+
 jobs:
   security-review:
     runs-on: ubuntu-latest
@@ -16,17 +20,17 @@ jobs:
         uses: PyCQA/bandit-action@v1
         with:
           targets: "."
-          level: medium
+          severity: medium      # fix: was 'level' (not a valid input)
           confidence: medium
-          exit_zero: true
+        continue-on-error: true # fix: 'exit_zero' input doesn't exist — use continue-on-error instead
 
       - name: Check for secrets in code
-        uses: trufflesecurity/trufflehog@main
+        uses: trufflesecurity/trufflehog@v3.88.1  # fix: pinned version (was @main — Node.js 20 deprecated)
         with:
           path: ./
           base: ${{ github.event.repository.default_branch }}
           head: HEAD
-          extra_args: --debug --only-verified
+          extra_args: --only-verified  # fix: removed --debug (noisy)
         continue-on-error: true
 
       - name: Dependency audit (pip-audit)
