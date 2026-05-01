@@ -739,10 +739,10 @@
         <label>Платформы</label>
         <div class="platform-grid">
           <label class="platform-item">
-            <input type="checkbox" id="plat-hh" checked /><div><div class="platform-name">🔴 hh.ru</div></div>
+            <input type="checkbox" id="plat-adzuna" checked /><div><div class="platform-name">Adzuna</div></div>
           </label>
           <label class="platform-item">
-            <input type="checkbox" id="plat-sj" checked /><div><div class="platform-name">🔵 SuperJob</div></div>
+            <input type="checkbox" id="plat-themuse" checked /><div><div class="platform-name">The Muse</div></div>
           </label>
           <label class="platform-item">
             <input type="checkbox" id="plat-li" /><div><div class="platform-name">💼 LinkedIn</div><div class="platform-sub">Требует OAuth</div></div>
@@ -760,10 +760,10 @@
       <div class="form-group" style="margin-top:8px;">
         <label>Connection status</label>
         <div class="connection-status">
-          <div class="conn-label">🔴 hh.ru</div>
+          <div class="conn-label">Adzuna</div>
           <div id="hh-conn-status">
-            <span class="badge badge-active" id="hh-badge" style="display:none;">Подключено ✓</span>
-            <button class="btn-secondary btn-sm" id="hh-connect-btn" onclick="connectHH()">Подключить hh.ru →</button>
+            <span class="badge badge-active" id="hh-badge" style="display:none;">Connected ✓</span>
+            <button class="btn-secondary btn-sm" id="hh-connect-btn" onclick="connectLinkedIn()">Connect LinkedIn →</button>
           </div>
         </div>
         <div class="connection-status">
@@ -772,7 +772,7 @@
             <div class="warning-note" id="li-warning" style="display:none;">Храним только в зашифрованном виде. Используем только для Easy Apply.</div>
           </div>
           <div id="li-conn-status">
-            <span class="badge badge-active" id="li-badge" style="display:none;">Подключено ✓</span>
+            <span class="badge badge-active" id="li-badge" style="display:none;">Connected ✓</span>
             <button class="btn-secondary btn-sm" id="li-connect-btn" onclick="showLinkedInModal()">Подключить LinkedIn →</button>
           </div>
         </div>
@@ -807,8 +807,8 @@
     <div class="filter-bar">
       <select class="filter-select" id="filter-platform" onchange="loadApplications()">
         <option value="">Все платформы</option>
-        <option value="hh">🔴 hh.ru</option>
-        <option value="sj">🔵 SuperJob</option>
+        <option value="adzuna">Adzuna</option>
+        <option value="themuse">The Muse</option>
         <option value="linkedin">💼 LinkedIn</option>
       </select>
       <select class="filter-select" id="filter-status" onchange="loadApplications()">
@@ -864,21 +864,21 @@
       <div class="card" style="padding:8px 20px;">
         <div class="conn-row">
           <div class="conn-info">
-            <div class="conn-name">🔴 hh.ru</div>
-            <div class="conn-sub" id="hh-status-text">Не подключено</div>
+            <div class="conn-name">Adzuna</div>
+            <div class="conn-sub" id="hh-status-text">Not connected</div>
           </div>
           <div style="display:flex;gap:8px;align-items:center;">
-            <span class="badge badge-active" id="hh-status-badge" style="display:none;">Подключено</span>
-            <button class="btn-secondary btn-sm" id="hh-action-btn" onclick="connectHH()">Подключить</button>
+            <span class="badge badge-active" id="hh-status-badge" style="display:none;">Connected</span>
+            <button class="btn-secondary btn-sm" id="hh-action-btn" onclick="connectLinkedIn()">Подключить</button>
           </div>
         </div>
         <div class="conn-row">
           <div class="conn-info">
             <div class="conn-name">💼 LinkedIn</div>
-            <div class="conn-sub" id="li-status-text">Не подключено</div>
+            <div class="conn-sub" id="li-status-text">Not connected</div>
           </div>
           <div style="display:flex;gap:8px;align-items:center;">
-            <span class="badge badge-active" id="li-status-badge" style="display:none;">Подключено</span>
+            <span class="badge badge-active" id="li-status-badge" style="display:none;">Connected</span>
             <button class="btn-secondary btn-sm" id="li-action-btn" onclick="showLinkedInModal()">Подключить</button>
           </div>
         </div>
@@ -998,7 +998,7 @@
         <div class="plan-period">навсегда</div>
         <ul class="plan-features">
           <li>3 заявки в день</li>
-          <li>hh.ru + SuperJob</li>
+          <li>Adzuna + The Muse</li>
           <li>Базовая статистика</li>
           <li>1 кампания</li>
         </ul>
@@ -1012,7 +1012,7 @@
         <div class="plan-period">в месяц</div>
         <ul class="plan-features">
           <li>50 заявок в день</li>
-          <li>hh.ru + SuperJob</li>
+          <li>Adzuna + The Muse</li>
           <li>Расширенная статистика</li>
           <li>3 кампании</li>
           <li>Email уведомления</li>
@@ -1028,7 +1028,7 @@
         <div class="plan-period">в месяц</div>
         <ul class="plan-features">
           <li>200 заявок в день</li>
-          <li>hh.ru + SuperJob + LinkedIn</li>
+          <li>Adzuna + The Muse + LinkedIn</li>
           <li>Приоритетная поддержка</li>
           <li>Без ограничений на кампании</li>
           <li>Telegram уведомления</li>
@@ -1287,7 +1287,7 @@
           <li>5 откликов в день</li>
           <li>1 резюме</li>
           <li>Трекер заявок</li>
-          <li>hh.ru + SuperJob</li>
+          <li>Adzuna + The Muse</li>
         </ul>
         <button class="current-plan-btn" id="billing-free-btn">Текущий план</button>
       </div>
@@ -1540,7 +1540,7 @@
   // ===== STATE =====
   let currentPage = 1;
   let currentPlan = 'free';
-  let appData = { campaigns: [], connections: { hh: false, linkedin: false, telegram_id: null } };
+  let appData = { campaigns: [], connections: { adzuna: false, linkedin: false, telegram_id: null } };
 
   // ===== TOAST =====
   function showToast(message, type = 'success') {
@@ -2090,7 +2090,7 @@
   async function loadConnectionStatus() {
     const data = await api('/user/connections');
     if (!data) return;
-    if (data.hh) {
+    if (data.linkedin) {
       document.getElementById('hh-badge').style.display = 'inline-flex';
       document.getElementById('hh-connect-btn').style.display = 'none';
     }
@@ -2143,8 +2143,8 @@
     if (!title) { showToast('Введите название должности', 'error'); return; }
     // Build platforms as array (API expects List[str])
     const platformsArr = [];
-    if (document.getElementById('plat-hh').checked) platformsArr.push('hh');
-    if (document.getElementById('plat-sj').checked) platformsArr.push('superjob');
+    if (document.getElementById('plat-adzuna').checked) platformsArr.push('hh');
+    if (document.getElementById('plat-themuse').checked) platformsArr.push('themuse');
     if (document.getElementById('plat-li').checked) platformsArr.push('linkedin');
     if (!platformsArr.length) platformsArr.push('hh');  // always need at least one
     const body = {
@@ -2163,7 +2163,7 @@
     }
   }
 
-  function connectHH() {
+  function connectLinkedIn() {
     api('/oauth/hh/url').then(data => {
       if (data && data.url) window.open(data.url, '_blank');
       else showToast('Не удалось получить ссылку для авторизации', 'error');
@@ -2250,12 +2250,12 @@
     if (data.connections) {
       if (data.connections.hh) {
         document.getElementById('hh-status-badge').style.display = 'inline-flex';
-        document.getElementById('hh-status-text').textContent = 'Подключено';
+        document.getElementById('hh-status-text').textContent = 'Connected';
         document.getElementById('hh-action-btn').textContent = 'Отключить';
       }
       if (data.connections.linkedin) {
         document.getElementById('li-status-badge').style.display = 'inline-flex';
-        document.getElementById('li-status-text').textContent = 'Подключено';
+        document.getElementById('li-status-text').textContent = 'Connected';
         document.getElementById('li-action-btn').textContent = 'Отключить';
         document.getElementById('li-action-btn').onclick = disconnectLinkedIn;
       }
@@ -2308,7 +2308,7 @@
     if (data && data.success) {
       showToast('LinkedIn отключён', 'info');
       document.getElementById('li-status-badge').style.display = 'none';
-      document.getElementById('li-status-text').textContent = 'Не подключено';
+      document.getElementById('li-status-text').textContent = 'Not connected';
       document.getElementById('li-action-btn').textContent = 'Подключить';
       document.getElementById('li-action-btn').onclick = showLinkedInModal;
     }
@@ -2368,7 +2368,7 @@
   }
 
   function platformIcon(p) {
-    const icons = { hh: '🔴 hh', sj: '🔵 SJ', superjob: '🔵 SJ', linkedin: '💼 LI' };
+    const icons = { adzuna: '🟢 Adzuna', themuse: '🎯 Muse', remoteok: '🌐 Remote', linkedin: '💼 LI', arbeitnow: '🔵 Jobs' };
     return `<span style="font-size:0.85rem;">${icons[p] || esc(p || '—')}</span>`;
   }
 

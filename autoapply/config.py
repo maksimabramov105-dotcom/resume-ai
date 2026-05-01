@@ -23,15 +23,6 @@ WEBAPP_BASE_URL = os.getenv("WEBAPP_BASE_URL", "https://resumeai.bot")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL   = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
-# ── hh.ru API ───────────────────────────────────────────────────────────
-HH_APP_NAME       = os.getenv("HH_APP_NAME", "ResumeAI-AutoApply/1.0 (resumeai.bot)")
-HH_CLIENT_ID      = os.getenv("HH_CLIENT_ID", "")
-HH_CLIENT_SECRET  = os.getenv("HH_CLIENT_SECRET", "")
-HH_REDIRECT_URI   = os.getenv("HH_REDIRECT_URI", "https://resumeai.bot/app/oauth/hh")
-
-# ── SuperJob API ─────────────────────────────────────────────────────────
-SUPERJOB_API_KEY  = os.getenv("SUPERJOB_API_KEY", "")
-
 # ── English job board APIs ────────────────────────────────────────────────
 ADZUNA_APP_ID  = os.getenv("ADZUNA_APP_ID", "")
 ADZUNA_APP_KEY = os.getenv("ADZUNA_APP_KEY", "")

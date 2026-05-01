@@ -15,7 +15,7 @@ interface Job {
   published_at: string;
 }
 
-const SOURCES = ['all', 'hh', 'superjob'];
+const SOURCES = ['all', 'adzuna', 'linkedin', 'themuse', 'remoteok', 'arbeitnow'];
 
 export default function JobsPage() {
   const [query, setQuery] = useState('');
@@ -83,7 +83,7 @@ export default function JobsPage() {
                     : 'bg-[#1a1a1a] border border-white/[0.07] text-gray-500 hover:text-gray-300'
                   }`}
               >
-                {s === 'all' ? 'All Sources' : s === 'hh' ? 'hh.ru' : 'SuperJob'}
+                {s === 'all' ? 'All Sources' : s === 'themuse' ? 'The Muse' : s === 'remoteok' ? 'Remote OK' : s.charAt(0).toUpperCase() + s.slice(1)}
               </button>
             ))}
           </div>

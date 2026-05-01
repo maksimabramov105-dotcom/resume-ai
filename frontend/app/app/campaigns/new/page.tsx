@@ -6,10 +6,12 @@ import { api } from '../../../../lib/api';
 import { useToast } from '../../components/Toast';
 
 const SOURCES = [
-  { value: 'hh', label: 'hh.ru' },
-  { value: 'superjob', label: 'SuperJob' },
+  { value: 'all',       label: 'All Sources' },
+  { value: 'adzuna',   label: 'Adzuna' },
   { value: 'linkedin', label: 'LinkedIn' },
-  { value: 'all', label: 'All Sources' },
+  { value: 'themuse',  label: 'The Muse' },
+  { value: 'remoteok', label: 'Remote OK' },
+  { value: 'arbeitnow',label: 'Arbeitnow' },
 ];
 
 const SALARY_OPTS = ['Any', '50000', '80000', '100000', '150000', '200000+'];
@@ -21,7 +23,7 @@ export default function NewCampaignPage() {
 
   const [form, setForm] = useState({
     name: '',
-    source: 'hh',
+    source: 'all',
     keywords: '',
     location: '',
     salary_from: '',
@@ -115,7 +117,7 @@ export default function NewCampaignPage() {
               type="text"
               value={form.location}
               onChange={e => set('location', e.target.value)}
-              placeholder="Moscow, Remote, etc."
+              placeholder="New York, Remote, etc."
               className="w-full bg-[#1a1a1a] border border-white/[0.07] rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-violet-500/50 transition-colors"
             />
           </div>
