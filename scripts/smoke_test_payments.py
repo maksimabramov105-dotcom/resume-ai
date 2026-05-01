@@ -100,29 +100,35 @@ if status == 200:
 else:
     check("/api/pricing", False, f"HTTP {status}")
 
-# ── 4. Stripe create-checkout ─────────────────────────────────────────────
+# ── 4. Stripe create-checkout (autoapply service) ────────────────────────
 STRIPE_KEY = os.getenv("STRIPE_SECRET_KEY", "")
 if not STRIPE_KEY:
     print(f"{SKIP}  Stripe create-checkout (STRIPE_SECRET_KEY not set)")
 else:
-    status, body = post(f"{AA_API}/api/stripe/create-checkout",
+    status, body = post(f"{AA_API}/api/payments/create-checkout",
                         {"user_id": TEST_USER_ID, "tier": "pro"})
     has_url = bool(body.get("checkout_url", ""))
-    check("Stripe /api/stripe/create-checkout → checkout_url",
+    check("Stripe /api/payments/create-checkout → checkout_url",
           status == 200 and has_url,
           f"HTTP {status} | url={'present' if has_url else 'MISSING'}")
+
+# ── 4b. Stripe webhook route accessible (bot API) ────────────────────────
+status, _ = post(f"{BOT_API}/api/stripe/webhook", {})
+check("Bot API /api/stripe/webhook reachable",
+      status in (400, 422),   # 400 = invalid signature (expected), 422 = validation error
+      f"HTTP {status}")
 
 # ── 5. CryptoBot invoice ──────────────────────────────────────────────────
 CRYPTOBOT_TOKEN = os.getenv("CRYPTOBOT_AUTOAPPLY_TOKEN", "")
 if not CRYPTOBOT_TOKEN:
-    print(f"{SKIP}  CryptoBot /api/payment/invoice (CRYPTOBOT_AUTOAPPLY_TOKEN not set)")
+    print(f"{SKIP}  CryptoBot /api/payment/create-invoice (CRYPTOBOT_AUTOAPPLY_TOKEN not set)")
 else:
-    status, body = post(f"{AA_API}/api/payment/invoice",
+    status, body = post(f"{AA_API}/api/payment/create-invoice",
                         {"user_id": TEST_USER_ID, "plan": "pro"})
-    # 402/503 means token valid but invoice creation failed (acceptable in smoke test)
+    # 402/503 = token valid but invoice creation failed (acceptable in smoke test)
     has_url = bool(body.get("invoice_url", ""))
-    check("CryptoBot /api/payment/invoice",
-          status in (200, 402, 503),
+    check("CryptoBot /api/payment/create-invoice",
+          status in (200, 402, 422, 503),
           f"HTTP {status} | invoice_url={'present' if has_url else 'not returned'}")
 
 # ── Summary ───────────────────────────────────────────────────────────────
