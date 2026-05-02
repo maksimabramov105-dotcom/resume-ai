@@ -14,7 +14,7 @@ jobs:
   security-review:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.0.2
 
       - name: Run Bandit (Python security linter)
         uses: PyCQA/bandit-action@v1
