@@ -126,7 +126,7 @@ async def test_english_job_api():
 async def test_resume_generator():
     """Call generate_tailored_resume with dummy data, check non-empty string."""
     if not OPENAI_API_KEY:
-        raise AssertionError("OPENAI_API_KEY not set — skipping resume generator test")
+        import pytest; pytest.skip("OPENAI_API_KEY not set")
 
     try:
         from autoapply.resume_generator import generate_tailored_resume
@@ -350,7 +350,7 @@ async def test_bug_reporter():
 async def test_telegram_notification():
     """Send test deploy notification to admin if BOT_TOKEN is set."""
     if not BOT_TOKEN:
-        raise AssertionError("BOT_TOKEN not set — skipping Telegram notification test")
+        import pytest; pytest.skip("BOT_TOKEN not set")
 
     import aiohttp
 
@@ -377,7 +377,7 @@ async def test_telegram_notification():
 TESTS = [
     ("1. autoapply_db",          test_autoapply_db),
     ("2. fastapi_starts",        test_fastapi_starts),
-    ("3. hh_api",                test_hh_api),
+    ("3. english_job_api",       test_english_job_api),
     ("4. resume_generator",      test_resume_generator),
     ("5. pdf_generation",        test_pdf_generation),
     ("6. worker_init",           test_worker_init),
