@@ -10,6 +10,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -42,7 +45,7 @@ jobs:
           fi
 
       - name: Copy files to VPS
-        uses: appleboy/scp-action@v0.1.9  # fix: node22 runtime (was v0.1.7 — Node.js 20 deprecated)
+        uses: appleboy/scp-action@v1.0.0  # v1.0.0 = node22 runtime (v0.1.9 does not exist)
         with:
           host: ${{ secrets.VPS_HOST }}
           username: root
@@ -52,7 +55,7 @@ jobs:
           overwrite: true
 
       - name: Restart services & health check
-        uses: appleboy/ssh-action@v1.2.1  # fix: node22 runtime (was @v1 — Node.js 20 deprecated)
+        uses: appleboy/ssh-action@v1.2.5  # latest stable, node22 runtime
         with:
           host: ${{ secrets.VPS_HOST }}
           username: root
@@ -60,7 +63,6 @@ jobs:
           script: |
             echo "=== Deploy at $(date) ==="
             cd /opt/resumeaibot
-            git pull origin main
             .venv/bin/pip install -r requirements.txt -q
             systemctl restart resumeaibot autoapply autoapply-worker || true
             sleep 6
