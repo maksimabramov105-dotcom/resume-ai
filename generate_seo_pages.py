@@ -1,72 +1,81 @@
 #!/usr/bin/env python3
-import os
+"""
+generate_seo_pages.py — Generate English-only SEO landing pages for job titles.
 
-jobs = [
-  {"en":"Software Engineer","ru":"Программист","slug":"software-engineer","keywords":["Python","Java","Git","Docker","SQL","REST API","Agile","CI/CD","Linux","Microservices"]},
-  {"en":"Product Manager","ru":"Продуктовый менеджер","slug":"product-manager","keywords":["Roadmap","Agile","Scrum","Stakeholder","KPI","A/B тестирование","Jira","User Story","Метрики","MVP"]},
-  {"en":"Data Analyst","ru":"Аналитик данных","slug":"data-analyst","keywords":["SQL","Python","Excel","Tableau","Power BI","Statistics","A/B тест","ETL","Data Warehouse","Pandas"]},
-  {"en":"UX Designer","ru":"UX Дизайнер","slug":"ux-designer","keywords":["Figma","Prototyping","User Research","Wireframing","Usability","Design System","A/B тест","CSS","Accessibility","UX Writing"]},
-  {"en":"Marketing Manager","ru":"Маркетинг менеджер","slug":"marketing-manager","keywords":["SEO","SMM","Google Ads","Яндекс.Директ","Email маркетинг","KPI","ROI","CRM","Analytics","Content"]},
-  {"en":"Sales Manager","ru":"Менеджер по продажам","slug":"sales-manager","keywords":["B2B","CRM","Cold Calling","KPI","Pipeline","Salesforce","Negotiation","Lead Generation","Upsell","Revenue"]},
-  {"en":"Project Manager","ru":"Проджект менеджер","slug":"project-manager","keywords":["Agile","Scrum","PMP","Jira","Confluence","Risk Management","Stakeholder","Roadmap","Budget","PMO"]},
-  {"en":"DevOps Engineer","ru":"DevOps инженер","slug":"devops-engineer","keywords":["Kubernetes","Docker","CI/CD","Terraform","AWS","Linux","Ansible","Jenkins","Monitoring","Git"]},
-  {"en":"Frontend Developer","ru":"Фронтенд разработчик","slug":"frontend-developer","keywords":["React","TypeScript","JavaScript","CSS","HTML","Vue.js","Webpack","REST API","Testing","Git"]},
-  {"en":"Backend Developer","ru":"Бэкенд разработчик","slug":"backend-developer","keywords":["Python","Node.js","Java","SQL","PostgreSQL","Redis","Docker","REST API","Microservices","Git"]},
-  {"en":"Full Stack Developer","ru":"Фулстек разработчик","slug":"fullstack-developer","keywords":["React","Node.js","Python","PostgreSQL","Docker","TypeScript","REST API","Git","AWS","Redis"]},
-  {"en":"QA Engineer","ru":"QA Инженер","slug":"qa-engineer","keywords":["Selenium","TestNG","Jira","API Testing","Automation","SQL","Postman","Load Testing","Python","CI/CD"]},
-  {"en":"Business Analyst","ru":"Бизнес аналитик","slug":"business-analyst","keywords":["SQL","BPMN","Requirements","Use Cases","Jira","Confluence","Stakeholder","Excel","Visio","Agile"]},
-  {"en":"HR Manager","ru":"HR Менеджер","slug":"hr-manager","keywords":["Recruiting","Onboarding","HRIS","KPI","Employee Relations","Training","Performance Review","Compensation","Labor Law","ATS"]},
-  {"en":"Accountant","ru":"Бухгалтер","slug":"accountant","keywords":["1С","Налоговая отчётность","МСФО","Excel","Бухгалтерский учёт","Аудит","Payroll","Финансовая отчётность","Балансовый отчёт","ERP"]},
-  {"en":"Graphic Designer","ru":"Графический дизайнер","slug":"graphic-designer","keywords":["Photoshop","Illustrator","InDesign","Figma","Branding","Typography","Layout","Print","UI Design","After Effects"]},
-  {"en":"Content Writer","ru":"Копирайтер","slug":"content-writer","keywords":["SEO","Copywriting","WordPress","Content Strategy","Social Media","Editing","Research","Keywords","Analytics","CMS"]},
-  {"en":"Customer Support","ru":"Менеджер поддержки","slug":"customer-support","keywords":["CRM","Zendesk","Customer Service","SLA","Ticketing","Communication","KPI","Escalation","Product Knowledge","NPS"]},
-  {"en":"System Administrator","ru":"Системный администратор","slug":"system-administrator","keywords":["Windows Server","Linux","Active Directory","Virtualization","Networking","Security","Backup","DNS","VMware","PowerShell"]},
-  {"en":"Financial Analyst","ru":"Финансовый аналитик","slug":"financial-analyst","keywords":["Excel","Financial Modeling","DCF","Valuation","Bloomberg","SQL","МСФО","Budget","Forecasting","PowerPoint"]},
-  {"en":"Data Scientist","ru":"Data Scientist","slug":"data-scientist","keywords":["Python","Machine Learning","TensorFlow","Pandas","SQL","Statistics","NLP","Computer Vision","Jupyter","Scikit-learn"]},
-  {"en":"Machine Learning Engineer","ru":"ML Инженер","slug":"ml-engineer","keywords":["Python","TensorFlow","PyTorch","MLOps","Docker","SQL","NLP","Computer Vision","Kubernetes","Feature Engineering"]},
-  {"en":"iOS Developer","ru":"iOS Разработчик","slug":"ios-developer","keywords":["Swift","SwiftUI","Xcode","UIKit","Core Data","REST API","Combine","TestFlight","Firebase","Git"]},
-  {"en":"Android Developer","ru":"Android Разработчик","slug":"android-developer","keywords":["Kotlin","Java","Android Studio","Jetpack Compose","REST API","Firebase","Room","MVVM","Coroutines","Git"]},
-  {"en":"Cybersecurity Analyst","ru":"Аналитик по кибербезопасности","slug":"cybersecurity-analyst","keywords":["SIEM","Penetration Testing","CISSP","Firewall","Network Security","Vulnerability Assessment","ISO 27001","SOC","Python","IDS/IPS"]},
-  {"en":"Cloud Engineer","ru":"Cloud Инженер","slug":"cloud-engineer","keywords":["AWS","Azure","GCP","Terraform","Kubernetes","Docker","CI/CD","IaC","Security","Networking"]},
-  {"en":"Technical Writer","ru":"Технический писатель","slug":"technical-writer","keywords":["Documentation","Markdown","API Docs","DITA","Confluence","Git","XML","Technical Communication","UX Writing","Swagger"]},
-  {"en":"UI Designer","ru":"UI Дизайнер","slug":"ui-designer","keywords":["Figma","Design System","CSS","Prototyping","Typography","Color Theory","Responsive Design","Accessibility","Adobe XD","Sketch"]},
-  {"en":"Scrum Master","ru":"Scrum мастер","slug":"scrum-master","keywords":["Scrum","Agile","Jira","Kanban","Retrospectives","Sprint Planning","Coaching","SAFe","Confluence","Facilitation"]},
-  {"en":"Supply Chain Manager","ru":"Менеджер по логистике","slug":"supply-chain-manager","keywords":["SAP","ERP","Logistics","Procurement","Inventory","Forecasting","Vendor Management","KPI","Excel","LEAN"]},
-  {"en":"Teacher","ru":"Учитель","slug":"teacher","keywords":["Педагогика","Методология","Дифференцированный подход","ФГОС","Curriculum","ЕГЭ","Classroom Management","E-learning","Moodle","Google Classroom"]},
-  {"en":"Nurse","ru":"Медсестра","slug":"nurse","keywords":["Patient Care","Medical Records","IV Therapy","Vital Signs","EHR","ACLS","BLS","Medication Administration","ICU","Triage"]},
-  {"en":"Lawyer","ru":"Юрист","slug":"lawyer","keywords":["Contract Law","Litigation","Legal Research","Due Diligence","Corporate Law","Compliance","Arbitration","Legal Writing","IP Law","Labor Law"]},
-  {"en":"Architect","ru":"Архитектор","slug":"architect","keywords":["AutoCAD","Revit","BIM","ArchiCAD","3D Modeling","Building Codes","Project Management","Structural Design","Urban Planning","Sustainability"]},
-  {"en":"Mechanical Engineer","ru":"Инженер-механик","slug":"mechanical-engineer","keywords":["AutoCAD","SolidWorks","ANSYS","CAD","Manufacturing","FEA","Thermodynamics","CNC","Materials Science","ISO Standards"]},
-  {"en":"Civil Engineer","ru":"Инженер-строитель","slug":"civil-engineer","keywords":["AutoCAD","Structural Analysis","BIM","Project Management","Soil Mechanics","Construction Management","SAP2000","Budget","Surveying","Environmental"]},
-  {"en":"Pharmacist","ru":"Фармацевт","slug":"pharmacist","keywords":["Pharmaceutical","Drug Interactions","Patient Counseling","Inventory","Clinical Pharmacy","Compounding","Regulatory","PBM","Medication Review","GCP"]},
-  {"en":"Chef","ru":"Шеф-повар","slug":"chef","keywords":["Menu Development","Food Safety","HACCP","Inventory Management","Staff Training","Cost Control","Culinary Arts","Kitchen Management","Pastry","Nutrition"]},
-  {"en":"Electrician","ru":"Электрик","slug":"electrician","keywords":["Electrical Wiring","NEC","PLC","Safety Compliance","Troubleshooting","Blueprint Reading","AC/DC","Motor Control","Conduit","Industrial Electrical"]},
-  {"en":"Real Estate Agent","ru":"Риелтор","slug":"real-estate-agent","keywords":["CRM","Negotiation","Property Valuation","MLS","Contract","Client Relations","Market Analysis","Marketing","Legal Compliance","Networking"]},
+2026-05 international pivot: Russian-language pages archived to landing/_archive_ru/resume/
+English pages written to landing/resume/
+
+Run: python3 generate_seo_pages.py
+"""
+import os
+import shutil
+
+JOBS = [
+  {"en": "Software Engineer",        "slug": "software-engineer",       "keywords": ["Python", "Java", "Git", "Docker", "SQL", "REST API", "Agile", "CI/CD", "Linux", "Microservices"]},
+  {"en": "Product Manager",          "slug": "product-manager",         "keywords": ["Roadmap", "Agile", "Scrum", "Stakeholder", "KPI", "A/B Testing", "Jira", "User Story", "Metrics", "MVP"]},
+  {"en": "Data Analyst",             "slug": "data-analyst",            "keywords": ["SQL", "Python", "Excel", "Tableau", "Power BI", "Statistics", "A/B Test", "ETL", "Data Warehouse", "Pandas"]},
+  {"en": "UX Designer",              "slug": "ux-designer",             "keywords": ["Figma", "Prototyping", "User Research", "Wireframing", "Usability", "Design System", "A/B Test", "CSS", "Accessibility", "UX Writing"]},
+  {"en": "Marketing Manager",        "slug": "marketing-manager",       "keywords": ["SEO", "SMM", "Google Ads", "Email Marketing", "KPI", "ROI", "CRM", "Analytics", "Content Strategy", "PPC"]},
+  {"en": "Sales Manager",            "slug": "sales-manager",           "keywords": ["B2B", "CRM", "Cold Calling", "KPI", "Pipeline", "Salesforce", "Negotiation", "Lead Generation", "Upsell", "Revenue"]},
+  {"en": "Project Manager",          "slug": "project-manager",         "keywords": ["Agile", "Scrum", "PMP", "Jira", "Confluence", "Risk Management", "Stakeholder", "Roadmap", "Budget", "PMO"]},
+  {"en": "DevOps Engineer",          "slug": "devops-engineer",         "keywords": ["Kubernetes", "Docker", "CI/CD", "Terraform", "AWS", "Linux", "Ansible", "Jenkins", "Monitoring", "Git"]},
+  {"en": "Frontend Developer",       "slug": "frontend-developer",      "keywords": ["React", "TypeScript", "JavaScript", "CSS", "HTML", "Vue.js", "Webpack", "REST API", "Testing", "Git"]},
+  {"en": "Backend Developer",        "slug": "backend-developer",       "keywords": ["Python", "Node.js", "Java", "SQL", "PostgreSQL", "Redis", "Docker", "REST API", "Microservices", "Git"]},
+  {"en": "Full Stack Developer",     "slug": "fullstack-developer",     "keywords": ["React", "Node.js", "Python", "PostgreSQL", "Docker", "TypeScript", "REST API", "Git", "AWS", "Redis"]},
+  {"en": "QA Engineer",              "slug": "qa-engineer",             "keywords": ["Selenium", "TestNG", "Jira", "API Testing", "Automation", "SQL", "Postman", "Load Testing", "Python", "CI/CD"]},
+  {"en": "Business Analyst",         "slug": "business-analyst",        "keywords": ["SQL", "BPMN", "Requirements", "Use Cases", "Jira", "Confluence", "Stakeholder", "Excel", "Visio", "Agile"]},
+  {"en": "HR Manager",               "slug": "hr-manager",              "keywords": ["Recruiting", "Onboarding", "HRIS", "KPI", "Employee Relations", "Training", "Performance Review", "Compensation", "Labor Law", "ATS"]},
+  {"en": "Accountant",               "slug": "accountant",              "keywords": ["GAAP", "IFRS", "Excel", "QuickBooks", "Financial Reporting", "Audit", "Payroll", "Tax Compliance", "ERP", "Reconciliation"]},
+  {"en": "Graphic Designer",         "slug": "graphic-designer",        "keywords": ["Photoshop", "Illustrator", "InDesign", "Figma", "Branding", "Typography", "Layout", "Print", "UI Design", "After Effects"]},
+  {"en": "Content Writer",           "slug": "content-writer",          "keywords": ["SEO", "Copywriting", "WordPress", "Content Strategy", "Social Media", "Editing", "Research", "Keywords", "Analytics", "CMS"]},
+  {"en": "Customer Support",         "slug": "customer-support",        "keywords": ["CRM", "Zendesk", "Customer Service", "SLA", "Ticketing", "Communication", "KPI", "Escalation", "Product Knowledge", "NPS"]},
+  {"en": "System Administrator",     "slug": "system-administrator",    "keywords": ["Windows Server", "Linux", "Active Directory", "Virtualization", "Networking", "Security", "Backup", "DNS", "VMware", "PowerShell"]},
+  {"en": "Financial Analyst",        "slug": "financial-analyst",       "keywords": ["Excel", "Financial Modeling", "DCF", "Valuation", "Bloomberg", "SQL", "IFRS", "Budget", "Forecasting", "PowerPoint"]},
+  {"en": "Data Scientist",           "slug": "data-scientist",          "keywords": ["Python", "Machine Learning", "TensorFlow", "Pandas", "SQL", "Statistics", "NLP", "Computer Vision", "Jupyter", "Scikit-learn"]},
+  {"en": "Machine Learning Engineer","slug": "ml-engineer",             "keywords": ["Python", "TensorFlow", "PyTorch", "MLOps", "Docker", "SQL", "NLP", "Computer Vision", "Kubernetes", "Feature Engineering"]},
+  {"en": "iOS Developer",            "slug": "ios-developer",           "keywords": ["Swift", "SwiftUI", "Xcode", "UIKit", "Core Data", "REST API", "Combine", "TestFlight", "Firebase", "Git"]},
+  {"en": "Android Developer",        "slug": "android-developer",       "keywords": ["Kotlin", "Java", "Android Studio", "Jetpack Compose", "REST API", "Firebase", "Room", "MVVM", "Coroutines", "Git"]},
+  {"en": "Cybersecurity Analyst",    "slug": "cybersecurity-analyst",   "keywords": ["SIEM", "Penetration Testing", "CISSP", "Firewall", "Network Security", "Vulnerability Assessment", "ISO 27001", "SOC", "Python", "IDS/IPS"]},
+  {"en": "Cloud Engineer",           "slug": "cloud-engineer",          "keywords": ["AWS", "Azure", "GCP", "Terraform", "Kubernetes", "Docker", "CI/CD", "IaC", "Security", "Networking"]},
+  {"en": "Technical Writer",         "slug": "technical-writer",        "keywords": ["Documentation", "Markdown", "API Docs", "DITA", "Confluence", "Git", "XML", "Technical Communication", "UX Writing", "Swagger"]},
+  {"en": "UI Designer",              "slug": "ui-designer",             "keywords": ["Figma", "Design System", "CSS", "Prototyping", "Typography", "Color Theory", "Responsive Design", "Accessibility", "Adobe XD", "Sketch"]},
+  {"en": "Scrum Master",             "slug": "scrum-master",            "keywords": ["Scrum", "Agile", "Jira", "Kanban", "Retrospectives", "Sprint Planning", "Coaching", "SAFe", "Confluence", "Facilitation"]},
+  {"en": "Supply Chain Manager",     "slug": "supply-chain-manager",    "keywords": ["SAP", "ERP", "Logistics", "Procurement", "Inventory", "Forecasting", "Vendor Management", "KPI", "Excel", "LEAN"]},
+  {"en": "Teacher",                  "slug": "teacher",                 "keywords": ["Curriculum", "Lesson Planning", "Differentiated Instruction", "Assessment", "Classroom Management", "E-learning", "Moodle", "Google Classroom", "EdTech", "IEP"]},
+  {"en": "Nurse",                    "slug": "nurse",                   "keywords": ["Patient Care", "Medical Records", "IV Therapy", "Vital Signs", "EHR", "ACLS", "BLS", "Medication Administration", "ICU", "Triage"]},
+  {"en": "Lawyer",                   "slug": "lawyer",                  "keywords": ["Contract Law", "Litigation", "Legal Research", "Due Diligence", "Corporate Law", "Compliance", "Arbitration", "Legal Writing", "IP Law", "Labor Law"]},
+  {"en": "Architect",                "slug": "architect",               "keywords": ["AutoCAD", "Revit", "BIM", "ArchiCAD", "3D Modeling", "Building Codes", "Project Management", "Structural Design", "Urban Planning", "Sustainability"]},
+  {"en": "Mechanical Engineer",      "slug": "mechanical-engineer",     "keywords": ["AutoCAD", "SolidWorks", "ANSYS", "CAD", "Manufacturing", "FEA", "Thermodynamics", "CNC", "Materials Science", "ISO Standards"]},
+  {"en": "Civil Engineer",           "slug": "civil-engineer",          "keywords": ["AutoCAD", "Structural Analysis", "BIM", "Project Management", "Soil Mechanics", "Construction Management", "SAP2000", "Budget", "Surveying", "Environmental"]},
+  {"en": "Pharmacist",               "slug": "pharmacist",              "keywords": ["Pharmaceutical", "Drug Interactions", "Patient Counseling", "Inventory", "Clinical Pharmacy", "Compounding", "Regulatory", "PBM", "Medication Review", "GCP"]},
+  {"en": "Chef",                     "slug": "chef",                    "keywords": ["Menu Development", "Food Safety", "HACCP", "Inventory Management", "Staff Training", "Cost Control", "Culinary Arts", "Kitchen Management", "Pastry", "Nutrition"]},
+  {"en": "Electrician",              "slug": "electrician",             "keywords": ["Electrical Wiring", "NEC", "PLC", "Safety Compliance", "Troubleshooting", "Blueprint Reading", "AC/DC", "Motor Control", "Conduit", "Industrial Electrical"]},
+  {"en": "Real Estate Agent",        "slug": "real-estate-agent",       "keywords": ["CRM", "Negotiation", "Property Valuation", "MLS", "Contract", "Client Relations", "Market Analysis", "Marketing", "Legal Compliance", "Networking"]},
 ]
 
 TEMPLATE = '''<!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Резюме для {RU_TITLE} — Создать за 30 секунд | РезюмеАИ</title>
-  <meta name="description" content="Создайте идеальное резюме для должности {RU_TITLE} с помощью AI. ATS-оптимизация, ключевые слова, профессиональные шаблоны. Бесплатно за 30 секунд." />
+  <title>AI Resume for {EN_TITLE} — Build in 30 Seconds | ResumeAI</title>
+  <meta name="description" content="Create a perfect ATS-optimised resume for {EN_TITLE} with AI. Auto-filled keywords, professional templates, tailored to each job. Free to try." />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://resumeai-bot.ru/resume/{SLUG}" />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://resumeai-bot.ru/resume/{SLUG}" />
-  <meta property="og:title" content="AI Резюме для {RU_TITLE} — РезюмеАИ" />
-  <meta property="og:description" content="Создайте профессиональное резюме для {RU_TITLE} за 30 секунд с AI-оптимизацией." />
+  <meta property="og:title" content="AI Resume for {EN_TITLE} — ResumeAI" />
+  <meta property="og:description" content="Build a professional {EN_TITLE} resume in 30 seconds with AI optimisation for ATS." />
   <meta property="og:image" content="https://resumeai-bot.ru/og-image.png" />
-  <meta property="og:site_name" content="РезюмеАИ" />
+  <meta property="og:site_name" content="ResumeAI" />
+  <script type="application/ld+json">
+  {{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{{"@type":"ListItem","position":1,"name":"Home","item":"https://resumeai-bot.ru"}},{{"@type":"ListItem","position":2,"name":"Resume","item":"https://resumeai-bot.ru/resume/"}},{{"@type":"ListItem","position":3,"name":"AI Resume for {EN_TITLE}","item":"https://resumeai-bot.ru/resume/{SLUG}"}}]}}
+  </script>
+  <script type="application/ld+json">
+  {{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{{"@type":"Question","name":"How fast does AI generate a {EN_TITLE} resume?","acceptedAnswer":{{"@type":"Answer","text":"AI produces a fully tailored resume in under 30 seconds. Paste the job link and you\\'re done."}}}},{{"@type":"Question","name":"Which keywords matter most for {EN_TITLE}?","acceptedAnswer":{{"@type":"Answer","text":"Top ATS keywords for {EN_TITLE}: {KEYWORDS_STRING}. AI automatically injects the most relevant ones."}}}},{{"@type":"Question","name":"Is building a {EN_TITLE} resume free?","acceptedAnswer":{{"@type":"Answer","text":"Yes — first resume is free, no credit card. Also available via Telegram bot @topbestworkerbot."}}}}]}}
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <script type="application/ld+json">
-  {{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{{"@type":"ListItem","position":1,"name":"Главная","item":"https://resumeai-bot.ru"}},{{"@type":"ListItem","position":2,"name":"Резюме","item":"https://resumeai-bot.ru/resume/"}},{{"@type":"ListItem","position":3,"name":"AI Резюме для {RU_TITLE}","item":"https://resumeai-bot.ru/resume/{SLUG}"}}]}}
-  </script>
-  <script type="application/ld+json">
-  {{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{{"@type":"Question","name":"Как быстро AI создаёт резюме для {RU_TITLE}?","acceptedAnswer":{{"@type":"Answer","text":"AI создаёт адаптированное резюме за 30 секунд. Просто вставьте ссылку на вакансию."}}}},{{"@type":"Question","name":"Какие ключевые навыки важны для {RU_TITLE}?","acceptedAnswer":{{"@type":"Answer","text":"Для {RU_TITLE} важны: {KEYWORDS_STRING}. AI автоматически включает релевантные навыки."}}}},{{"@type":"Question","name":"Бесплатно ли создание резюме для {RU_TITLE}?","acceptedAnswer":{{"@type":"Answer","text":"Да, первое резюме бесплатно. Также доступно через Telegram бот @topbestworkerbot."}}}}]}}
-  </script>
   <style>
     *,*::before,*::after{{box-sizing:border-box;margin:0;padding:0}}
     :root{{--primary:#2563EB;--cta:#F59E0B;--bg:#F8FAFC;--card:#fff;--text:#334155;--heading:#0F172A;--border:#E2E8F0;--radius:12px}}
@@ -121,30 +130,30 @@ TEMPLATE = '''<!DOCTYPE html>
   <div class="header-inner">
     <a href="/" class="logo">ResumeAI</a>
     <nav class="nav-links">
-      <a href="/">Главная</a>
-      <a href="/#pricing">Тарифы</a>
-      <a href="/blog/">Блог</a>
+      <a href="/">Home</a>
+      <a href="/#pricing">Pricing</a>
+      <a href="/blog/">Blog</a>
       <a href="https://t.me/topbestworkerbot" target="_blank">Telegram</a>
     </nav>
-    <a href="/app" class="btn-signup">Создать резюме</a>
+    <a href="/app" class="btn-signup">Build your resume</a>
   </div>
 </header>
 
 <div class="container">
   <div class="breadcrumb">
-    <a href="/">Главная</a><span>›</span>
-    <a href="/resume/">Резюме</a><span>›</span>
-    AI Резюме для {RU_TITLE}
+    <a href="/">Home</a><span>›</span>
+    <a href="/resume/">Resume</a><span>›</span>
+    AI Resume for {EN_TITLE}
   </div>
 </div>
 
 <div class="page-hero">
   <div class="container">
-    <h1>AI Резюме для {RU_TITLE}</h1>
-    <p>Создайте профессиональное, ATS-оптимизированное резюме для позиции {RU_TITLE} за 30 секунд. Наш AI анализирует вакансию и адаптирует резюме под конкретные требования.</p>
+    <h1>AI Resume for {EN_TITLE}</h1>
+    <p>Build a professional, ATS-optimised {EN_TITLE} resume in 30 seconds. Our AI reads the job description and tailors your resume to fit — keywords, format, and all.</p>
     <div class="hero-btns">
-      <a href="/app" class="btn-primary">Создать резюме {RU_TITLE} бесплатно →</a>
-      <a href="https://t.me/topbestworkerbot" target="_blank" class="btn-telegram">💬 Или попробуй в Telegram</a>
+      <a href="/app" class="btn-primary">Start free — build your {EN_TITLE} resume →</a>
+      <a href="https://t.me/topbestworkerbot" target="_blank" class="btn-telegram">Open in Telegram</a>
     </div>
   </div>
 </div>
@@ -152,90 +161,90 @@ TEMPLATE = '''<!DOCTYPE html>
 <div class="container">
   <div class="content-grid">
     <article class="article">
-      <h2>Что работодатели ищут в резюме {RU_TITLE}</h2>
-      <p>Рынок труда становится всё более конкурентным. Для позиции {RU_TITLE} рекрутеры ежедневно просматривают десятки резюме — и большинство из них отсеиваются ещё на этапе ATS-фильтрации. Правильно составленное резюме увеличивает шансы на приглашение на собеседование в 3 раза.</p>
+      <h2>What recruiters look for in a {EN_TITLE} resume</h2>
+      <p>The job market is more competitive than ever. For {EN_TITLE} roles, recruiters review dozens of resumes per day — and most are filtered out before a human sees them. An ATS-optimised resume dramatically improves your chances of reaching the interview stage.</p>
 
-      <h2>Топ-10 ATS-ключей для {RU_TITLE}</h2>
-      <p>Эти ключевые слова чаще всего встречаются в вакансиях {RU_TITLE} и должны присутствовать в вашем резюме:</p>
+      <h2>Top 10 ATS keywords for {EN_TITLE}</h2>
+      <p>These keywords appear most often in {EN_TITLE} job postings and should be present in your resume:</p>
       <div class="keyword-grid">
         {KEYWORD_TAGS}
       </div>
 
-      <h2>Ключевые навыки для позиции {RU_TITLE}</h2>
-      <p>Помимо технических навыков, рекрутеры обращают внимание на soft skills. Для {RU_TITLE} особенно важны: умение работать в команде, управление временем, коммуникабельность и ориентация на результат.</p>
+      <h2>Core skills for {EN_TITLE}</h2>
+      <p>Beyond technical skills, employers value soft skills. For {EN_TITLE}, teamwork, time management, communication, and a results-first mindset are consistently valued.</p>
       <ul>
-        <li>Технические компетенции: {KEYWORDS_0}, {KEYWORDS_1}, {KEYWORDS_2}</li>
-        <li>Аналитическое мышление и решение проблем</li>
-        <li>Коммуникация с командой и стейкхолдерами</li>
-        <li>Управление приоритетами и дедлайнами</li>
-        <li>Готовность к обучению и развитию</li>
+        <li>Technical expertise: {KEYWORDS_0}, {KEYWORDS_1}, {KEYWORDS_2}</li>
+        <li>Analytical thinking and structured problem-solving</li>
+        <li>Clear communication with teams and stakeholders</li>
+        <li>Priority management and deadline delivery</li>
+        <li>Commitment to learning and continuous improvement</li>
       </ul>
 
-      <h2>Частые ошибки в резюме {RU_TITLE}</h2>
-      <p>Большинство резюме для позиции {RU_TITLE} отклоняются по одним и тем же причинам:</p>
+      <h2>Common mistakes in {EN_TITLE} resumes</h2>
+      <p>Most {EN_TITLE} resumes are rejected for the same reasons:</p>
       <ul>
-        <li><strong>Нет ключевых слов из вакансии</strong> — ATS не находит соответствие и отсеивает резюме автоматически</li>
-        <li><strong>Общие фразы</strong> — "ответственный", "коммуникабельный" без конкретных примеров ничего не говорят рекрутеру</li>
-        <li><strong>Не указаны достижения с цифрами</strong> — "увеличил продажи" vs "увеличил продажи на 34% за квартал"</li>
-        <li><strong>Неправильный формат</strong> — нечитаемый PDF, нестандартные шрифты, сложная структура</li>
-        <li><strong>Одно резюме на все вакансии</strong> — каждая вакансия требует адаптации</li>
+        <li><strong>Missing ATS keywords</strong> — the system filters your resume before a recruiter ever sees it</li>
+        <li><strong>Generic phrases</strong> — "team player" and "hard worker" say nothing without concrete examples</li>
+        <li><strong>No quantified achievements</strong> — "improved sales" vs "grew revenue 34% in Q3"</li>
+        <li><strong>Wrong format</strong> — unreadable PDFs, non-standard fonts, or overly complex layouts</li>
+        <li><strong>One resume for every job</strong> — each application deserves a tailored version</li>
       </ul>
 
-      <h2>Как AI решает эти проблемы</h2>
-      <p>РезюмеАИ анализирует конкретную вакансию {RU_TITLE} и автоматически:</p>
+      <h2>How AI fixes all of this</h2>
+      <p>ResumeAI reads the specific {EN_TITLE} job posting and automatically:</p>
       <ul>
-        <li>Включает все нужные ATS-ключевые слова из описания вакансии</li>
-        <li>Переформулирует ваш опыт под требования конкретной позиции</li>
-        <li>Оптимизирует структуру и форматирование для ATS-систем</li>
-        <li>Генерирует персональное сопроводительное письмо</li>
-        <li>Показывает ATS-скор и рекомендации по улучшению</li>
+        <li>Injects all required ATS keywords from the job description</li>
+        <li>Reframes your experience to match what the role requires</li>
+        <li>Optimises structure and formatting for ATS parsers</li>
+        <li>Generates a personalised cover letter for each application</li>
+        <li>Shows your ATS score with improvement suggestions</li>
       </ul>
 
       <div class="cta-banner">
-        <h2>Создайте резюме {RU_TITLE} прямо сейчас</h2>
-        <p>Бесплатно · 30 секунд · ATS-оптимизация · Без кредитной карты</p>
+        <h2>Build your {EN_TITLE} resume now</h2>
+        <p>Free · 30 seconds · ATS-optimised · No credit card</p>
         <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-          <a href="/app" class="btn-primary">Создать резюме бесплатно →</a>
-          <a href="https://t.me/topbestworkerbot" target="_blank" class="btn-telegram">💬 В Telegram</a>
+          <a href="/app" class="btn-primary">Start free →</a>
+          <a href="https://t.me/topbestworkerbot" target="_blank" class="btn-telegram">Open in Telegram</a>
         </div>
       </div>
     </article>
 
     <aside class="sidebar">
       <div class="sidebar-card">
-        <div class="sidebar-title">⚡ Быстрый старт</div>
-        <p style="font-size:.88rem;color:#64748B;margin-bottom:16px;">Создайте резюме {RU_TITLE} за 30 секунд</p>
-        <a href="/app" class="btn-primary" style="width:100%;justify-content:center;font-size:.9rem;">Создать бесплатно →</a>
-        <a href="https://t.me/topbestworkerbot" target="_blank" class="btn-telegram" style="width:100%;justify-content:center;margin-top:10px;font-size:.88rem;">💬 В Telegram</a>
+        <div class="sidebar-title">Quick start</div>
+        <p style="font-size:.88rem;color:#64748B;margin-bottom:16px;">Build your {EN_TITLE} resume in 30 seconds</p>
+        <a href="/app" class="btn-primary" style="width:100%;justify-content:center;font-size:.9rem;">Start free →</a>
+        <a href="https://t.me/topbestworkerbot" target="_blank" class="btn-telegram" style="width:100%;justify-content:center;margin-top:10px;font-size:.88rem;">Open in Telegram</a>
       </div>
       <div class="sidebar-card">
-        <div class="sidebar-title">🔑 ATS-ключевые слова</div>
+        <div class="sidebar-title">ATS keywords</div>
         <div class="keyword-grid">{KEYWORD_TAGS_SMALL}</div>
       </div>
       <div class="sidebar-card">
-        <div class="sidebar-title">📄 Похожие профессии</div>
+        <div class="sidebar-title">Related roles</div>
         {RELATED_LINKS}
       </div>
     </aside>
   </div>
 
   <div class="faq-section">
-    <h2 style="font-size:1.6rem;font-weight:800;color:#0F172A;margin-bottom:24px;">Частые вопросы</h2>
+    <h2 style="font-size:1.6rem;font-weight:800;color:#0F172A;margin-bottom:24px;">Frequently asked questions</h2>
     <div class="faq-item">
-      <div class="faq-q" onclick="this.nextElementSibling.classList.toggle(\'open\')">Как быстро AI создаёт резюме для {RU_TITLE}? <span>+</span></div>
-      <div class="faq-a">AI создаёт полностью адаптированное резюме за 30 секунд. Вставьте ссылку на вакансию или её текст — и получите готовый документ в формате DOCX.</div>
+      <div class="faq-q" onclick="this.nextElementSibling.classList.toggle(\'open\')">How fast does AI build a {EN_TITLE} resume? <span>+</span></div>
+      <div class="faq-a">Under 30 seconds. Paste the job link or description and get a fully tailored DOCX resume ready to send.</div>
     </div>
     <div class="faq-item">
-      <div class="faq-q" onclick="this.nextElementSibling.classList.toggle(\'open\')">Какие навыки обязательны для {RU_TITLE}? <span>+</span></div>
-      <div class="faq-a">Для позиции {RU_TITLE} ключевые навыки: {KEYWORDS_STRING}. AI автоматически включает наиболее релевантные навыки из конкретной вакансии.</div>
+      <div class="faq-q" onclick="this.nextElementSibling.classList.toggle(\'open\')">Which skills are essential for {EN_TITLE}? <span>+</span></div>
+      <div class="faq-a">Key skills for {EN_TITLE}: {KEYWORDS_STRING}. AI automatically prioritises the most relevant ones for each specific job posting.</div>
     </div>
     <div class="faq-item">
-      <div class="faq-q" onclick="this.nextElementSibling.classList.toggle(\'open\')">Does the service work with job postings from LinkedIn and Indeed? <span>+</span></div>
-      <div class="faq-a">Yes, ResumeAI works with vacancies from LinkedIn, Indeed, Adzuna, RemoteOK, and other job boards. Just paste the job description.</div>
+      <div class="faq-q" onclick="this.nextElementSibling.classList.toggle(\'open\')">Does it work with LinkedIn and Indeed job postings? <span>+</span></div>
+      <div class="faq-a">Yes — ResumeAI works with LinkedIn, Indeed, Adzuna, RemoteOK, Greenhouse, Lever, and more. Just paste the job URL or description.</div>
     </div>
     <div class="faq-item">
-      <div class="faq-q" onclick="this.nextElementSibling.classList.toggle(\'open\')">Это действительно бесплатно? <span>+</span></div>
-      <div class="faq-a">Первое резюме полностью бесплатно — без кредитной карты. Также доступно через Telegram бот @topbestworkerbot: 1 резюме + 1 письмо + 3 AI-сообщения бесплатно.</div>
+      <div class="faq-q" onclick="this.nextElementSibling.classList.toggle(\'open\')">Is it really free? <span>+</span></div>
+      <div class="faq-a">Yes — your first resume is completely free, no credit card required. Also available via Telegram bot @topbestworkerbot: 3 free auto-applies per day on the free plan.</div>
     </div>
   </div>
 </div>
@@ -243,54 +252,81 @@ TEMPLATE = '''<!DOCTYPE html>
 <footer>
   <div class="container">
     <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:24px;margin-bottom:24px;">
-      <div><div style="font-size:1.2rem;font-weight:800;color:#F8FAFC;margin-bottom:8px;">ResumeAI</div><div style="font-size:.85rem;">AI-карьерный помощник нового поколения</div></div>
+      <div><div style="font-size:1.2rem;font-weight:800;color:#F8FAFC;margin-bottom:8px;">ResumeAI</div><div style="font-size:.85rem;">AI-powered career tools for the global job market</div></div>
       <div style="display:flex;gap:40px;flex-wrap:wrap;font-size:.88rem;">
-        <div><div style="color:#F8FAFC;font-weight:600;margin-bottom:10px;">Продукт</div><a href="/app" style="display:block;margin-bottom:6px;color:#64748B;">Конструктор резюме</a><a href="/#pricing" style="display:block;color:#64748B;">Тарифы</a></div>
-        <div><div style="color:#F8FAFC;font-weight:600;margin-bottom:10px;">Компания</div><a href="/blog/" style="display:block;margin-bottom:6px;color:#64748B;">Блог</a><a href="/privacy.html" style="display:block;color:#64748B;">Политика</a></div>
+        <div><div style="color:#F8FAFC;font-weight:600;margin-bottom:10px;">Product</div><a href="/app" style="display:block;margin-bottom:6px;color:#64748B;">Resume builder</a><a href="/#pricing" style="display:block;color:#64748B;">Pricing</a></div>
+        <div><div style="color:#F8FAFC;font-weight:600;margin-bottom:10px;">Company</div><a href="/blog/" style="display:block;margin-bottom:6px;color:#64748B;">Blog</a><a href="/privacy.html" style="display:block;color:#64748B;">Privacy</a></div>
       </div>
     </div>
-    <div class="footer-bottom">© 2026 РезюмеАИ · <a href="/privacy.html" style="color:#64748B;">Конфиденциальность</a> · <a href="https://t.me/topbestworkerbot" target="_blank" style="color:#0088CC;">@topbestworkerbot</a></div>
+    <div class="footer-bottom">© 2026 ResumeAI · <a href="/privacy.html" style="color:#64748B;">Privacy Policy</a> · <a href="https://t.me/topbestworkerbot" target="_blank" style="color:#0088CC;">@topbestworkerbot</a></div>
   </div>
 </footer>
 
 </body>
 </html>'''
 
-out_dir = '/Users/maksimabramov/resume-ai-bot/landing/resume'
-os.makedirs(out_dir, exist_ok=True)
+LANDING_DIR = os.path.join(os.path.dirname(__file__), 'landing')
+OUT_DIR     = os.path.join(LANDING_DIR, 'resume')
+ARCHIVE_DIR = os.path.join(LANDING_DIR, '_archive_ru', 'resume')
 
-for i, job in enumerate(jobs):
-    ru = job['ru']
-    slug = job['slug']
-    kws = job['keywords']
-    kw_str = ', '.join(kws)
-    kw_tags = '\n        '.join(f'<span class="kw-tag">{k}</span>' for k in kws)
-    kw_tags_small = '\n'.join(f'<span class="kw-tag">{k}</span>' for k in kws)
 
-    # Related links: 4-5 neighbors
-    neighbors = []
-    for j in range(max(0, i-2), min(len(jobs), i+4)):
-        if j != i:
-            neighbors.append(jobs[j])
-    related = '\n        '.join(
-        f'<a href="/resume/{n["slug"]}" class="related-link">{n["ru"]}</a>'
-        for n in neighbors[:5]
-    )
+def archive_existing_ru_pages() -> int:
+    """Move existing RU-language HTML files to _archive_ru/ instead of deleting."""
+    if not os.path.isdir(OUT_DIR):
+        return 0
+    archived = 0
+    os.makedirs(ARCHIVE_DIR, exist_ok=True)
+    for fname in os.listdir(OUT_DIR):
+        if not fname.endswith('.html'):
+            continue
+        src = os.path.join(OUT_DIR, fname)
+        dst = os.path.join(ARCHIVE_DIR, fname)
+        shutil.move(src, dst)
+        archived += 1
+    if archived:
+        print(f'  Archived {archived} Russian-language pages → landing/_archive_ru/resume/')
+    return archived
 
-    html = TEMPLATE
-    html = html.replace('{RU_TITLE}', ru)
-    html = html.replace('{SLUG}', slug)
-    html = html.replace('{KEYWORDS_STRING}', kw_str)
-    html = html.replace('{KEYWORD_TAGS}', kw_tags)
-    html = html.replace('{KEYWORD_TAGS_SMALL}', kw_tags_small)
-    html = html.replace('{KEYWORDS_0}', kws[0])
-    html = html.replace('{KEYWORDS_1}', kws[1])
-    html = html.replace('{KEYWORDS_2}', kws[2])
-    html = html.replace('{RELATED_LINKS}', related)
 
-    path = os.path.join(out_dir, f'{slug}.html')
-    with open(path, 'w', encoding='utf-8') as f:
-        f.write(html)
-    print(f'  [{i+1}/40] {path}')
+def main() -> None:
+    archive_existing_ru_pages()
+    os.makedirs(OUT_DIR, exist_ok=True)
 
-print(f'\nDone! {len(jobs)} files written to {out_dir}')
+    for i, job in enumerate(JOBS):
+        en    = job['en']
+        slug  = job['slug']
+        kws   = job['keywords']
+        kw_str      = ', '.join(kws)
+        kw_tags     = '\n        '.join(f'<span class="kw-tag">{k}</span>' for k in kws)
+        kw_tags_small = '\n'.join(f'<span class="kw-tag">{k}</span>' for k in kws)
+
+        neighbors = []
+        for j in range(max(0, i - 2), min(len(JOBS), i + 4)):
+            if j != i:
+                neighbors.append(JOBS[j])
+        related = '\n        '.join(
+            f'<a href="/resume/{n["slug"]}" class="related-link">{n["en"]}</a>'
+            for n in neighbors[:5]
+        )
+
+        html = TEMPLATE
+        html = html.replace('{EN_TITLE}', en)
+        html = html.replace('{SLUG}', slug)
+        html = html.replace('{KEYWORDS_STRING}', kw_str)
+        html = html.replace('{KEYWORD_TAGS}', kw_tags)
+        html = html.replace('{KEYWORD_TAGS_SMALL}', kw_tags_small)
+        html = html.replace('{KEYWORDS_0}', kws[0])
+        html = html.replace('{KEYWORDS_1}', kws[1])
+        html = html.replace('{KEYWORDS_2}', kws[2])
+        html = html.replace('{RELATED_LINKS}', related)
+
+        path = os.path.join(OUT_DIR, f'{slug}.html')
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(html)
+        print(f'  [{i + 1}/{len(JOBS)}] {path}')
+
+    print(f'\nDone — {len(JOBS)} English SEO pages written to landing/resume/')
+
+
+if __name__ == '__main__':
+    main()

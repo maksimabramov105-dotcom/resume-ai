@@ -11,7 +11,12 @@ export function CookieBanner() {
   useEffect(() => {
     const stored = localStorage.getItem(COOKIE_KEY)
     if (!stored) setVisible(true)
-    // If user previously declined, keep PostHog opted out
+    if (stored === 'accepted') {
+      if (posthog.__loaded) posthog.opt_in_capturing()
+      if (typeof (window as any).gtag === 'function') {
+        ;(window as any).gtag('consent', 'update', { analytics_storage: 'granted' })
+      }
+    }
     if (stored === 'declined' && posthog.__loaded) {
       posthog.opt_out_capturing()
     }
@@ -20,12 +25,17 @@ export function CookieBanner() {
   const accept = () => {
     localStorage.setItem(COOKIE_KEY, 'accepted')
     if (posthog.__loaded) posthog.opt_in_capturing()
+    // Grant GA4 analytics
+    if (typeof window !== 'undefined' && typeof (window as any).gtag === 'function') {
+      ;(window as any).gtag('consent', 'update', { analytics_storage: 'granted' })
+    }
     setVisible(false)
   }
 
   const decline = () => {
     localStorage.setItem(COOKIE_KEY, 'declined')
     if (posthog.__loaded) posthog.opt_out_capturing()
+    // GA4 stays denied (default set in layout.tsx)
     setVisible(false)
   }
 

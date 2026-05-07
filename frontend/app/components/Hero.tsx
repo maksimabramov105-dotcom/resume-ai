@@ -24,31 +24,27 @@ export default function Hero() {
         {/* Primary CTA */}
         <div className="flex flex-col sm:flex-row gap-3 justify-center mb-4">
           <a
-            href="https://t.me/topbestworkerbot"
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => posthog.capture("cta_clicked", { cta: "hero_telegram", position: "hero" })}
+            href="/app"
+            onClick={() => posthog.capture("cta_clicked", { cta: "hero_webapp", position: "hero" })}
             className="inline-flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white text-lg font-bold px-8 py-4 rounded-xl shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5 min-h-[56px]"
           >
-            Try Free in Telegram
+            Start free — get 3 free auto-applies/day
           </a>
         </div>
 
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
-          No spam. No data selling. Cancel anytime.
-        </p>
-
-        <p className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-sm text-red-300 text-center max-w-[480px] mx-auto mb-4">
-          🔥 Beta pricing ends May 1st — lock in $19.99/mo before it goes up
+          No credit card. No spam. Cancel anytime.
         </p>
 
         <p className="mb-10">
           <a
-            href="/app"
-            onClick={() => posthog.capture("cta_clicked", { cta: "hero_webapp", position: "hero" })}
+            href="https://t.me/topbestworkerbot"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => posthog.capture("cta_clicked", { cta: "hero_telegram", position: "hero" })}
             className="text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
           >
-            Or sign up with email →
+            Open in Telegram →
           </a>
         </p>
 
