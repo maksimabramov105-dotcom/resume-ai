@@ -91,14 +91,17 @@ async def _fetch_vacancies(
         )
         return cached
 
-    # Map legacy/CIS platforms to English job sources
-    _LEGACY_PLATFORM_MAP = {"hh": "all", "superjob": "all", "zarplata": "all"}
-    if platform in _LEGACY_PLATFORM_MAP:
-        new_platform = _LEGACY_PLATFORM_MAP[platform]
+    # Legacy CIS platforms are no longer supported (2026-05 international pivot).
+    # Campaigns with these sources are auto-paused by archive_legacy_ru_applications.py.
+    # If somehow one slips through, treat it as "all" international sources.
+    _UNSUPPORTED = {"hh", "superjob", "zarplata"}
+    if platform in _UNSUPPORTED:
         logger.warning(
-            "[worker] platform=%s is no longer supported, remapping to %s", platform, new_platform
+            "[worker] unsupported platform=%s — campaign should have been paused; "
+            "falling back to all international sources",
+            platform,
         )
-        platform = new_platform
+        platform = "all"
 
     vacancies = []
     try:
@@ -487,6 +490,24 @@ async def _run_once_inner() -> None:
 async def main() -> None:
     """Main entry point. Loops forever with WORKER_INTERVAL sleep."""
     logger.info("[worker] AutoApply worker started. Interval=%ds", WORKER_INTERVAL)
+
+    # ── Startup self-check: confirm international-only mode ───────────────────
+    from autoapply.config import COUNTRY_BLOCKLIST, ENGLISH_JOB_SOURCES
+    _ru_boards = {"hh", "superjob", "zarplata", "hh.ru"}
+    _active_ru = _ru_boards & set(ENGLISH_JOB_SOURCES)
+    if _active_ru:
+        logger.error(
+            "[worker] STARTUP FAIL: Russian job boards detected in ENGLISH_JOB_SOURCES: %s — "
+            "remove them from the env var and restart",
+            _active_ru,
+        )
+        raise SystemExit(1)
+    logger.info(
+        "[worker] worker_mode=international_only sources=%s blocklist=%s strict=%s",
+        ENGLISH_JOB_SOURCES,
+        sorted(COUNTRY_BLOCKLIST),
+        os.getenv("STRICT_DOMICILE", "1"),
+    )
 
     if not AUTOAPPLY_ENABLED:
         logger.warning("[worker] AUTOAPPLY_ENABLED=0 — worker running in standby mode (no applications will be sent)")

@@ -76,12 +76,12 @@ try:
         if not k.startswith("_")  # skip comment keys
     }
 except (FileNotFoundError, json.JSONDecodeError):
-    # Hard fallback — should never be needed in production
+    # Hard fallback — should never be needed in production (USD-only since 2026-05 international pivot)
     PLANS = {
-        "free":      {"daily_limit": 3,    "price_usd": 0,     "price_rub": 0,    "trial_days": 0,  "label": "Free"},
-        "trial":     {"daily_limit": 30,   "price_usd": 2.99,  "price_rub": 299,  "trial_days": 14, "label": "Trial"},
-        "pro":       {"daily_limit": 50,   "price_usd": 19.99, "price_rub": 1990, "trial_days": 0,  "label": "Pro"},
-        "unlimited": {"daily_limit": 9999, "price_usd": 29.99, "price_rub": 2990, "trial_days": 0,  "label": "Unlimited"},
+        "free":      {"daily_limit": 3,    "price_usd": 0,     "trial_days": 0,  "label": "Free"},
+        "trial":     {"daily_limit": 30,   "price_usd": 2.99,  "trial_days": 14, "label": "Trial"},
+        "pro":       {"daily_limit": 50,   "price_usd": 19.99, "trial_days": 0,  "label": "Pro"},
+        "unlimited": {"daily_limit": 9999, "price_usd": 29.99, "trial_days": 0,  "label": "Unlimited"},
     }
 
 # ── Delays between applications (seconds) ────────────────────────────────

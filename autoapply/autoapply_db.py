@@ -645,7 +645,7 @@ async def get_dashboard_stats(user_id: int, db_path: str = AUTOAPPLY_DB) -> dict
             "total_campaigns": total_campaigns,
             "by_platform": by_platform,
             "by_status": by_status,
-            "hh_connected": bool(user.get("hh_token")),
+            "hh_connected": False,  # deprecated 2026-05: HH.ru removed (columns kept for DB compat)
             "resume_loaded": bool(user.get("resume_text")),
         }
     except Exception as exc:

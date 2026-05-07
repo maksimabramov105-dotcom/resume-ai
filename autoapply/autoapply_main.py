@@ -102,9 +102,10 @@ import httpx as _httpx_module  # noqa: E402 — used in helpers below
 
 _JOB_URL_WHITELIST = (
     "linkedin.com", "remotive.com", "adzuna.com", "adzuna.co.uk",
-    "headhunter.fi", "greenhouse.io", "lever.co", "workable.com",
+    "greenhouse.io", "lever.co", "workable.com",
     "indeed.com", "glassdoor.com", "arbeitnow.com", "themuse.com",
     "remoteok.com", "wellfound.com", "simplyhired.com",
+    "ashbyhq.com", "smartrecruiters.com", "jobvite.com",
 )
 
 
@@ -211,7 +212,7 @@ async def lifespan(app: FastAPI):
 # ── FastAPI app ───────────────────────────────────────────────────────────────
 app = FastAPI(
     title="AutoApply API",
-    description="АвтоОтклик — automated job application service",
+    description="AutoApply — automated international job application service",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -1079,14 +1080,21 @@ async def generate_cover_letter(
 
     if not api_key:
         # Fallback mock
-        return {"cover_letter": f"Уважаемый работодатель,\n\nЯ внимательно ознакомился с вашей вакансией и убеждён, что мой опыт и навыки полностью соответствуют вашим требованиям.\n\n[Это демо-письмо. Добавьте OPENROUTER_API_KEY в .env для AI-генерации]\n\nС уважением,\n{current_user.get('email', 'Кандидат')}"}
+        return {"cover_letter": (
+            f"Dear Hiring Manager,\n\n"
+            f"I am writing to express my strong interest in this position. "
+            f"My background aligns well with your requirements and I am excited "
+            f"about the opportunity to contribute.\n\n"
+            f"[Demo letter — add OPENROUTER_API_KEY to .env for AI generation]\n\n"
+            f"Best regards,\n{current_user.get('email', 'Candidate')}"
+        )}
 
-    prompt = f"""Write a cover letter in Russian for this job posting.
+    prompt = f"""Write a professional cover letter in English for this job posting.
 Tone: {tone_instructions}
 Job posting: {job_description[:2000]}
 {"Candidate resume/background: " + resume_text[:1000] if resume_text else ""}
 
-Write ONLY the cover letter text, no explanation. Start with 'Уважаемый работодатель,' or similar greeting."""
+Write ONLY the cover letter text, no explanation. Start with 'Dear Hiring Manager,' or a specific name if known."""
 
     base_url = "https://openrouter.ai/api/v1" if os.getenv("OPENROUTER_API_KEY") else "https://api.openai.com/v1"
 
@@ -1434,7 +1442,7 @@ async def demo_analyze(payload: dict, request: Request):
 {{
   "job_title": "exact job title",
   "company": "company name or empty string",
-  "salary": "salary range in rubles or 'Не указана'",
+  "salary": "salary range (e.g. '$80k-$100k/yr') or empty string if not stated",
   "ats_score": number 60-95 (how ATS-friendly a good resume would score),
   "keywords": ["top 10 ATS keywords from the posting"],
   "red_flags": ["up to 3 concerning things about this job, or empty array"]
@@ -1467,17 +1475,17 @@ Job posting:
                      "java", "c++", "machine learning", "ci/cd", "linux", "agile", "scrum"]
     found_keywords = [kw for kw in tech_keywords if kw in text_lower][:10]
 
-    salary_match = re.search(r'(\d[\d\s]*)\s*[—–-]\s*(\d[\d\s]*)\s*[₽руб]', job_text)
-    salary = f"{salary_match.group(0)}" if salary_match else "Не указана"
+    salary_match = re.search(r'\$[\d,]+\s*[-–—]\s*\$[\d,]+', job_text)
+    salary = salary_match.group(0) if salary_match else ""
 
     asyncio.create_task(log_web_generation("demo_analysis"))
     return {
-        "job_title": "Вакансия проанализирована",
+        "job_title": "Job posting analysed",
         "company": "",
         "salary": salary,
         "ats_score": 72,
         "keywords": found_keywords or ["Python", "SQL", "Git", "REST API", "Docker"],
-        "red_flags": ["Добавьте OPENROUTER_API_KEY для полного AI-анализа"],
+        "red_flags": ["Add OPENROUTER_API_KEY to .env for full AI analysis"],
     }
 
 
@@ -2132,9 +2140,10 @@ async def help_question(body: HelpQuestionRequest):
                     "model": "openai/gpt-4o-mini",
                     "messages": [
                         {"role": "system", "content": (
-                            "Ты виджет поддержки сервиса АвтоОтклик (resumeai-bot.ru). "
-                            "Отвечай кратко (1-3 предложения), по-русски, дружелюбно. "
-                            "Если не знаешь ответа — направь в Telegram @resumeai_support."
+                            "You are a support assistant for AutoApply (resumeai-bot.ru), "
+                            "an AI-powered international job application service. "
+                            "Answer concisely (1-3 sentences) in English and in a friendly tone. "
+                            "If you don't know the answer, direct the user to Telegram @resumeai_support."
                         )},
                         {"role": "user", "content": q},
                     ],
@@ -2149,71 +2158,23 @@ async def help_question(body: HelpQuestionRequest):
         return {"answer": "Напишите нам: @resumeai_support — поможем в течение часа.", "source": "fallback"}
 
 
-# ── Build F: VK community posting ─────────────────────────────────────────────
-class VKPostRequest(BaseModel):
-    message: str
-    link: Optional[str] = None
-    attachments: Optional[str] = None   # e.g. "photo-237549969_123456"
-
-
-@app.post("/api/admin/post-to-vk", summary="Admin: post message to VK community")
-async def post_to_vk(body: VKPostRequest, x_admin_key: str = Header(default="")):
-    """Post a message to VK public club237549969. Requires ADMIN_SECRET header."""
-    ADMIN_SECRET = os.getenv("ADMIN_SECRET", "")
-    if ADMIN_SECRET and x_admin_key != ADMIN_SECRET:
-        raise HTTPException(status_code=403, detail="Forbidden")
-
-    VK_TOKEN = os.getenv("VK_API_TOKEN", "")
-    VK_GROUP_ID = os.getenv("VK_GROUP_ID", "237549969")
-    if not VK_TOKEN:
-        raise HTTPException(status_code=503, detail="VK_API_TOKEN not configured")
-
-    text = body.message
-    if body.link:
-        text = f"{text}\n\n{body.link}"
-
-    params: dict = {
-        "owner_id": f"-{VK_GROUP_ID}",
-        "message": text,
-        "from_group": 1,
-        "access_token": VK_TOKEN,
-        "v": "5.131",
-    }
-    if body.attachments:
-        params["attachments"] = body.attachments
-
-    try:
-        import httpx
-        async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.post("https://api.vk.com/method/wall.post", data=params)
-        data = resp.json()
-        if "error" in data:
-            logger.error("[post-to-vk] VK error: %s", data["error"])
-            raise HTTPException(status_code=502, detail=f"VK error: {data['error'].get('error_msg')}")
-        post_id = data.get("response", {}).get("post_id")
-        logger.info("[post-to-vk] posted to VK group %s, post_id=%s", VK_GROUP_ID, post_id)
-        return {"ok": True, "post_id": post_id, "url": f"https://vk.com/wall-{VK_GROUP_ID}_{post_id}"}
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.error("[post-to-vk] error: %s", exc)
-        raise HTTPException(status_code=500, detail=str(exc))
-
-
 # ── Resume PDF generation ─────────────────────────────────────────────────────
 
 TEMPLATES_DIR = Path(ROOT) / "autoapply" / "templates" / "resume"
 
+# "russian-formal" removed from selectable templates (2026-05 international pivot).
+# The template file is retained in templates/resume/ for backward compatibility
+# with existing PDF links; it will be dropped in a follow-up cleanup prompt.
 VALID_TEMPLATES = {
     "modern-blue", "classic-serif", "minimal-white", "creative-gradient",
-    "executive-dark", "tech-mono", "ats-safe", "russian-formal",
+    "executive-dark", "tech-mono", "ats-safe",
 }
 
 
 class ResumePDFRequest(BaseModel):
     template: str = "modern-blue"
     data: dict
-    language: str = "ru"
+    language: str = "en"
 
 
 @app.post("/api/resume/generate-pdf", summary="Generate resume PDF from template")
@@ -2339,7 +2300,7 @@ Job title: {req.job_title}
 Question: {req.question}
 Candidate's answer: {req.answer}
 
-Respond ONLY in Russian with valid JSON (no markdown):
+Respond ONLY in English with valid JSON (no markdown):
 {{
   "score": <integer 1-10>,
   "star_breakdown": {{
