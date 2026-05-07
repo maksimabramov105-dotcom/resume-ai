@@ -45,6 +45,18 @@ STRIPE_SECRET_KEY       = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET   = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 STRIPE_PUBLISHABLE_KEY  = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
 
+# ── Country blocklist ────────────────────────────────────────────────────
+# Comma-separated ISO-3166-1 alpha-2 codes the worker must never apply to.
+# Extend via env: COUNTRY_BLOCKLIST=RU,BY,KP
+_raw_blocklist = os.getenv("COUNTRY_BLOCKLIST", "RU,BY")
+COUNTRY_BLOCKLIST: frozenset = frozenset(
+    c.strip().upper() for c in _raw_blocklist.split(",") if c.strip()
+)
+
+# STRICT_DOMICILE=1 (default): vacancies whose company country cannot be
+# resolved are blocked.  Set to 0 in dev to allow unknown-country vacancies.
+STRICT_DOMICILE: bool = os.getenv("STRICT_DOMICILE", "1").strip() not in ("0", "false", "no", "off")
+
 # ── Feature flags ────────────────────────────────────────────────────────
 # Set AUTOAPPLY_ENABLED=0 to pause all automatic job applications without
 # stopping the web service (users can still log in and manage campaigns).

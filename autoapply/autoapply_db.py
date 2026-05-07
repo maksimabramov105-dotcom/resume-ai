@@ -110,6 +110,10 @@ _MIGRATE_STRIPE_CUSTOMER_ID = """
 ALTER TABLE autoapply_users ADD COLUMN stripe_customer_id TEXT
 """
 
+_MIGRATE_COMPANY_COUNTRY = """
+ALTER TABLE applications ADD COLUMN company_country TEXT
+"""
+
 _CREATE_EMAIL_DRIP = """
 CREATE TABLE IF NOT EXISTS email_drip (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -212,7 +216,12 @@ async def init_db(db_path: str = AUTOAPPLY_DB) -> None:
                 except Exception:
                     pass  # partial-index syntax not supported on older SQLite
             # Migrations — each wrapped individually so one failure doesn't block others
-            for _migration in (_MIGRATE_IS_VERIFIED, _MIGRATE_CONSENT_AT, _MIGRATE_STRIPE_CUSTOMER_ID):
+            for _migration in (
+                _MIGRATE_IS_VERIFIED,
+                _MIGRATE_CONSENT_AT,
+                _MIGRATE_STRIPE_CUSTOMER_ID,
+                _MIGRATE_COMPANY_COUNTRY,
+            ):
                 try:
                     await db.execute(_migration)
                 except Exception:
@@ -435,6 +444,7 @@ async def log_application(
     company_name: str,
     vacancy_url: str,
     resume_used: str,
+    company_country: Optional[str] = None,
     db_path: str = AUTOAPPLY_DB,
 ) -> int:
     """Log a sent application. Also increments counters. Returns app_id."""
@@ -445,11 +455,12 @@ async def log_application(
                 """
                 INSERT INTO applications
                     (campaign_id, user_id, platform, vacancy_id, vacancy_title,
-                     company_name, vacancy_url, resume_used, status, sent_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'sent', ?)
+                     company_name, vacancy_url, resume_used, status, sent_at,
+                     company_country)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'sent', ?, ?)
                 """,
                 (campaign_id, user_id, platform, vacancy_id, vacancy_title,
-                 company_name, vacancy_url, resume_used, now),
+                 company_name, vacancy_url, resume_used, now, company_country),
             )
             app_id = cur.lastrowid
 

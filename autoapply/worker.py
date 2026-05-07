@@ -32,6 +32,7 @@ from autoapply.config import (
     WORKER_INTERVAL,
     BOT_TOKEN,
 )
+from autoapply.country_gate import is_allowed_jurisdiction, resolve_company_country
 from autoapply.autoapply_db import (
     get_active_campaigns,
     get_user_by_id,
@@ -278,9 +279,18 @@ async def process_campaign(campaign: dict) -> int:
             if already:
                 continue
 
-            vacancy_title = vacancy.get("title", "Вакансия")
+            vacancy_title = vacancy.get("title", "Vacancy")
             company_name = vacancy.get("company", "")
             vacancy_url = vacancy.get("url", "")
+
+            # Country gate — skip blocked or unresolvable jurisdictions
+            company_country = resolve_company_country(vacancy)
+            if not is_allowed_jurisdiction(company_country):
+                logger.info(
+                    "[worker] blocked campaign=%s vacancy=%s company=%r country=%s",
+                    campaign_id, vacancy_id, company_name, company_country,
+                )
+                continue
 
             # Generate (possibly tailored) resume
             resume_text = await _generate_resume(user, vacancy)
@@ -307,6 +317,7 @@ async def process_campaign(campaign: dict) -> int:
                     company_name=company_name,
                     vacancy_url=vacancy_url,
                     resume_used=resume_text[:500] if resume_text else "",
+                    company_country=company_country,
                     db_path=AUTOAPPLY_DB,
                 )
                 sent_count += 1
@@ -364,8 +375,8 @@ async def notify_user(user_id: int, sent_today: int) -> None:
     responses = user.get("responses_received", 0)
 
     text = (
-        f"АвтоОтклик: отправлено ещё {sent_today} заявок\n"
-        f"Сегодня: {apps_today} | Всего: {apps_total} | Ответов: {responses}\n"
+        f"AutoApply: {sent_today} new application(s) sent\n"
+        f"Today: {apps_today} | Total: {apps_total} | Responses: {responses}\n"
         f"{WEBAPP_BASE_URL}/app"
     )
     await send_telegram_message(telegram_id, text)
