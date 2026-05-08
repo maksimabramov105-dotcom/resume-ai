@@ -34,12 +34,6 @@ ENGLISH_JOB_SOURCES: list = [
     if s.strip()
 ]
 
-# ── CryptoBot payments ───────────────────────────────────────────────────
-CRYPTOBOT_TOKEN                = os.getenv("CRYPTOBOT_TOKEN", "")
-CRYPTOBOT_WEBHOOK_SECRET       = os.getenv("CRYPTOBOT_WEBHOOK_SECRET", "")
-# AutoApply-specific CryptoBot token (separate app from the main bot)
-CRYPTOBOT_AUTOAPPLY_TOKEN      = os.getenv("CRYPTOBOT_AUTOAPPLY_TOKEN", "")
-
 # ── Stripe payments ──────────────────────────────────────────────────────────
 STRIPE_SECRET_KEY       = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET   = os.getenv("STRIPE_WEBHOOK_SECRET", "")

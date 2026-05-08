@@ -128,12 +128,6 @@ def job_telegraph_publish():
     telegraph_main(dry_run=False)
 
 
-def job_vk_post():
-    """Thursday: post to VK."""
-    from content_marketing.vk_poster import main as vk_main
-    vk_main(dry_run=False)
-
-
 # ── Schedule setup ────────────────────────────────────────────────────────────
 
 def setup_schedule():
@@ -147,9 +141,6 @@ def setup_schedule():
     )
     schedule.every().wednesday.at("09:00").do(
         run_job, "telegraph_publish_1", job_telegraph_publish
-    )
-    schedule.every().thursday.at("11:00").do(
-        run_job, "vk_post", job_vk_post
     )
     schedule.every().friday.at("10:00").do(
         run_job, "reddit_post_2", job_reddit_post
@@ -170,7 +161,6 @@ def main():
         run_job("generate_content",    job_generate_content)
         run_job("reddit_post",         job_reddit_post)
         run_job("telegraph_publish",   job_telegraph_publish)
-        run_job("vk_post",             job_vk_post)
         log.info("All test runs complete.")
         return
 

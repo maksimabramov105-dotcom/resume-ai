@@ -96,7 +96,6 @@ from autoapply.config import (
     PLANS,
     WEBAPP_BASE_URL,
 )
-from autoapply.payments import process_payment, verify_webhook
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 os.makedirs(LOGS_DIR, exist_ok=True)

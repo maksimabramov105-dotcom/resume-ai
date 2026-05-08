@@ -16,7 +16,10 @@ from config import BOT_TOKEN
 from database.db import init_db
 from handlers import start, resume, cover_letter, interview, vacancy_analysis, ai_assistant, payment, profile, support, checkin, language, tracker
 from handlers.checkin import checkin_loop
-from utils.texts import BOT_DESCRIPTION, BOT_SHORT_DESCRIPTION
+from utils.texts import (
+    BOT_DESCRIPTION, BOT_SHORT_DESCRIPTION,
+    BOT_DESCRIPTION_RU, BOT_SHORT_DESCRIPTION_RU,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -56,11 +59,15 @@ async def main():
     dp.include_router(checkin.router)
     dp.include_router(tracker.router)
 
-    # Set bot description visible to users before pressing /start
+    # Set bot description — English default + Russian supplement
     try:
-        await bot.set_my_description(description=BOT_DESCRIPTION, language_code="ru")
-        await bot.set_my_short_description(short_description=BOT_SHORT_DESCRIPTION, language_code="ru")
-        logger.info("Bot description updated.")
+        # Default (no language_code) shown to all locales without a specific override
+        await bot.set_my_description(description=BOT_DESCRIPTION)
+        await bot.set_my_short_description(short_description=BOT_SHORT_DESCRIPTION)
+        # Russian supplement for RU-locale users
+        await bot.set_my_description(description=BOT_DESCRIPTION_RU, language_code="ru")
+        await bot.set_my_short_description(short_description=BOT_SHORT_DESCRIPTION_RU, language_code="ru")
+        logger.info("Bot descriptions updated (EN default + RU).")
     except Exception as e:
         logger.warning("Could not set bot description: %s", e)
 

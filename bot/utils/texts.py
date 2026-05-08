@@ -22,18 +22,34 @@ START_MESSAGE = """
 """
 
 BOT_DESCRIPTION = (
+    "🎯 Your personal AI career coach. Land your dream job faster.\n\n"
+    "✅ Tailored resume in 30 seconds — no clichés, no templates\n"
+    "✅ Remembers your profile — second resume in one click\n"
+    "✅ Mock interview with STAR-method scoring\n"
+    "✅ Vacancy analysis: salary, red flags, ATS keywords\n"
+    "✅ Auto-apply to 4 international job boards\n"
+    "✅ AI assistant 24/7\n\n"
+    "Press START — first resume is free."
+)
+
+BOT_DESCRIPTION_RU = (
     "🎯 Твой личный AI-карьерный консультант. Шансы найти работу с нами — 100%.\n\n"
     "✅ Резюме под вакансию — 30 секунд, без клише и шаблонов\n"
     "✅ Запоминает профиль — второе резюме в 1 клик\n"
     "✅ Собеседование с оценкой по методу STAR\n"
     "✅ Анализ вакансии: зарплата, красные флаги, ATS-ключи\n"
-    "✅ Еженедельный карьерный дайджест\n"
+    "✅ Автооткли на международные вакансии\n"
     "✅ AI-ассистент 24/7\n\n"
     "Нажми НАЧАТЬ — первое резюме бесплатно."
 )
 
-# Max 120 characters — checked: 110 chars
+# Max 120 characters
 BOT_SHORT_DESCRIPTION = (
+    "AI-powered resume builder, mock interviews & auto-apply. "
+    "Land your next job faster."
+)
+
+BOT_SHORT_DESCRIPTION_RU = (
     "Бот, который поможет зарабатывать на достойной работе. "
     "AI-резюме, собесы, карьерный рост — всё здесь."
 )

@@ -4,7 +4,7 @@ from config import WEBAPP_URL
 from utils.bot_translations import t
 
 
-def main_menu_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
+def main_menu_kb(lang: str = 'en') -> InlineKeyboardMarkup:
     rows = [
         [
             InlineKeyboardButton(text=t(lang, 'menu.resume'),      callback_data="create_resume"),
@@ -51,7 +51,7 @@ def main_menu_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
 def after_resume_kb(
     bot_username: str = "topbestworkerbot",
     referral_code: str = "",
-    lang: str = 'ru',
+    lang: str = 'en',
 ) -> InlineKeyboardMarkup:
     import urllib.parse
     share_text = t(lang, 'share.text')
@@ -77,7 +77,7 @@ def after_resume_kb(
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def after_cover_letter_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
+def after_cover_letter_kb(lang: str = 'en') -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text=t(lang, 'btn.resume_for_job'), callback_data="create_resume"),
@@ -88,7 +88,7 @@ def after_cover_letter_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
     ])
 
 
-def interview_kb(can_finish: bool = False, lang: str = 'ru') -> InlineKeyboardMarkup:
+def interview_kb(can_finish: bool = False, lang: str = 'en') -> InlineKeyboardMarkup:
     rows = []
     if can_finish:
         rows.append([
@@ -100,7 +100,7 @@ def interview_kb(can_finish: bool = False, lang: str = 'ru') -> InlineKeyboardMa
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def after_interview_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
+def after_interview_kb(lang: str = 'en') -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text=t(lang, 'btn.repeat'),      callback_data="interview"),
@@ -113,7 +113,7 @@ def after_interview_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
     ])
 
 
-def after_vacancy_analysis_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
+def after_vacancy_analysis_kb(lang: str = 'en') -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text=t(lang, 'btn.resume_for_job'), callback_data="create_resume"),
@@ -124,7 +124,7 @@ def after_vacancy_analysis_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
     ])
 
 
-def assistant_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
+def assistant_kb(lang: str = 'en') -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text=t(lang, 'btn.clear_history'), callback_data="clear_assistant_history"),
@@ -133,7 +133,7 @@ def assistant_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
     ])
 
 
-def buy_credits_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
+def buy_credits_kb(lang: str = 'en') -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=t(lang, 'pay.basic'),        callback_data="buy_basic")],
         [InlineKeyboardButton(text=t(lang, 'pay.pro'),          callback_data="buy_pro")],
@@ -145,7 +145,7 @@ def buy_credits_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
     ])
 
 
-def buy_assistant_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
+def buy_assistant_kb(lang: str = 'en') -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=t(lang, 'pay.ai50'),         callback_data="buy_assistant_50")],
         [InlineKeyboardButton(text=t(lang, 'pay.ai200'),        callback_data="buy_assistant_200")],
@@ -154,14 +154,14 @@ def buy_assistant_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
     ])
 
 
-def profile_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
+def profile_kb(lang: str = 'en') -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=t(lang, 'btn.top_up'), callback_data="buy_credits")],
         [InlineKeyboardButton(text=t(lang, 'btn.menu'),   callback_data="main_menu")],
     ])
 
 
-def payment_method_kb(package_key: str, lang: str = 'ru') -> InlineKeyboardMarkup:
+def payment_method_kb(package_key: str, lang: str = 'en') -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=t(lang, 'pay.method_crypto'),  callback_data=f"pay_method:{package_key}:crypto")],
         [InlineKeyboardButton(text=t(lang, 'pay.method_rucard'),  callback_data=f"pay_method:{package_key}:rucard")],
@@ -170,14 +170,14 @@ def payment_method_kb(package_key: str, lang: str = 'ru') -> InlineKeyboardMarku
     ])
 
 
-def crypto_check_kb(invoice_id: str, package_key: str, lang: str = 'ru') -> InlineKeyboardMarkup:
+def crypto_check_kb(invoice_id: str, package_key: str, lang: str = 'en') -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=t(lang, 'pay.check'), callback_data=f"check_crypto:{invoice_id}:{package_key}")],
         [InlineKeyboardButton(text=t(lang, 'btn.menu'),  callback_data="main_menu")],
     ])
 
 
-def manual_paid_kb(payment_db_id: int, lang: str = 'ru') -> InlineKeyboardMarkup:
+def manual_paid_kb(payment_db_id: int, lang: str = 'en') -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=t(lang, 'pay.i_paid'), callback_data=f"manual_paid:{payment_db_id}")],
         [InlineKeyboardButton(text=t(lang, 'btn.menu'),   callback_data="main_menu")],
@@ -200,20 +200,20 @@ def admin_approve_kb(payment_db_id: int, telegram_id: int, package_key: str) -> 
     ])
 
 
-def payment_check_kb(payment_id: str, lang: str = 'ru') -> InlineKeyboardMarkup:
+def payment_check_kb(payment_id: str, lang: str = 'en') -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=t(lang, 'pay.check'), callback_data=f"check_payment:{payment_id}")],
         [InlineKeyboardButton(text=t(lang, 'btn.menu'),  callback_data="main_menu")],
     ])
 
 
-def support_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
+def support_kb(lang: str = 'en') -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=t(lang, 'btn.menu'), callback_data="main_menu")],
     ])
 
 
-def cancel_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
+def cancel_kb(lang: str = 'en') -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=t(lang, 'btn.cancel'), callback_data="main_menu")],
     ])

@@ -43,7 +43,7 @@ class User(Base):
     total_assistant_messages = Column(Integer, default=0)
     total_spent_rub = Column(Float, default=0.0)
     checkin_sent_at = Column(DateTime, nullable=True)   # T+24h onboarding check-in
-    language = Column(String, nullable=True)            # 'ru' | 'en' — user language preference
+    language = Column(String, nullable=True, default='en')  # 'ru' | 'en' — user language preference
     email = Column(String, nullable=True)               # collected during onboarding for drip emails
     created_at = Column(DateTime, default=datetime.utcnow)
     last_active = Column(DateTime, default=datetime.utcnow)

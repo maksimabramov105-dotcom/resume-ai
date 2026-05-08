@@ -20,75 +20,63 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./bot.db")
 ASSISTANT_FREE_MESSAGES = int(os.getenv("ASSISTANT_FREE_MESSAGES", "3"))
 ASSISTANT_MAX_CONTEXT_MESSAGES = int(os.getenv("ASSISTANT_MAX_CONTEXT_MESSAGES", "10"))
 
-# ===== PAYMENT METHODS =====
+# ===== PAYMENT METHODS (international only — 2026-05 pivot) =====
 
-# CryptoBot (@CryptoBot) — получи токен: @CryptoBot → /pay → Create App
-CRYPTOBOT_TOKEN = os.getenv("CRYPTOBOT_TOKEN", "")
+# Revolut — manual transfer, admin approval
+REVOLUT_TAG = os.getenv("REVOLUT_TAG", "@yourtag")   # Revolut @tag
+REVOLUT_LINK = os.getenv("REVOLUT_LINK", "")          # https://revolut.me/yourtag
 
-# Реквизиты для ручного перевода — карта РФ
-RU_CARD_NUMBER = os.getenv("RU_CARD_NUMBER", "0000 0000 0000 0000")
-RU_CARD_HOLDER = os.getenv("RU_CARD_HOLDER", "Иван И.")
-RU_BANK_NAME = os.getenv("RU_BANK_NAME", "Сбербанк")  # или Тинькофф, Альфа и т.д.
+# Stripe handled via the web app (WEBAPP_URL/app#pricing)
 
-# Реквизиты для ручного перевода — Revolut
-REVOLUT_TAG = os.getenv("REVOLUT_TAG", "@yourtag")  # Revolut @tag или ссылка
-REVOLUT_LINK = os.getenv("REVOLUT_LINK", "")         # https://revolut.me/yourtag
-
-# Pricing / tariff plans
+# Pricing / tariff plans (USD, international)
 PRICING = {
     # ===== MAIN PACKAGES =====
     "basic": {
-        "name": "📄 Базовый",
-        "price_rub": 299,
-        "price_usdt": 3.30,
+        "name": "📄 Basic",
+        "price_usd": 4.99,
         "credits_resume": 3,
         "credits_cover_letter": 3,
         "credits_interview": 1,
         "credits_assistant": 10,
-        "description": "3 резюме + 3 письма + 1 собес + 10 сообщений AI",
+        "description": "3 resumes + 3 cover letters + 1 mock interview + 10 AI messages",
     },
     "pro": {
-        "name": "⭐ Про",
-        "price_rub": 790,
-        "price_usdt": 8.80,
+        "name": "⭐ Pro",
+        "price_usd": 9.99,
         "credits_resume": 10,
         "credits_cover_letter": 10,
         "credits_interview": 5,
         "credits_assistant": 50,
-        "description": "10 резюме + 10 писем + 5 собесов + 50 сообщений AI",
+        "description": "10 resumes + 10 cover letters + 5 mock interviews + 50 AI messages",
     },
     "vip": {
-        "name": "👑 VIP (30 дней)",
-        "price_rub": 1990,
-        "price_usdt": 22.00,
+        "name": "👑 VIP (30 days)",
+        "price_usd": 24.99,
         "credits_resume": 999,
         "credits_cover_letter": 999,
         "credits_interview": 999,
         "credits_assistant": 999,
         "duration_days": 30,
-        "description": "Безлимит на 30 дней: всё включено + AI-ассистент",
+        "description": "Unlimited 30-day access: all features + AI assistant",
     },
     # ===== AI ASSISTANT PACKAGES =====
     "assistant_50": {
-        "name": "💬 50 сообщений AI",
-        "price_rub": 149,
-        "price_usdt": 1.65,
+        "name": "💬 50 AI messages",
+        "price_usd": 1.99,
         "credits_assistant": 50,
-        "description": "50 сообщений AI-ассистенту (любые вопросы)",
+        "description": "50 AI assistant messages",
     },
     "assistant_200": {
-        "name": "💬 200 сообщений AI",
-        "price_rub": 399,
-        "price_usdt": 4.40,
+        "name": "💬 200 AI messages",
+        "price_usd": 4.99,
         "credits_assistant": 200,
-        "description": "200 сообщений AI-ассистенту (любые вопросы)",
+        "description": "200 AI assistant messages",
     },
     "assistant_unlimited": {
-        "name": "💬 AI Безлимит (30 дней)",
-        "price_rub": 690,
-        "price_usdt": 7.65,
+        "name": "💬 AI Unlimited (30 days)",
+        "price_usd": 8.99,
         "credits_assistant": 999,
         "duration_days": 30,
-        "description": "Безлимитный AI-ассистент на 30 дней",
+        "description": "Unlimited AI assistant for 30 days",
     },
 }
