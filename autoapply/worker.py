@@ -145,29 +145,19 @@ async def _fetch_vacancies(
 
 async def _generate_resume(user: dict, vacancy: dict) -> str:
     """
-    Attempt to use the resume_generator module for a tailored resume.
-    Falls back to raw resume_text if unavailable.
+    Return a per-job tailored resume for this vacancy.
+    Uses autoapply.services.resume_tailor which caches results in-process.
+    Falls back to the raw base resume on any error.
     """
     base_resume = user.get("resume_text") or ""
     if not base_resume:
         return ""
 
     try:
-        gen_path = os.path.join(ROOT, "bot")
-        if gen_path not in sys.path:
-            sys.path.insert(0, gen_path)
-        from resume_generator import generate_tailored_resume  # type: ignore
-        tailored = await generate_tailored_resume(
-            resume_text=base_resume,
-            vacancy_title=vacancy.get("title", ""),
-            vacancy_description=vacancy.get("description", ""),
-        )
-        return tailored
-    except ImportError:
-        logger.debug("[worker] resume_generator not available, using base resume")
-        return base_resume
+        from autoapply.services.resume_tailor import tailor_resume
+        return await tailor_resume(base_resume=base_resume, job=vacancy, language="en")
     except Exception as exc:
-        logger.warning("[worker] resume_generator error: %s — using base resume", exc)
+        logger.warning("[worker] resume tailor error: %s — using base resume", exc)
         return base_resume
 
 

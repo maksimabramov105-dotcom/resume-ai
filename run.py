@@ -27,7 +27,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from config import BOT_TOKEN  # flat import (bot/ is in sys.path)
 from database.db import init_db
-from handlers import start, resume, cover_letter, interview, vacancy_analysis, ai_assistant, payment, profile, support, language, auto_apply, tracker, digest_settings
+from handlers import start, resume, cover_letter, interview, vacancy_analysis, ai_assistant, payment, profile, support, language, auto_apply, tracker, digest_settings, resume_tailor
 from utils.texts import BOT_DESCRIPTION, BOT_SHORT_DESCRIPTION
 from utils.bot_translations import t as _t
 
@@ -221,6 +221,7 @@ async def run_bot() -> None:
     dp.include_router(auto_apply.router)
     dp.include_router(tracker.router)
     dp.include_router(digest_settings.router)
+    dp.include_router(resume_tailor.router)
     # Daily job digest — every day at 09:00 UTC
     scheduler = AsyncIOScheduler()
     from services.job_digest import send_daily_digest

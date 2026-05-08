@@ -2728,6 +2728,86 @@ async def resume_preview(body: ResumePreviewRequest, request: Request):
     return JSONResponse(status_code=200, content={"preview_html": preview_html})
 
 
+# ── Per-job Resume Tailoring ──────────────────────────────────────────────────
+
+class ResumeTailorRequest(BaseModel):
+    job_title: str = ""
+    job_description: str = ""
+    company_name: str = ""
+    base_resume: str = ""   # if empty, uses the user's stored resume_text
+
+
+@app.post("/api/resume/tailor", summary="Tailor resume for a specific job posting (AI)")
+async def tailor_resume_endpoint(
+    body: ResumeTailorRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Returns an AI-tailored version of the user's resume for the specified job.
+    Uses the user's stored resume_text if base_resume is not provided.
+    """
+    # Resolve base resume
+    base_resume = (body.base_resume or "").strip()
+    if not base_resume:
+        async with aiosqlite.connect(AUTOAPPLY_DB) as _db:
+            _db.row_factory = aiosqlite.Row
+            async with _db.execute(
+                "SELECT resume_text FROM autoapply_users WHERE id = ?",
+                (current_user["id"],),
+            ) as _cur:
+                row = await _cur.fetchone()
+                if row:
+                    base_resume = row["resume_text"] or ""
+
+    if not base_resume:
+        raise HTTPException(status_code=400, detail="No resume found. Please upload or enter your resume first.")
+
+    job = {
+        "title": (body.job_title or "").strip(),
+        "description": (body.job_description or "").strip(),
+        "company": (body.company_name or "").strip(),
+    }
+
+    if not job["description"] and not job["title"]:
+        raise HTTPException(status_code=400, detail="Provide at least job_title or job_description to tailor against.")
+
+    try:
+        from autoapply.services.resume_tailor import tailor_resume
+        tailored = await tailor_resume(base_resume=base_resume, job=job, language="en")
+    except Exception as exc:
+        logger.error("[api/resume/tailor] error: %s", exc)
+        raise HTTPException(status_code=500, detail="Resume tailoring failed. Please try again.")
+
+    return {
+        "tailored_resume": tailored,
+        "job_title": job["title"],
+        "company": job["company"],
+        "length_chars": len(tailored),
+    }
+
+
+@app.post("/api/resume/ats-keywords", summary="Extract ATS keywords from a job description")
+async def extract_ats_keywords_endpoint(
+    body: dict,
+    current_user: dict = Depends(get_current_user),
+):
+    """Return the top ~20 ATS keywords from a job description for matching/scoring."""
+    description = (body.get("job_description") or body.get("description") or "").strip()
+    title = (body.get("job_title") or body.get("title") or "").strip()
+
+    if not description and not title:
+        raise HTTPException(status_code=400, detail="Provide job_description or job_title.")
+
+    try:
+        from autoapply.services.resume_tailor import extract_ats_keywords
+        keywords = await extract_ats_keywords({"title": title, "description": description})
+    except Exception as exc:
+        logger.warning("[api/resume/ats-keywords] error: %s", exc)
+        keywords = []
+
+    return {"keywords": keywords, "count": len(keywords)}
+
+
 # ── Voice-AI Resume Builder ───────────────────────────────────────────────────
 _VOICE_DAILY_LIMITS = {"free": 1, "trial": 5, "pro": 20, "unlimited": 100}
 
