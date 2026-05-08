@@ -179,6 +179,42 @@ CREATE TABLE IF NOT EXISTS used_link_jti (
 )
 """
 
+_CREATE_PORTFOLIOS = """
+CREATE TABLE IF NOT EXISTS portfolios (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    autoapply_user_id   INTEGER UNIQUE NOT NULL REFERENCES autoapply_users(id),
+    handle              TEXT    UNIQUE,
+    headline            TEXT,
+    bio                 TEXT,
+    country             TEXT,
+    timezone            TEXT,
+    hire_status         TEXT    DEFAULT 'open',
+    resume_blob_json    TEXT,
+    updated_at          TEXT    DEFAULT (datetime('now'))
+)
+"""
+
+_CREATE_PORTFOLIO_ASSETS = """
+CREATE TABLE IF NOT EXISTS portfolio_assets (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    portfolio_id INTEGER NOT NULL REFERENCES portfolios(id) ON DELETE CASCADE,
+    kind         TEXT    NOT NULL CHECK(kind IN ('photo','file')),
+    url          TEXT    NOT NULL,
+    sort_order   INTEGER DEFAULT 0
+)
+"""
+
+_CREATE_PORTFOLIO_LINKS = """
+CREATE TABLE IF NOT EXISTS portfolio_links (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    portfolio_id INTEGER NOT NULL REFERENCES portfolios(id) ON DELETE CASCADE,
+    label        TEXT    NOT NULL,
+    url          TEXT    NOT NULL,
+    kind         TEXT    NOT NULL CHECK(kind IN ('social','messenger','website')),
+    sort_order   INTEGER DEFAULT 0
+)
+"""
+
 # ── Indexes ───────────────────────────────────────────────────────────────────
 
 _CREATE_INDEXES = [
@@ -206,6 +242,10 @@ _CREATE_INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_page_views_ip_hash ON page_views(ip_hash)",
     # Rate limits — keyed by "type:ip", cleaned up periodically
     "CREATE INDEX IF NOT EXISTS idx_rate_limits_last_hit ON rate_limits(last_hit)",
+    # Portfolio tables
+    "CREATE INDEX IF NOT EXISTS idx_portfolios_handle ON portfolios(handle)",
+    "CREATE INDEX IF NOT EXISTS idx_portfolio_assets_portfolio ON portfolio_assets(portfolio_id)",
+    "CREATE INDEX IF NOT EXISTS idx_portfolio_links_portfolio ON portfolio_links(portfolio_id)",
 ]
 
 # ── Init ─────────────────────────────────────────────────────────────────────
@@ -226,6 +266,9 @@ async def init_db(db_path: str = AUTOAPPLY_DB) -> None:
             await db.execute(_CREATE_RATE_LIMITS)
             await db.execute(_CREATE_USER_LINKS)
             await db.execute(_CREATE_USED_LINK_JTI)
+            await db.execute(_CREATE_PORTFOLIOS)
+            await db.execute(_CREATE_PORTFOLIO_ASSETS)
+            await db.execute(_CREATE_PORTFOLIO_LINKS)
             # Indexes
             for _idx_sql in _CREATE_INDEXES:
                 try:
@@ -1110,6 +1153,195 @@ async def create_telegram_user(
     except Exception as exc:
         logger.exception("[autoapply_db] create_telegram_user error: %s", exc)
         raise
+
+
+# ── Portfolio functions ───────────────────────────────────────────────────────
+
+async def get_portfolio_by_user(user_id: int, db_path: str = AUTOAPPLY_DB) -> Optional[dict]:
+    """Return portfolio row + assets + links for a given autoapply_user_id, or None."""
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                "SELECT * FROM portfolios WHERE autoapply_user_id = ?", (user_id,)
+            ) as cur:
+                row = await cur.fetchone()
+            if not row:
+                return None
+            portfolio = dict(row)
+            portfolio_id = portfolio["id"]
+
+            async with db.execute(
+                "SELECT * FROM portfolio_assets WHERE portfolio_id = ? ORDER BY sort_order ASC, id ASC",
+                (portfolio_id,),
+            ) as cur:
+                portfolio["assets"] = [dict(r) for r in await cur.fetchall()]
+
+            async with db.execute(
+                "SELECT * FROM portfolio_links WHERE portfolio_id = ? ORDER BY sort_order ASC, id ASC",
+                (portfolio_id,),
+            ) as cur:
+                portfolio["links"] = [dict(r) for r in await cur.fetchall()]
+
+            return portfolio
+    except Exception as exc:
+        logger.exception("[autoapply_db] get_portfolio_by_user error: %s", exc)
+        return None
+
+
+async def get_portfolio_by_handle(handle: str, db_path: str = AUTOAPPLY_DB) -> Optional[dict]:
+    """Return portfolio + assets + links for the given public handle, or None."""
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                "SELECT * FROM portfolios WHERE handle = ?", (handle,)
+            ) as cur:
+                row = await cur.fetchone()
+            if not row:
+                return None
+            portfolio = dict(row)
+            portfolio_id = portfolio["id"]
+
+            async with db.execute(
+                "SELECT * FROM portfolio_assets WHERE portfolio_id = ? ORDER BY sort_order ASC, id ASC",
+                (portfolio_id,),
+            ) as cur:
+                portfolio["assets"] = [dict(r) for r in await cur.fetchall()]
+
+            async with db.execute(
+                "SELECT * FROM portfolio_links WHERE portfolio_id = ? ORDER BY sort_order ASC, id ASC",
+                (portfolio_id,),
+            ) as cur:
+                portfolio["links"] = [dict(r) for r in await cur.fetchall()]
+
+            return portfolio
+    except Exception as exc:
+        logger.exception("[autoapply_db] get_portfolio_by_handle error: %s", exc)
+        return None
+
+
+async def upsert_portfolio(user_id: int, fields: dict, db_path: str = AUTOAPPLY_DB) -> int:
+    """INSERT OR REPLACE portfolio fields for user_id. Returns portfolio id."""
+    now = datetime.utcnow().isoformat()
+    allowed = {"handle", "headline", "bio", "country", "timezone", "hire_status", "resume_blob_json"}
+    safe_fields = {k: v for k, v in fields.items() if k in allowed}
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            # Check if portfolio exists
+            async with db.execute(
+                "SELECT id FROM portfolios WHERE autoapply_user_id = ?", (user_id,)
+            ) as cur:
+                existing = await cur.fetchone()
+
+            if existing:
+                portfolio_id = existing[0]
+                if safe_fields:
+                    set_clause = ", ".join(f"{k} = ?" for k in safe_fields)
+                    values = list(safe_fields.values()) + [now, portfolio_id]
+                    await db.execute(
+                        f"UPDATE portfolios SET {set_clause}, updated_at = ? WHERE id = ?",
+                        values,
+                    )
+                else:
+                    await db.execute(
+                        "UPDATE portfolios SET updated_at = ? WHERE id = ?",
+                        (now, portfolio_id),
+                    )
+            else:
+                # Build INSERT with provided fields
+                cols = ["autoapply_user_id", "updated_at"] + list(safe_fields.keys())
+                placeholders = ", ".join("?" for _ in cols)
+                values = [user_id, now] + list(safe_fields.values())
+                cur2 = await db.execute(
+                    f"INSERT INTO portfolios ({', '.join(cols)}) VALUES ({placeholders})",
+                    values,
+                )
+                portfolio_id = cur2.lastrowid
+
+            await db.commit()
+            return portfolio_id
+    except Exception as exc:
+        logger.exception("[autoapply_db] upsert_portfolio error: %s", exc)
+        raise
+
+
+async def add_portfolio_asset(
+    portfolio_id: int, kind: str, url: str, sort_order: int = 0, db_path: str = AUTOAPPLY_DB
+) -> int:
+    """Insert a new asset row. Returns new asset id."""
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            cur = await db.execute(
+                "INSERT INTO portfolio_assets (portfolio_id, kind, url, sort_order) VALUES (?, ?, ?, ?)",
+                (portfolio_id, kind, url, sort_order),
+            )
+            await db.commit()
+            return cur.lastrowid
+    except Exception as exc:
+        logger.exception("[autoapply_db] add_portfolio_asset error: %s", exc)
+        raise
+
+
+async def delete_portfolio_asset(asset_id: int, portfolio_id: int, db_path: str = AUTOAPPLY_DB) -> bool:
+    """Delete an asset. portfolio_id guard prevents cross-user deletion. Returns True if deleted."""
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            cur = await db.execute(
+                "DELETE FROM portfolio_assets WHERE id = ? AND portfolio_id = ?",
+                (asset_id, portfolio_id),
+            )
+            await db.commit()
+            return cur.rowcount > 0
+    except Exception as exc:
+        logger.exception("[autoapply_db] delete_portfolio_asset error: %s", exc)
+        return False
+
+
+async def add_portfolio_link(
+    portfolio_id: int, label: str, url: str, kind: str, sort_order: int = 0, db_path: str = AUTOAPPLY_DB
+) -> int:
+    """Insert a new link row. Returns new link id."""
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            cur = await db.execute(
+                "INSERT INTO portfolio_links (portfolio_id, label, url, kind, sort_order) VALUES (?, ?, ?, ?, ?)",
+                (portfolio_id, label, url, kind, sort_order),
+            )
+            await db.commit()
+            return cur.lastrowid
+    except Exception as exc:
+        logger.exception("[autoapply_db] add_portfolio_link error: %s", exc)
+        raise
+
+
+async def delete_portfolio_link(link_id: int, portfolio_id: int, db_path: str = AUTOAPPLY_DB) -> bool:
+    """Delete a link. portfolio_id guard prevents cross-user deletion. Returns True if deleted."""
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            cur = await db.execute(
+                "DELETE FROM portfolio_links WHERE id = ? AND portfolio_id = ?",
+                (link_id, portfolio_id),
+            )
+            await db.commit()
+            return cur.rowcount > 0
+    except Exception as exc:
+        logger.exception("[autoapply_db] delete_portfolio_link error: %s", exc)
+        return False
+
+
+async def count_portfolio_assets(portfolio_id: int, db_path: str = AUTOAPPLY_DB) -> int:
+    """Return total asset count for the given portfolio."""
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            async with db.execute(
+                "SELECT COUNT(*) FROM portfolio_assets WHERE portfolio_id = ?", (portfolio_id,)
+            ) as cur:
+                row = await cur.fetchone()
+                return row[0] if row else 0
+    except Exception as exc:
+        logger.exception("[autoapply_db] count_portfolio_assets error: %s", exc)
+        return 0
 
 
 async def import_bot_resume(

@@ -55,6 +55,15 @@ from autoapply.autoapply_db import (
     update_user_last_active,
     update_user_password,
     update_user_plan,
+    # Portfolio helpers
+    add_portfolio_asset,
+    add_portfolio_link,
+    count_portfolio_assets,
+    delete_portfolio_asset,
+    delete_portfolio_link,
+    get_portfolio_by_handle,
+    get_portfolio_by_user,
+    upsert_portfolio,
 )
 from autoapply.email_sender import (
     send_drip_email,
@@ -67,7 +76,6 @@ from autoapply.config import (
     AUTOAPPLY_HOST,
     AUTOAPPLY_PORT,
     BOT_DB,
-    CRYPTOBOT_WEBHOOK_SECRET,
     JWT_ALGORITHM,
     JWT_EXPIRE_HOURS,
     JWT_SECRET,
@@ -98,6 +106,23 @@ if _sentry_dsn:
     logger.info("Sentry initialised (autoapply_main)")
 
 import httpx as _httpx_module  # noqa: E402 — used in helpers below
+import re as _re_handle
+from fastapi import UploadFile, File
+
+# ── Portfolio handle validation ────────────────────────────────────────────────
+_HANDLE_RE = _re_handle.compile(r'^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$')
+_RESERVED_HANDLES = frozenset({
+    "admin", "api", "app", "www", "blog", "portfolio", "help", "support",
+    "pricing", "privacy", "terms", "auth", "login", "register", "signup",
+    "static", "uploads", "assets", "p", "u", "me", "home", "about",
+})
+
+# ── Pillow (optional — for thumbnail generation) ──────────────────────────────
+try:
+    from PIL import Image as _PillowImage
+    _PILLOW = True
+except ImportError:
+    _PILLOW = False
 
 
 _JOB_URL_WHITELIST = (
@@ -250,7 +275,7 @@ async def security_headers_middleware(request, call_next):
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://vk.com https://unpkg.com https://cdn.jsdelivr.net; "
+        "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com data:; "
         "img-src 'self' data: https: blob:; "
@@ -285,6 +310,8 @@ _AUTH_PATHS = {
     "/api/auth/register",
     "/api/auth/telegram-link",
 }
+# Public paths (no rate limiting applied at auth-path level, but no JWT required)
+_PUBLIC_PREFIX_PATHS = ("/api/portfolio/public/", "/p/")
 _AI_GENERAL_TOKENS = {"generate", "ai", "resume", "interview", "cover", "salary"}
 
 
@@ -557,62 +584,7 @@ async def forgot_password(body: ForgotPasswordRequest):
             logger.info("[api/forgot-password] reset email sent to %s", body.email)
         except Exception as exc:
             logger.error("[api/forgot-password] email error: %s", exc)
-    return {"ok": True, "message": "Если email зарегистрирован — письмо отправлено"}
-
-
-@app.post("/api/auth/vk-login", summary="VK ID One Tap login/register")
-async def vk_login(payload: dict):
-    """Receive VK auth data (after exchangeCode), create or log in the user."""
-    access_token = payload.get("access_token") or payload.get("token") or ""
-    vk_user_id = str(payload.get("user_id") or payload.get("id") or "")
-    email = payload.get("email", "")
-
-    if not vk_user_id:
-        raise HTTPException(status_code=400, detail="Нет user_id в VK ответе")
-
-    # Try to get user info from VK if email not provided
-    if not email and access_token:
-        try:
-            import httpx
-            async with httpx.AsyncClient(timeout=5) as cl:
-                r = await cl.get(
-                    "https://api.vk.com/method/users.get",
-                    params={"fields": "contacts", "access_token": access_token, "v": "5.199"},
-                )
-                data = r.json().get("response", [{}])
-                if data:
-                    email = data[0].get("contacts", {}).get("mobile_phone", "")
-        except Exception:
-            pass
-
-    # Use vk_{user_id}@vk.autoapply as synthetic email if no real email
-    synthetic_email = email or f"vk_{vk_user_id}@vk.autoapply"
-    fake_password_hash = _hash_password(f"vk_{vk_user_id}_immutable_salt")
-
-    existing = await get_user_by_email(synthetic_email, AUTOAPPLY_DB)
-    if existing:
-        user_id = existing["id"]
-    else:
-        try:
-            user_id = await create_user(
-                email=synthetic_email,
-                password_hash=fake_password_hash,
-                telegram_id=None,
-                db_path=AUTOAPPLY_DB,
-            )
-            # Mark as email verified (VK auth = verified identity)
-            async with aiosqlite.connect(AUTOAPPLY_DB) as db:
-                await db.execute(
-                    "UPDATE autoapply_users SET is_verified=1 WHERE id=?", (user_id,)
-                )
-                await db.commit()
-        except Exception as exc:
-            logger.error("[vk-login] create_user error: %s", exc)
-            raise HTTPException(status_code=500, detail="Account creation error")
-
-    token = _create_token(user_id)
-    logger.info("[vk-login] user_id=%s vk_user_id=%s", user_id, vk_user_id)
-    return {"token": token, "user_id": user_id, "vk_user_id": vk_user_id}
+    return {"ok": True, "message": "If this email is registered, a reset link has been sent."}
 
 
 @app.post("/api/reset-password", summary="Set new password using reset token")
@@ -1333,54 +1305,6 @@ async def save_onboarding(
     return {"status": "ok", "message": "Preferences saved"}
 
 
-# ── Payment webhook ───────────────────────────────────────────────────────────
-@app.post("/api/webhook/payment", summary="CryptoBot payment webhook")
-async def payment_webhook(request: Request):
-    raw_body = await request.body()
-    signature = request.headers.get("crypto-pay-api-signature", "")
-
-    if not await verify_webhook(raw_body, signature):
-        logger.warning("[api/webhook/payment] invalid signature")
-        raise HTTPException(status_code=400, detail="Invalid webhook signature")
-
-    import json as _json
-    try:
-        payload = _json.loads(raw_body)
-    except _json.JSONDecodeError as exc:
-        raise HTTPException(status_code=400, detail="Invalid JSON payload") from exc
-
-    logger.info("[api/webhook/payment] received payload type=%s", payload.get("update_type"))
-
-    try:
-        success = await process_payment(payload, AUTOAPPLY_DB)
-    except Exception as exc:
-        logger.exception("[api/webhook/payment] process_payment error: %s", exc)
-        raise HTTPException(status_code=500, detail="Payment processing failed")
-
-    return {"success": success}
-
-
-# ── Create payment invoice ────────────────────────────────────────────────────
-class PaymentInvoiceRequest(BaseModel):
-    plan: str  # start / pro / unlimited
-
-
-@app.post("/api/payment/create-invoice", summary="Create CryptoBot payment invoice")
-async def create_invoice_endpoint(
-    body: PaymentInvoiceRequest,
-    current_user: dict = Depends(get_current_user),
-):
-    from autoapply.payments import create_invoice
-    if body.plan not in PLANS or body.plan == "free":
-        raise HTTPException(status_code=400, detail="Invalid plan")
-    try:
-        invoice = await create_invoice(current_user["id"], body.plan, AUTOAPPLY_DB)
-        return invoice
-    except Exception as exc:
-        logger.exception("[api/payment/create-invoice] error: %s", exc)
-        raise HTTPException(status_code=500, detail="Could not create invoice")
-
-
 # ── Public stats ─────────────────────────────────────────────────────────────
 @app.get("/api/stats", summary="Public usage statistics")
 async def get_public_stats():
@@ -1442,7 +1366,7 @@ async def submit_testimonial(
             (current_user["id"], body.name[:60], body.text[:500], body.rating),
         )
         await db.commit()
-    return {"success": True, "message": "Спасибо! Ваш отзыв отправлен на проверку."}
+    return {"success": True, "message": "Thank you! Your review has been submitted for moderation."}
 
 
 @app.get("/api/testimonials", summary="Get approved testimonials")
@@ -1484,7 +1408,7 @@ async def demo_analyze(payload: dict, request: Request):
     allowed = await check_and_update_rate_limit(f"demo:{client_ip}", 1200, AUTOAPPLY_DB)
     if not allowed:
         return JSONResponse(
-            {"error": "Превышен лимит запросов. Попробуйте через 20 минут или зарегистрируйтесь для безлимитного доступа."},
+            {"error": "Rate limit exceeded. Please try again in 20 minutes or register for unlimited access."},
             status_code=429,
         )
 
@@ -1492,7 +1416,7 @@ async def demo_analyze(payload: dict, request: Request):
     text = payload.get("text", "")
 
     if not url and not text:
-        return JSONResponse({"error": "Укажите URL или текст вакансии"}, status_code=400)
+        return JSONResponse({"error": "Provide a job URL or paste the job description text"}, status_code=400)
 
     # If URL provided, try to fetch job page text
     job_text = text
@@ -1571,7 +1495,6 @@ async def get_pricing():
             "label":       info.get("label", tier.title()),
             "daily_limit": info.get("daily_limit", 0),
             "price_usd":   info.get("price_usd", 0),
-            "price_rub":   info.get("price_rub", 0),
             "trial_days":  info.get("trial_days", 0),
             "features":    info.get("features", []),
         }
@@ -2156,7 +2079,6 @@ async def stripe_webhook_alias(request: Request):
 async def get_payment_status():
     return {
         "stripe_configured": bool(os.getenv("STRIPE_SECRET_KEY")),
-        "crypto_configured": bool(os.getenv("CRYPTOBOT_API_TOKEN") or os.getenv("CRYPTOBOT_TOKEN")),
         "plans": {
             "trial": {"price_usd": 2.99, "duration": "7 days"},
             "pro_monthly": {"price_usd": 19.99, "period": "monthly"},
@@ -2196,7 +2118,7 @@ async def help_question(body: HelpQuestionRequest):
             if _re.search(kw, q, _re.I):
                 return {"answer": answer, "source": "faq"}
         return {
-            "answer": "Напишите нам в Telegram: @resumeai_support — ответим в течение часа.",
+            "answer": "Write to us on Telegram: @resumeai_support — we reply within an hour.",
             "source": "fallback",
         }
 
@@ -2225,7 +2147,7 @@ async def help_question(body: HelpQuestionRequest):
         return {"answer": answer, "source": "ai"}
     except Exception as exc:
         logger.error("[help/question] AI error: %s", exc)
-        return {"answer": "Напишите нам: @resumeai_support — поможем в течение часа.", "source": "fallback"}
+        return {"answer": "Write to us: @resumeai_support — we'll help within an hour.", "source": "fallback"}
 
 
 # ── Resume PDF generation ─────────────────────────────────────────────────────
@@ -2690,6 +2612,390 @@ async def resume_preview(body: ResumePreviewRequest, request: Request):
         pass
 
     return JSONResponse(status_code=200, content={"preview_html": preview_html})
+
+
+# ── Uploads static files ──────────────────────────────────────────────────────
+_UPLOADS_ROOT = Path("/opt/resumeaibot/uploads")
+
+
+@app.get("/uploads/{path:path}", include_in_schema=False)
+async def serve_upload(path: str):
+    """Serve user-uploaded portfolio assets."""
+    safe_path = _UPLOADS_ROOT / path
+    # Prevent path traversal
+    try:
+        safe_path = safe_path.resolve()
+        _UPLOADS_ROOT.resolve()
+        if not str(safe_path).startswith(str(_UPLOADS_ROOT.resolve())):
+            raise HTTPException(status_code=403, detail="Forbidden")
+    except Exception:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    if not safe_path.exists() or not safe_path.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(str(safe_path))
+
+
+# ── Portfolio endpoints ────────────────────────────────────────────────────────
+
+class PortfolioUpdateRequest(BaseModel):
+    handle: Optional[str] = None
+    headline: Optional[str] = None
+    bio: Optional[str] = None
+    country: Optional[str] = None
+    timezone: Optional[str] = None
+    hire_status: Optional[str] = None  # 'open', 'closed', 'contract'
+    resume_blob_json: Optional[str] = None
+
+
+class PortfolioLinkRequest(BaseModel):
+    label: str
+    url: str
+    kind: str  # 'social', 'messenger', 'website'
+    sort_order: int = 0
+
+
+def _default_handle_from_email(email: str, user_id: int) -> str:
+    """Generate a default handle: slug of email-prefix truncated to 20 chars + -{user_id}."""
+    import re as _re
+    prefix = email.split("@")[0] if "@" in email else email
+    # Replace anything not alphanumeric/hyphen with hyphen, lowercase
+    slug = _re.sub(r'[^a-z0-9]+', '-', prefix.lower()).strip('-')
+    slug = slug[:20].strip('-') or "user"
+    return f"{slug}-{user_id}"
+
+
+@app.get("/api/portfolio", summary="Get own portfolio (auth required)")
+async def portfolio_get(current_user: dict = Depends(get_current_user)):
+    portfolio = await get_portfolio_by_user(current_user["id"], AUTOAPPLY_DB)
+    if not portfolio:
+        raise HTTPException(status_code=404, detail="Portfolio not found")
+    return portfolio
+
+
+@app.put("/api/portfolio", summary="Create or update portfolio (auth required)")
+async def portfolio_upsert(
+    body: PortfolioUpdateRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    user_id = current_user["id"]
+    fields = {k: v for k, v in body.model_dump().items() if v is not None}
+
+    # Validate handle if provided
+    if "handle" in fields:
+        h = fields["handle"].lower().strip()
+        fields["handle"] = h
+        if not _HANDLE_RE.match(h):
+            raise HTTPException(
+                status_code=422,
+                detail="Handle must be 3-30 characters, lowercase letters/digits/hyphens, start and end with alphanumeric.",
+            )
+        if h in _RESERVED_HANDLES:
+            raise HTTPException(status_code=422, detail=f"Handle '{h}' is reserved.")
+        # Check uniqueness (excluding self)
+        existing_handle = await get_portfolio_by_handle(h, AUTOAPPLY_DB)
+        if existing_handle and existing_handle.get("autoapply_user_id") != user_id:
+            raise HTTPException(status_code=409, detail="Handle already taken.")
+
+    # Validate hire_status
+    if "hire_status" in fields and fields["hire_status"] not in ("open", "closed", "contract"):
+        raise HTTPException(status_code=422, detail="hire_status must be 'open', 'closed', or 'contract'")
+
+    # Check if this is first creation — pre-fill resume + generate default handle
+    existing = await get_portfolio_by_user(user_id, AUTOAPPLY_DB)
+    if not existing:
+        if "resume_blob_json" not in fields:
+            resume_text = current_user.get("resume_text") or ""
+            if resume_text:
+                import json as _json_portfolio
+                fields["resume_blob_json"] = _json_portfolio.dumps({"text": resume_text}, ensure_ascii=False)
+        if "handle" not in fields:
+            email = current_user.get("email", "")
+            fields["handle"] = _default_handle_from_email(email, user_id)
+
+    portfolio_id = await upsert_portfolio(user_id, fields, AUTOAPPLY_DB)
+    portfolio = await get_portfolio_by_user(user_id, AUTOAPPLY_DB)
+    return portfolio
+
+
+@app.post("/api/portfolio/assets", summary="Upload portfolio photo/file (auth required)")
+async def portfolio_upload_asset(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+):
+    user_id = current_user["id"]
+    MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
+    MAX_ASSETS = 10
+
+    # Ensure portfolio exists
+    portfolio = await get_portfolio_by_user(user_id, AUTOAPPLY_DB)
+    if not portfolio:
+        # Auto-create empty portfolio
+        await upsert_portfolio(user_id, {
+            "handle": _default_handle_from_email(current_user.get("email", ""), user_id)
+        }, AUTOAPPLY_DB)
+        portfolio = await get_portfolio_by_user(user_id, AUTOAPPLY_DB)
+
+    portfolio_id = portfolio["id"]
+
+    # Check asset count limit
+    current_count = await count_portfolio_assets(portfolio_id, AUTOAPPLY_DB)
+    if current_count >= MAX_ASSETS:
+        raise HTTPException(status_code=422, detail=f"Maximum {MAX_ASSETS} assets per portfolio.")
+
+    # Read and validate file size
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail="File too large. Maximum 5 MB.")
+
+    # Determine kind
+    content_type = file.content_type or ""
+    kind = "photo" if content_type.startswith("image/") else "file"
+
+    # Determine save path
+    import uuid as _uuid
+    ext = Path(file.filename).suffix.lower() if file.filename else ".bin"
+    filename_stem = _uuid.uuid4().hex
+    save_dir = _UPLOADS_ROOT / "portfolios" / str(portfolio_id)
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    original_filename = f"{filename_stem}{ext}"
+    original_path = save_dir / original_filename
+    original_path.write_bytes(content)
+
+    url = f"/uploads/portfolios/{portfolio_id}/{original_filename}"
+
+    # Generate Pillow thumbnails for images
+    if kind == "photo" and _PILLOW:
+        try:
+            import io as _io
+            img = _PillowImage.open(_io.BytesIO(content))
+            img = img.convert("RGB")
+            for size in (256, 512, 1024):
+                thumb = img.copy()
+                thumb.thumbnail((size, size), _PillowImage.LANCZOS)
+                thumb_name = f"{filename_stem}_{size}.jpg"
+                thumb.save(str(save_dir / thumb_name), "JPEG", quality=85, optimize=True)
+        except Exception as _pe:
+            logger.warning("[portfolio/assets] thumbnail generation failed: %s", _pe)
+
+    # Persist asset record
+    sort_order = current_count
+    asset_id = await add_portfolio_asset(portfolio_id, kind, url, sort_order, AUTOAPPLY_DB)
+
+    return {"id": asset_id, "url": url, "kind": kind, "sort_order": sort_order}
+
+
+@app.delete("/api/portfolio/assets/{asset_id}", summary="Delete portfolio asset (auth required)")
+async def portfolio_delete_asset(
+    asset_id: int,
+    current_user: dict = Depends(get_current_user),
+):
+    portfolio = await get_portfolio_by_user(current_user["id"], AUTOAPPLY_DB)
+    if not portfolio:
+        raise HTTPException(status_code=404, detail="Portfolio not found")
+    deleted = await delete_portfolio_asset(asset_id, portfolio["id"], AUTOAPPLY_DB)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    return {"deleted": asset_id}
+
+
+@app.post("/api/portfolio/links", summary="Add portfolio link (auth required)")
+async def portfolio_add_link(
+    body: PortfolioLinkRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    user_id = current_user["id"]
+    if body.kind not in ("social", "messenger", "website"):
+        raise HTTPException(status_code=422, detail="kind must be 'social', 'messenger', or 'website'")
+    if not body.url.startswith(("http://", "https://")):
+        raise HTTPException(status_code=422, detail="url must start with http:// or https://")
+
+    portfolio = await get_portfolio_by_user(user_id, AUTOAPPLY_DB)
+    if not portfolio:
+        await upsert_portfolio(user_id, {
+            "handle": _default_handle_from_email(current_user.get("email", ""), user_id)
+        }, AUTOAPPLY_DB)
+        portfolio = await get_portfolio_by_user(user_id, AUTOAPPLY_DB)
+
+    link_id = await add_portfolio_link(
+        portfolio["id"], body.label[:80], body.url[:500], body.kind, body.sort_order, AUTOAPPLY_DB
+    )
+    return {"id": link_id, "label": body.label, "url": body.url, "kind": body.kind}
+
+
+@app.delete("/api/portfolio/links/{link_id}", summary="Delete portfolio link (auth required)")
+async def portfolio_delete_link(
+    link_id: int,
+    current_user: dict = Depends(get_current_user),
+):
+    portfolio = await get_portfolio_by_user(current_user["id"], AUTOAPPLY_DB)
+    if not portfolio:
+        raise HTTPException(status_code=404, detail="Portfolio not found")
+    deleted = await delete_portfolio_link(link_id, portfolio["id"], AUTOAPPLY_DB)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Link not found")
+    return {"deleted": link_id}
+
+
+@app.get("/api/portfolio/public/{handle}", summary="Get portfolio JSON by handle (no auth)")
+async def portfolio_public_json(handle: str):
+    """Returns portfolio data as JSON for client-side rendering."""
+    portfolio = await get_portfolio_by_handle(handle, AUTOAPPLY_DB)
+    if not portfolio:
+        raise HTTPException(status_code=404, detail="Portfolio not found")
+    # Strip internal fields
+    safe = {k: v for k, v in portfolio.items() if k not in ("autoapply_user_id",)}
+    return safe
+
+
+@app.get("/p/{handle}", include_in_schema=False)
+async def portfolio_public_page(handle: str):
+    """Serve a public SEO HTML portfolio page."""
+    from fastapi.responses import HTMLResponse
+    portfolio = await get_portfolio_by_handle(handle, AUTOAPPLY_DB)
+    if not portfolio:
+        html_404 = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portfolio not found — ResumeAI</title>
+  <style>
+    body {{font-family:system-ui,sans-serif;max-width:600px;margin:80px auto;padding:0 20px;text-align:center;color:#1e293b}}
+    h1 {{font-size:2rem;margin-bottom:12px}} p {{color:#64748b}} a {{color:#2563EB}}
+  </style>
+</head>
+<body>
+  <h1>404 — Portfolio not found</h1>
+  <p>The portfolio <strong>@{handle}</strong> does not exist or has been removed.</p>
+  <p><a href="/">Return to ResumeAI</a></p>
+</body>
+</html>"""
+        return HTMLResponse(content=html_404, status_code=404)
+
+    headline = portfolio.get("headline") or ""
+    bio = portfolio.get("bio") or ""
+    hire_status = portfolio.get("hire_status") or "open"
+    assets = portfolio.get("assets") or []
+    links = portfolio.get("links") or []
+
+    # First photo for OG image
+    photos = [a for a in assets if a.get("kind") == "photo"]
+    og_image = photos[0]["url"] if photos else ""
+    og_image_abs = f"https://resumeai-bot.ru{og_image}" if og_image and og_image.startswith("/") else og_image
+
+    # JSON-LD Person schema
+    import json as _json_ld
+    person_ld = {
+        "@context": "https://schema.org",
+        "@type": "Person",
+        "name": headline or handle,
+        "description": bio,
+        "url": f"https://resumeai-bot.ru/p/{handle}",
+    }
+    if og_image_abs:
+        person_ld["image"] = og_image_abs
+
+    # Hire status badge
+    badge_color = {"open": "#22c55e", "contract": "#f59e0b", "closed": "#ef4444"}.get(hire_status, "#94a3b8")
+    badge_label = {"open": "Open to work", "contract": "Available for contract", "closed": "Not available"}.get(hire_status, hire_status.title())
+
+    # Photo gallery HTML
+    gallery_html = ""
+    if photos:
+        photo_items = "".join(
+            f'<div class="photo-item"><img src="{p["url"]}" alt="Portfolio photo" loading="lazy" /></div>'
+            for p in photos
+        )
+        gallery_html = f'<section class="gallery"><h2>Photos</h2><div class="photo-grid">{photo_items}</div></section>'
+
+    # Links grid HTML
+    links_html = ""
+    if links:
+        icon_map = {"social": "🌐", "messenger": "💬", "website": "🔗"}
+        link_items = "".join(
+            f'<a class="link-btn" href="{lnk["url"]}" target="_blank" rel="noopener noreferrer">'
+            f'{icon_map.get(lnk["kind"], "🔗")} {lnk["label"]}</a>'
+            for lnk in links
+        )
+        links_html = f'<section class="links"><h2>Links</h2><div class="links-grid">{link_items}</div></section>'
+
+    # Bio section
+    bio_html = f'<p class="bio">{bio}</p>' if bio else ""
+
+    # Resume snippet (first 300 chars)
+    resume_snippet = ""
+    resume_blob = portfolio.get("resume_blob_json") or ""
+    if resume_blob:
+        try:
+            rb = _json_ld.loads(resume_blob)
+            txt = rb.get("text", "")
+            if txt:
+                resume_snippet = f'<section class="resume-snippet"><h2>Resume Snippet</h2><p>{txt[:300]}{"…" if len(txt) > 300 else ""}</p></section>'
+        except Exception:
+            pass
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{headline or handle} — ResumeAI Portfolio</title>
+  <meta name="description" content="{bio[:150] if bio else f'Portfolio of {headline or handle}'}" />
+  <meta property="og:title" content="{headline or handle}" />
+  <meta property="og:description" content="{bio[:200] if bio else f'Portfolio of {headline or handle}'}" />
+  {"<meta property='og:image' content='" + og_image_abs + "' />" if og_image_abs else ""}
+  <meta property="og:type" content="profile" />
+  <meta property="og:url" content="https://resumeai-bot.ru/p/{handle}" />
+  <link rel="canonical" href="https://resumeai-bot.ru/p/{handle}" />
+  <script type="application/ld+json">{_json_ld.dumps(person_ld, ensure_ascii=False)}</script>
+  <style>
+    *{{box-sizing:border-box;margin:0;padding:0}}
+    body{{font-family:system-ui,sans-serif;background:#f8fafc;color:#1e293b;line-height:1.6}}
+    header{{background:#fff;border-bottom:1px solid #e2e8f0;padding:0 24px}}
+    .header-inner{{max-width:800px;margin:0 auto;display:flex;align-items:center;height:56px;justify-content:space-between}}
+    .logo{{font-weight:800;color:#2563EB;text-decoration:none;font-size:1.1rem}}
+    .container{{max-width:800px;margin:0 auto;padding:40px 24px}}
+    .hero{{text-align:center;padding:40px 0 32px}}
+    .hero h1{{font-size:clamp(1.6rem,4vw,2.2rem);font-weight:800;color:#0f172a;margin-bottom:8px}}
+    .handle{{color:#64748b;font-size:.9rem;margin-bottom:12px}}
+    .badge{{display:inline-block;padding:4px 12px;border-radius:999px;font-size:.8rem;font-weight:600;color:#fff;background:{badge_color}}}
+    .bio{{color:#475569;max-width:600px;margin:16px auto 0;font-size:1rem}}
+    section{{margin:32px 0}}
+    section h2{{font-size:1.1rem;font-weight:700;color:#0f172a;margin-bottom:16px}}
+    .photo-grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}}
+    .photo-item img{{width:100%;border-radius:10px;object-fit:cover;aspect-ratio:4/3;transition:.2s}}
+    .photo-item img:hover{{transform:scale(1.03)}}
+    .links-grid{{display:flex;flex-wrap:wrap;gap:10px}}
+    .link-btn{{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border:1px solid #e2e8f0;border-radius:8px;text-decoration:none;color:#1e293b;background:#fff;font-weight:500;font-size:.9rem;transition:.15s}}
+    .link-btn:hover{{background:#f1f5f9;border-color:#cbd5e1}}
+    .resume-snippet{{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px}}
+    .resume-snippet p{{color:#475569;font-size:.9rem}}
+    footer{{text-align:center;color:#94a3b8;font-size:.8rem;padding:32px 0;border-top:1px solid #e2e8f0;margin-top:40px}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <a href="/" class="logo">ResumeAI</a>
+    <a href="/app" style="background:#2563EB;color:#fff;padding:6px 16px;border-radius:8px;font-weight:600;font-size:.85rem;text-decoration:none">Create yours</a>
+  </div>
+</header>
+<div class="container">
+  <div class="hero">
+    <h1>{headline or handle}</h1>
+    <div class="handle">@{handle}</div>
+    <span class="badge">{badge_label}</span>
+    {bio_html}
+  </div>
+  {gallery_html}
+  {links_html}
+  {resume_snippet}
+</div>
+<footer>© 2026 ResumeAI · <a href="/privacy.html" style="color:#94a3b8">Privacy</a></footer>
+</body>
+</html>"""
+    return HTMLResponse(content=html, status_code=200)
 
 
 # ── SPA fallback ──────────────────────────────────────────────────────────────
