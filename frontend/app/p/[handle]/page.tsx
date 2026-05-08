@@ -6,6 +6,7 @@ export function generateStaticParams() {
 
 import PublicPortfolioClient from "./PublicPortfolioClient";
 
-export default function PublicPortfolioPage({ params }: { params: { handle: string } }) {
-  return <PublicPortfolioClient handle={params.handle} />;
+export default async function PublicPortfolioPage({ params }: { params: Promise<{ handle: string }> }) {
+  const { handle } = await params;
+  return <PublicPortfolioClient handle={handle} />;
 }
