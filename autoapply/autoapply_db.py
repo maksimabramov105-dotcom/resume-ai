@@ -164,6 +164,21 @@ CREATE TABLE IF NOT EXISTS rate_limits (
 )
 """
 
+_CREATE_USER_LINKS = """
+CREATE TABLE IF NOT EXISTS user_links (
+    telegram_id       INTEGER PRIMARY KEY,
+    autoapply_user_id INTEGER NOT NULL REFERENCES autoapply_users(id),
+    linked_at         INTEGER NOT NULL
+)
+"""
+
+_CREATE_USED_LINK_JTI = """
+CREATE TABLE IF NOT EXISTS used_link_jti (
+    jti     TEXT PRIMARY KEY,
+    used_at REAL NOT NULL
+)
+"""
+
 # ── Indexes ───────────────────────────────────────────────────────────────────
 
 _CREATE_INDEXES = [
@@ -209,6 +224,8 @@ async def init_db(db_path: str = AUTOAPPLY_DB) -> None:
             await db.execute(_CREATE_WEB_GENERATIONS)
             await db.execute(_CREATE_PAGE_VIEWS)
             await db.execute(_CREATE_RATE_LIMITS)
+            await db.execute(_CREATE_USER_LINKS)
+            await db.execute(_CREATE_USED_LINK_JTI)
             # Indexes
             for _idx_sql in _CREATE_INDEXES:
                 try:
@@ -992,3 +1009,150 @@ async def cleanup_rate_limits(older_than_seconds: float = 86400, db_path: str = 
             await db.commit()
     except Exception as exc:
         logger.warning("[rate_limit] cleanup error: %s", exc)
+
+
+# ── Telegram link SSO ─────────────────────────────────────────────────────────
+
+async def consume_link_jti(jti: str, db_path: str = AUTOAPPLY_DB) -> bool:
+    """
+    Mark a link token JTI as used. Returns True if newly consumed, False if already used.
+    Cleans up JTIs older than 10 minutes (double the TTL) to keep the table small.
+    """
+    now = _rl_time.time()
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            async with db.execute(
+                "SELECT jti FROM used_link_jti WHERE jti = ?", (jti,)
+            ) as cur:
+                if await cur.fetchone():
+                    return False  # already consumed
+            await db.execute(
+                "INSERT INTO used_link_jti (jti, used_at) VALUES (?, ?)", (jti, now)
+            )
+            await db.execute(
+                "DELETE FROM used_link_jti WHERE used_at < ?", (now - 600,)
+            )
+            await db.commit()
+        return True
+    except Exception as exc:
+        logger.exception("[autoapply_db] consume_link_jti error: %s", exc)
+        return False
+
+
+async def get_autoapply_user_by_telegram(
+    telegram_id: int, db_path: str = AUTOAPPLY_DB
+) -> Optional[dict]:
+    """Return autoapply_users row for the given telegram_id, or None."""
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                "SELECT * FROM autoapply_users WHERE telegram_id = ?", (telegram_id,)
+            ) as cur:
+                row = await cur.fetchone()
+                return dict(row) if row else None
+    except Exception as exc:
+        logger.exception("[autoapply_db] get_autoapply_user_by_telegram error: %s", exc)
+        return None
+
+
+async def upsert_user_link(
+    telegram_id: int, autoapply_user_id: int, db_path: str = AUTOAPPLY_DB
+) -> None:
+    """Create or update the telegram_id → autoapply_user_id mapping."""
+    now = int(_rl_time.time())
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            await db.execute(
+                """
+                INSERT INTO user_links (telegram_id, autoapply_user_id, linked_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(telegram_id) DO UPDATE SET
+                    autoapply_user_id = excluded.autoapply_user_id,
+                    linked_at         = excluded.linked_at
+                """,
+                (telegram_id, autoapply_user_id, now),
+            )
+            await db.commit()
+    except Exception as exc:
+        logger.exception("[autoapply_db] upsert_user_link error: %s", exc)
+        raise
+
+
+async def create_telegram_user(
+    telegram_id: int, db_path: str = AUTOAPPLY_DB
+) -> int:
+    """
+    Create a synthetic autoapply account for a Telegram-only user.
+    Email: tg_{telegram_id}@tg.autoapply  (never logged in via email/password)
+    Password: random (user never uses it; Telegram link token is the auth path)
+    Returns new user_id.
+    """
+    import secrets as _s
+    import hashlib as _h
+    email = f"tg_{telegram_id}@tg.autoapply"
+    # Non-reversible random password — user will never need it
+    pw_hash = "!" + _h.sha256(_s.token_bytes(32)).hexdigest()
+    now = datetime.utcnow().isoformat()
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            cur = await db.execute(
+                """
+                INSERT INTO autoapply_users
+                    (telegram_id, email, password_hash, plan, created_at, last_active,
+                     daily_limit, is_verified)
+                VALUES (?, ?, ?, 'free', ?, ?, 3, 1)
+                """,
+                (telegram_id, email, pw_hash, now, now),
+            )
+            await db.commit()
+            return cur.lastrowid
+    except Exception as exc:
+        logger.exception("[autoapply_db] create_telegram_user error: %s", exc)
+        raise
+
+
+async def import_bot_resume(
+    telegram_id: int, autoapply_user_id: int,
+    bot_db_path: str = "", db_path: str = AUTOAPPLY_DB,
+) -> bool:
+    """
+    Copy the latest resume text from bot.db into autoapply_users.resume_text.
+    bot.db is accessed READ-ONLY. Returns True if resume was imported.
+    """
+    from autoapply.config import BOT_DB
+    resolved_bot_db = bot_db_path or BOT_DB
+    if not resolved_bot_db:
+        return False
+    try:
+        import aiosqlite as _sq
+        resume_text: Optional[str] = None
+        try:
+            async with _sq.connect(f"file:{resolved_bot_db}?mode=ro", uri=True) as bot_db:
+                # Try to read resume_text or constructed text from the bot's users table
+                async with bot_db.execute(
+                    "SELECT experience_text, skills_text, specialty FROM users WHERE telegram_id = ?",
+                    (telegram_id,),
+                ) as cur:
+                    row = await cur.fetchone()
+                    if row and any(row):
+                        parts = [p for p in row if p]
+                        resume_text = "\n\n".join(parts)
+        except Exception as _e:
+            logger.debug("[import_bot_resume] bot.db not accessible: %s", _e)
+            return False
+
+        if not resume_text:
+            return False
+
+        async with aiosqlite.connect(db_path) as db:
+            await db.execute(
+                "UPDATE autoapply_users SET resume_text = ? WHERE id = ? AND (resume_text IS NULL OR resume_text = '')",
+                (resume_text, autoapply_user_id),
+            )
+            await db.commit()
+        logger.info("[import_bot_resume] imported resume for telegram_id=%s → user_id=%s", telegram_id, autoapply_user_id)
+        return True
+    except Exception as exc:
+        logger.exception("[autoapply_db] import_bot_resume error: %s", exc)
+        return False

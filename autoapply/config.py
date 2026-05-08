@@ -45,6 +45,11 @@ STRIPE_SECRET_KEY       = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET   = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 STRIPE_PUBLISHABLE_KEY  = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
 
+# ── Telegram link SSO ────────────────────────────────────────────────────
+# Shared secret between bot and autoapply for one-time link tokens.
+# Generate: python3 -c "import secrets; print(secrets.token_hex(32))"
+LINK_SECRET: str = os.getenv("LINK_SECRET", "")
+
 # ── Country blocklist ────────────────────────────────────────────────────
 # Comma-separated ISO-3166-1 alpha-2 codes the worker must never apply to.
 # Extend via env: COUNTRY_BLOCKLIST=RU,BY,KP

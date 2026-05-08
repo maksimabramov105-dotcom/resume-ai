@@ -283,7 +283,7 @@ _AUTH_PATHS = {
     "/api/auth/login",
     "/api/register",
     "/api/auth/register",
-    "/api/auth/vk-login",
+    "/api/auth/telegram-link",
 }
 _AI_GENERAL_TOKENS = {"generate", "ai", "resume", "interview", "cover", "salary"}
 
@@ -421,10 +421,12 @@ class ResetPasswordRequest(BaseModel):
 
 
 # ── JWT helpers ───────────────────────────────────────────────────────────────
-def _create_token(user_id: int) -> str:
+def _create_token(user_id: int, telegram_id: Optional[int] = None) -> str:
     now = datetime.now(timezone.utc)
     expire = now + timedelta(hours=JWT_EXPIRE_HOURS)
     payload = {"sub": str(user_id), "exp": expire, "iat": now}
+    if telegram_id:
+        payload["tg"] = telegram_id
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
@@ -696,6 +698,74 @@ async def auth_me(current_user: dict = Depends(get_current_user)):
         "applications_limit": plan_info["daily_limit"],
         "created_at": current_user.get("created_at", ""),
         "is_verified": bool(current_user.get("is_verified")),
+    }
+
+
+# ── Telegram SSO ─────────────────────────────────────────────────────────────
+
+class TelegramLinkRequest(BaseModel):
+    token: str
+
+
+@app.post("/api/auth/telegram-link", summary="Exchange a Telegram link token for a JWT")
+async def telegram_link(body: TelegramLinkRequest):
+    """
+    One-time SSO endpoint.  The Telegram bot issues a signed link token; this
+    endpoint verifies it, finds-or-creates the autoapply account, and returns a JWT.
+    """
+    from autoapply.crypto import verify_link_token
+    from autoapply.config import LINK_SECRET
+    from autoapply.autoapply_db import (
+        consume_link_jti,
+        get_autoapply_user_by_telegram,
+        create_telegram_user,
+        upsert_user_link,
+        import_bot_resume,
+    )
+
+    if not LINK_SECRET:
+        raise HTTPException(status_code=503, detail="Link SSO not configured (LINK_SECRET missing)")
+
+    payload = verify_link_token(body.token, LINK_SECRET)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired link token")
+
+    telegram_id: int = payload["tid"]
+    jti: str = payload["jti"]
+
+    # One-time use: consume the JTI
+    if not await consume_link_jti(jti, AUTOAPPLY_DB):
+        raise HTTPException(status_code=401, detail="Link token already used")
+
+    # Find or create autoapply user
+    user = await get_autoapply_user_by_telegram(telegram_id, AUTOAPPLY_DB)
+    if user is None:
+        user_id = await create_telegram_user(telegram_id, AUTOAPPLY_DB)
+        logger.info("[telegram-link] created autoapply account for telegram_id=%s user_id=%s", telegram_id, user_id)
+        # Best-effort resume import from bot.db
+        await import_bot_resume(telegram_id, user_id)
+    else:
+        user_id = user["id"]
+        logger.info("[telegram-link] found existing autoapply account telegram_id=%s user_id=%s", telegram_id, user_id)
+
+    await upsert_user_link(telegram_id, user_id, AUTOAPPLY_DB)
+    await update_user_last_active(user_id, AUTOAPPLY_DB)
+
+    token = _create_token(user_id, telegram_id=telegram_id)
+    return {"access_token": token, "token": token, "user_id": user_id, "telegram_id": telegram_id}
+
+
+@app.get("/api/me/portfolio", summary="Unified user portfolio (stub for Prompt 5)")
+async def me_portfolio(current_user: dict = Depends(get_current_user)):
+    """
+    Returns unified portfolio combining autoapply profile + (future) bot resume.
+    Prompt 5 will fill the bot_resume field; for now it returns null.
+    """
+    return {
+        "user_id": current_user["id"],
+        "telegram_id": current_user.get("telegram_id"),
+        "resume_text": current_user.get("resume_text"),
+        "bot_resume": None,  # populated in Prompt 5
     }
 
 
