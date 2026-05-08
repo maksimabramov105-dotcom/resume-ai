@@ -6,8 +6,7 @@
   <title>AutoApply — Automated Job Applications</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <!-- VK ID SDK (F1: One Tap Login) -->
-  <script src="https://unpkg.com/@vkid/sdk@2.9.4/dist-sdk/umd/index.js"></script>
+  <!-- VK ID SDK removed (2026-05 international pivot) -->
   <style>
     :root {
       --bg: #0a0a0a;
@@ -399,7 +398,7 @@
 
 <!-- NAVBAR -->
 <nav id="navbar" style="display:none;">
-  <a class="nav-logo" onclick="navigate('#dashboard')" data-i18n="login.title">АвтоОтклик</a>
+  <a class="nav-logo" onclick="navigate('#dashboard')" data-i18n="login.title">AutoApply</a>
   <div class="nav-links">
     <button class="nav-link" onclick="navigate('#dashboard')" data-i18n="nav.campaigns">Кампании</button>
     <button class="nav-link" onclick="navigate('#applications')" data-i18n="nav.applications">Заявки</button>
@@ -413,7 +412,7 @@
   <div class="nav-right">
     <span class="plan-badge plan-free" id="nav-plan">FREE</span>
     <button class="nav-link" onclick="navigate('#billing')" data-i18n="nav.billing">💳 Plans</button>
-    <button class="btn-logout" onclick="toggleAppLang()" id="appLangBtn" title="Switch language" style="font-size:15px;padding:5px 10px;">🇷🇺</button>
+    <button class="btn-logout" onclick="toggleAppLang()" id="appLangBtn" title="Switch language" style="font-size:15px;padding:5px 10px;">🌐</button>
     <button class="btn-logout" onclick="logout()" data-i18n="nav.logout">Sign Out</button>
   </div>
   <div class="hamburger" onclick="toggleMobile()">
@@ -437,7 +436,7 @@
 <div class="page" id="page-login">
   <div class="login-box">
     <div class="login-logo">
-      <h1 data-i18n="login.title">АвтоОтклик</h1>
+      <h1 data-i18n="login.title">AutoApply</h1>
       <p data-i18n="login.subtitle">Автоматические заявки на работу</p>
     </div>
     <div class="tabs">
@@ -471,7 +470,7 @@
         <span style="color:#555;font-size:12px;">or</span>
         <div style="flex:1;height:1px;background:#2a2a2a;"></div>
       </div>
-      <div id="vk-one-tap-container-login"></div>
+      <!-- VK One Tap removed (2026-05 international pivot) -->
     </div>
 
     <!-- Register tab -->
@@ -583,7 +582,7 @@
       </div>
       <div class="form-group">
         <label>Минимальная зарплата (₽)</label>
-        <input type="number" class="input" id="ob-salary" placeholder="150000" />
+        <input type="number" class="input" id="ob-salary" placeholder="60000" />
       </div>
       <div class="form-group">
         <label>Исключить компании</label>
@@ -722,7 +721,7 @@
       <div class="form-row">
         <div class="form-group">
           <label>Salary from</label>
-          <input type="number" class="input" id="camp-salary" placeholder="150000" />
+          <input type="number" class="input" id="camp-salary" placeholder="60000" />
         </div>
         <div class="form-group">
           <label>Опыт работы</label>
@@ -1055,8 +1054,8 @@
     </div>
 
     <div class="payment-note">
-      💳 Pay via CryptoBot — BTC, ETH, USDT and other cryptocurrencies<br/>
-      <span style="margin-top:4px;display:block;">Оплатил? Активация автоматическая в течение 1 минуты</span>
+      💳 Payments processed securely via Stripe — all major cards accepted.<br/>
+      <span style="margin-top:4px;display:block;">Your plan activates automatically within 1 minute of payment.</span>
     </div>
   </div>
 </div>
@@ -1983,7 +1982,7 @@
     if (!apps.length) { feedEl.innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem;padding:8px 0;">Заявок пока нет</div>'; return; }
     feedEl.innerHTML = apps.slice(0,5).map(a => {
       const icon = statusIcon[a.status] || '📋';
-      const time = a.sent_at ? new Date(a.sent_at).toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'}) : '';
+      const time = a.sent_at ? new Date(a.sent_at).toLocaleTimeString(undefined, {hour:'2-digit',minute:'2-digit'}) : '';
       const company = esc(a.company_name || a.company || '—');
       const title = esc(a.vacancy_title || a.job_title || '—');
       return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:0.8rem;">
@@ -2115,7 +2114,7 @@
         if (d.sample_size === 0) {
           text.textContent = '💰 Данные о зарплате не найдены';
         } else {
-          const fmt = n => n.toLocaleString('ru-RU');
+          const fmt = n => n.toLocaleString('en-US');
           text.textContent = `💰 Средняя зарплата: ${fmt(d.median)} ₽ (от ${fmt(d.min)} до ${fmt(d.max)} ₽, ${d.sample_size} вакансий)`;
         }
       } catch(e) { hint.style.display = 'none'; }
@@ -2388,7 +2387,7 @@
     if (!d) return '—';
     try {
       const dt = new Date(d);
-      return dt.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' });
+      return dt.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', year: '2-digit' });
     } catch { return String(d); }
   }
 
@@ -2518,7 +2517,7 @@
 
     const shareUrl = 'https://resumeai-bot.ru/?ref=share&score=' + score;
     const tgUrl = 'https://t.me/share/url?url=' + encodeURIComponent(shareUrl) + '&text=' + encodeURIComponent('🎯 Мой ATS Score: ' + score + '/100 — проверь своё резюме бесплатно!');
-    const vkUrl = 'https://vk.com/share.php?url=' + encodeURIComponent(shareUrl) + '&title=' + encodeURIComponent('ATS Score ' + score + '/100 — РезюмеАИ');
+    const vkUrl = '';
 
     card.innerHTML = '<div style="font-size:2rem;font-weight:800;margin-bottom:4px;">🎯 ATS Score: ' + score + '/100</div>' +
       '<div style="opacity:.85;font-size:.9rem;margin-bottom:20px;">Поделись результатом — пусть друзья тоже проверят своё резюме</div>' +
@@ -3068,46 +3067,7 @@
   });
 </script>
 
-<!-- ── VK One Tap Login Init (F1) ──────────────────────────────────────────── -->
-<script>
-(function initVKOneTap(){
-  if (typeof window.VKIDSDK === 'undefined') return;
-  try {
-    var VKID = window.VKIDSDK;
-    VKID.Config.init({
-      app: 54539288,
-      redirectUrl: 'https://resumeai-bot.ru/app',
-      responseMode: VKID.ConfigResponseMode.Callback,
-      source: VKID.ConfigSource.LOWCODE,
-      scope: '',
-    });
-    var oneTap = new VKID.OneTap();
-    oneTap.render({
-      container: document.getElementById('vk-one-tap-container-login'),
-      showAlternativeLogin: true,
-    }).on(VKID.OneTapInternalEvents.LOGIN_SUCCESS, function(payload){
-      VKID.Auth.exchangeCode(payload.code, payload.device_id)
-        .then(function(data){
-          return fetch('/api/auth/vk-login', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(data),
-          });
-        })
-        .then(function(r){ return r.json(); })
-        .then(function(result){
-          if (result.token) {
-            localStorage.setItem('aa_token', result.token);
-            navigate('#dashboard');
-          } else {
-            showToast('VK login error: ' + (result.detail || 'unknown error'));
-          }
-        })
-        .catch(function(e){ showToast('VK error: ' + e.message); });
-    });
-  } catch(e) { console.warn('VK One Tap init error:', e); }
-})();
-</script>
+<!-- VK One Tap Login removed (2026-05 international pivot) -->
 
 <!-- ── Resume Template Gallery ─────────────────────────────────────────────── -->
 <script>
@@ -3120,7 +3080,7 @@
     'executive-dark':   {label:'Executive Dark', icon:'🌑', desc:'Тёмный сайдбар, для руководителей'},
     'tech-mono':        {label:'Tech Mono',      icon:'💻', desc:'Терминальный стиль, для разработчиков'},
     'ats-safe':         {label:'ATS Safe',       icon:'🤖', desc:'Максимальная ATS-совместимость'},
-    'russian-formal':   {label:'Рус. ГОСТ',      icon:'🇷🇺', desc:'По российским стандартам'},
+    // 'russian-formal' removed from selectable templates (2026-05 international pivot)
   };
   var currentTemplateId = null;
   var currentUserData   = null;
@@ -3582,7 +3542,7 @@ function useQFromLib(idx) {
       'nav.billing':      '💳 Тарифы',
       'nav.interview':    '🎯 Интервью',
       'nav.logout':       'Выйти',
-      'login.title':      'АвтоОтклик',
+      'login.title':      'AutoApply',
       'login.subtitle':   'Автоматические заявки на работу',
       'login.sign_in':    'Войти',
       'login.sign_up':    'Зарегистрироваться',
@@ -3661,7 +3621,7 @@ function useQFromLib(idx) {
       if (dict[key] !== undefined) el.textContent = dict[key];
     });
     var btn = document.getElementById('appLangBtn');
-    if (btn) btn.textContent = lang === 'ru' ? '🇷🇺' : '🇬🇧';
+    if (btn) btn.textContent = lang === 'ru' ? '🌐 EN' : '🌐 RU';
     document.documentElement.lang = lang;
     localStorage.setItem('resumeai_lang', lang);
   }
