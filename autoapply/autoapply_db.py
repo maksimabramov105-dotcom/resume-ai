@@ -114,6 +114,22 @@ _MIGRATE_COMPANY_COUNTRY = """
 ALTER TABLE applications ADD COLUMN company_country TEXT
 """
 
+_MIGRATE_USER_STATUS = """
+ALTER TABLE applications ADD COLUMN user_status TEXT DEFAULT 'active'
+"""
+
+_MIGRATE_WITHDRAWN_AT = """
+ALTER TABLE applications ADD COLUMN withdrawn_at TEXT
+"""
+
+_MIGRATE_LAST_USER_ACTION = """
+ALTER TABLE applications ADD COLUMN last_user_action_at TEXT
+"""
+
+_MIGRATE_VIEW_PREFS = """
+ALTER TABLE autoapply_users ADD COLUMN view_prefs TEXT
+"""
+
 _CREATE_EMAIL_DRIP = """
 CREATE TABLE IF NOT EXISTS email_drip (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -246,6 +262,8 @@ _CREATE_INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_portfolios_handle ON portfolios(handle)",
     "CREATE INDEX IF NOT EXISTS idx_portfolio_assets_portfolio ON portfolio_assets(portfolio_id)",
     "CREATE INDEX IF NOT EXISTS idx_portfolio_links_portfolio ON portfolio_links(portfolio_id)",
+    # Applications hub — user_status filter + tab counts
+    "CREATE INDEX IF NOT EXISTS idx_applications_user_status ON applications(user_id, user_status, sent_at)",
 ]
 
 # ── Init ─────────────────────────────────────────────────────────────────────
@@ -281,6 +299,10 @@ async def init_db(db_path: str = AUTOAPPLY_DB) -> None:
                 _MIGRATE_CONSENT_AT,
                 _MIGRATE_STRIPE_CUSTOMER_ID,
                 _MIGRATE_COMPANY_COUNTRY,
+                _MIGRATE_USER_STATUS,
+                _MIGRATE_WITHDRAWN_AT,
+                _MIGRATE_LAST_USER_ACTION,
+                _MIGRATE_VIEW_PREFS,
             ):
                 try:
                     await db.execute(_migration)
@@ -580,34 +602,84 @@ async def update_application_status(
 async def get_applications_for_user(
     user_id: int,
     page: int = 1,
-    per_page: int = 20,
-    platform: Optional[str] = None,
-    status: Optional[str] = None,
+    per_page: int = 50,
+    # filter params (all optional, ANDed)
+    user_status: Optional[str] = None,   # 'active', 'archived', None=all
+    date_from: Optional[str] = None,     # ISO date string YYYY-MM-DD
+    date_to: Optional[str] = None,       # ISO date string YYYY-MM-DD
+    country: Optional[str] = None,       # matches company_country column
+    source: Optional[str] = None,        # matches platform column
+    role_keyword: Optional[str] = None,  # LIKE match on vacancy_title
+    app_status: Optional[str] = None,    # matches status column ('sent','viewed','rejected','offer')
+    free_text: Optional[str] = None,     # LIKE on company_name OR vacancy_title
     db_path: str = AUTOAPPLY_DB,
 ) -> dict:
-    """Return paginated applications for a user."""
+    """Return paginated applications for a user with rich filter support."""
     try:
         offset = (page - 1) * per_page
         where_clauses = ["user_id = ?"]
         params: list = [user_id]
 
-        if platform:
+        if user_status:
+            where_clauses.append("user_status = ?")
+            params.append(user_status)
+        if date_from:
+            where_clauses.append("sent_at >= ?")
+            params.append(date_from)
+        if date_to:
+            # include the full day by appending T23:59:59
+            where_clauses.append("sent_at <= ?")
+            params.append(date_to + "T23:59:59")
+        if country:
+            where_clauses.append("company_country = ?")
+            params.append(country)
+        if source:
             where_clauses.append("platform = ?")
-            params.append(platform)
-        if status:
+            params.append(source)
+        if role_keyword:
+            where_clauses.append("vacancy_title LIKE ?")
+            params.append(f"%{role_keyword}%")
+        if app_status:
             where_clauses.append("status = ?")
-            params.append(status)
+            params.append(app_status)
+        if free_text:
+            where_clauses.append("(company_name LIKE ? OR vacancy_title LIKE ?)")
+            params.append(f"%{free_text}%")
+            params.append(f"%{free_text}%")
 
         where_sql = " AND ".join(where_clauses)
 
         async with aiosqlite.connect(db_path) as db:
             db.row_factory = aiosqlite.Row
 
+            # Main count (with all filters applied)
             async with db.execute(
                 f"SELECT COUNT(*) FROM applications WHERE {where_sql}", params
             ) as cur:
                 total_row = await cur.fetchone()
                 total = total_row[0] if total_row else 0
+
+            # Tab counts — always by user_id only (no other filters), so badges are always correct
+            async with db.execute(
+                "SELECT COUNT(*) FROM applications WHERE user_id = ? AND user_status = 'active'",
+                (user_id,),
+            ) as cur:
+                row = await cur.fetchone()
+                count_active = row[0] if row else 0
+
+            async with db.execute(
+                "SELECT COUNT(*) FROM applications WHERE user_id = ? AND user_status = 'archived'",
+                (user_id,),
+            ) as cur:
+                row = await cur.fetchone()
+                count_archived = row[0] if row else 0
+
+            async with db.execute(
+                "SELECT COUNT(*) FROM applications WHERE user_id = ?",
+                (user_id,),
+            ) as cur:
+                row = await cur.fetchone()
+                count_all = row[0] if row else 0
 
             query_params = params + [per_page, offset]
             async with db.execute(
@@ -628,10 +700,74 @@ async def get_applications_for_user(
             "page": page,
             "per_page": per_page,
             "pages": max(1, (total + per_page - 1) // per_page),
+            "tab_counts": {
+                "active": count_active,
+                "archived": count_archived,
+                "all": count_all,
+            },
         }
     except Exception as exc:
         logger.exception("[autoapply_db] get_applications_for_user error: %s", exc)
-        return {"items": [], "total": 0, "page": page, "per_page": per_page, "pages": 1}
+        return {
+            "items": [], "total": 0, "page": page, "per_page": per_page, "pages": 1,
+            "tab_counts": {"active": 0, "archived": 0, "all": 0},
+        }
+
+
+async def update_application_user_status(
+    application_id: int,
+    user_id: int,
+    new_status: str,
+    withdrawn_at: Optional[str] = None,
+    db_path: str = AUTOAPPLY_DB,
+) -> bool:
+    """Update user_status for an application owned by user_id. Returns False if not found/owned."""
+    now = datetime.utcnow().isoformat()
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            cur = await db.execute(
+                """
+                UPDATE applications
+                SET user_status = ?, last_user_action_at = ?, withdrawn_at = ?
+                WHERE id = ? AND user_id = ?
+                """,
+                (new_status, now, withdrawn_at, application_id, user_id),
+            )
+            await db.commit()
+            return cur.rowcount > 0
+    except Exception as exc:
+        logger.exception("[autoapply_db] update_application_user_status error: %s", exc)
+        return False
+
+
+async def get_user_view_prefs(user_id: int, db_path: str = AUTOAPPLY_DB) -> dict:
+    """Return parsed view_prefs JSON or {} if not set."""
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            async with db.execute(
+                "SELECT view_prefs FROM autoapply_users WHERE id = ?", (user_id,)
+            ) as cur:
+                row = await cur.fetchone()
+        if not row or not row[0]:
+            return {}
+        return json.loads(row[0])
+    except Exception as exc:
+        logger.exception("[autoapply_db] get_user_view_prefs error: %s", exc)
+        return {}
+
+
+async def save_user_view_prefs(user_id: int, prefs: dict, db_path: str = AUTOAPPLY_DB) -> None:
+    """Persist view_prefs as JSON on autoapply_users row."""
+    try:
+        prefs_json = json.dumps(prefs, ensure_ascii=False)
+        async with aiosqlite.connect(db_path) as db:
+            await db.execute(
+                "UPDATE autoapply_users SET view_prefs = ? WHERE id = ?",
+                (prefs_json, user_id),
+            )
+            await db.commit()
+    except Exception as exc:
+        logger.exception("[autoapply_db] save_user_view_prefs error: %s", exc)
 
 
 async def get_dashboard_stats(user_id: int, db_path: str = AUTOAPPLY_DB) -> dict:

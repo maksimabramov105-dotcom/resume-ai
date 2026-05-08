@@ -46,11 +46,14 @@ from autoapply.autoapply_db import (
     get_pending_drip_users,
     get_user_by_email,
     get_user_by_id,
+    get_user_view_prefs,
     init_db,
     log_web_generation,
     mark_user_verified,
     record_consent,
     save_linkedin_credentials,
+    save_user_view_prefs,
+    update_application_user_status,
     update_campaign_status,
     update_user_last_active,
     update_user_password,
@@ -500,7 +503,7 @@ async def register(body: RegisterRequest):
 
     existing = await get_user_by_email(body.email, AUTOAPPLY_DB)
     if existing:
-        raise HTTPException(status_code=409, detail="Email уже зарегистрирован")
+        raise HTTPException(status_code=409, detail="Email already registered")
 
     password_hash = _hash_password(body.password)
     try:
@@ -1076,23 +1079,125 @@ async def resume_connect(
 
 
 # ── Applications list ─────────────────────────────────────────────────────────
-@app.get("/api/applications", summary="List applications (paginated)")
+@app.get("/api/applications", summary="List applications with filters (paginated)")
 async def applications_list(
     page: int = Query(default=1, ge=1),
-    per_page: int = Query(default=20, ge=1, le=100),
-    platform: Optional[str] = Query(default=None),
+    per_page: int = Query(default=50, ge=1, le=100),
+    user_status: Optional[str] = Query(default=None),  # 'active','archived', or omit for all
+    date_from: Optional[str] = Query(default=None),
+    date_to: Optional[str] = Query(default=None),
+    country: Optional[str] = Query(default=None),
+    source: Optional[str] = Query(default=None),
+    role_keyword: Optional[str] = Query(default=None),
     status: Optional[str] = Query(default=None),
+    free_text: Optional[str] = Query(default=None),
     current_user: dict = Depends(get_current_user),
 ):
+    # Validate user_status
+    if user_status is not None and user_status not in ("active", "archived"):
+        raise HTTPException(status_code=400, detail="user_status must be 'active' or 'archived'")
+    # Validate date params
+    if date_from:
+        try:
+            datetime.strptime(date_from, "%Y-%m-%d")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="date_from must be ISO date YYYY-MM-DD")
+    if date_to:
+        try:
+            datetime.strptime(date_to, "%Y-%m-%d")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="date_to must be ISO date YYYY-MM-DD")
+
     result = await get_applications_for_user(
         user_id=current_user["id"],
         page=page,
         per_page=per_page,
-        platform=platform,
-        status=status,
+        user_status=user_status,
+        date_from=date_from,
+        date_to=date_to,
+        country=country,
+        source=source,
+        role_keyword=role_keyword,
+        app_status=status,
+        free_text=free_text,
         db_path=AUTOAPPLY_DB,
     )
     return result
+
+
+@app.post("/api/applications/{application_id}/withdraw", summary="Withdraw an application")
+async def withdraw_application(
+    application_id: int,
+    current_user: dict = Depends(get_current_user),
+):
+    """Mark application as archived + set withdrawn_at timestamp. Keeps audit trail."""
+    now = datetime.utcnow().isoformat()
+    updated = await update_application_user_status(
+        application_id=application_id,
+        user_id=current_user["id"],
+        new_status="archived",
+        withdrawn_at=now,
+        db_path=AUTOAPPLY_DB,
+    )
+    if not updated:
+        raise HTTPException(status_code=404, detail="Application not found")
+    return {"ok": True, "application_id": application_id, "user_status": "archived"}
+
+
+@app.post("/api/applications/{application_id}/archive", summary="Archive an application")
+async def archive_application(
+    application_id: int,
+    current_user: dict = Depends(get_current_user),
+):
+    """Move application to archived state (without withdrawn_at)."""
+    updated = await update_application_user_status(
+        application_id=application_id,
+        user_id=current_user["id"],
+        new_status="archived",
+        withdrawn_at=None,
+        db_path=AUTOAPPLY_DB,
+    )
+    if not updated:
+        raise HTTPException(status_code=404, detail="Application not found")
+    return {"ok": True, "application_id": application_id, "user_status": "archived"}
+
+
+@app.post("/api/applications/{application_id}/restore", summary="Restore an archived application")
+async def restore_application(
+    application_id: int,
+    current_user: dict = Depends(get_current_user),
+):
+    """Restore an archived application back to active."""
+    updated = await update_application_user_status(
+        application_id=application_id,
+        user_id=current_user["id"],
+        new_status="active",
+        withdrawn_at=None,
+        db_path=AUTOAPPLY_DB,
+    )
+    if not updated:
+        raise HTTPException(status_code=404, detail="Application not found")
+    return {"ok": True, "application_id": application_id, "user_status": "active"}
+
+
+@app.get("/api/user/view-prefs", summary="Get user view preferences")
+async def get_view_prefs(current_user: dict = Depends(get_current_user)):
+    prefs = await get_user_view_prefs(current_user["id"], AUTOAPPLY_DB)
+    return prefs
+
+
+@app.put("/api/user/view-prefs", summary="Save user view preferences")
+async def save_view_prefs(body: dict, current_user: dict = Depends(get_current_user)):
+    # Validate: flat dict, max 20 keys, max 100 chars per value
+    if len(body) > 20:
+        raise HTTPException(status_code=400, detail="view_prefs may have at most 20 keys")
+    for k, v in body.items():
+        if isinstance(v, (dict, list)):
+            raise HTTPException(status_code=400, detail="view_prefs values must be scalars")
+        if isinstance(v, str) and len(v) > 100:
+            raise HTTPException(status_code=400, detail=f"Value for '{k}' exceeds 100 characters")
+    await save_user_view_prefs(current_user["id"], body, AUTOAPPLY_DB)
+    return {"ok": True}
 
 
 # ── Cover letter generation ───────────────────────────────────────────────────
@@ -2101,7 +2206,7 @@ async def help_question(body: HelpQuestionRequest):
     """Floating help widget Q&A — answers common questions, falls back to FAQ list."""
     q = body.question.strip()
     if not q:
-        raise HTTPException(status_code=400, detail="Вопрос не может быть пустым")
+        raise HTTPException(status_code=400, detail="Question cannot be empty")
 
     OPENROUTER_KEY = os.getenv("OPENROUTER_API_KEY", "")
     if not OPENROUTER_KEY:
@@ -2499,7 +2604,7 @@ async def resume_preview(body: ResumePreviewRequest, request: Request):
     if len(_preview_rate_store[ip]) >= _PREVIEW_RATE_LIMIT:
         return JSONResponse(
             status_code=200,
-            content={"preview_html": "<p><strong>Rate limit:</strong> Превышен лимит запросов (3 в час). Попробуйте позже. / Too many requests (3/hour). Please try again later.</p>"},
+            content={"preview_html": "<p><strong>Rate limit:</strong> Too many requests (3/hour). Please try again later.</p>"},
         )
     _preview_rate_store[ip].append(now_ts)
 
