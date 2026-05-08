@@ -205,10 +205,66 @@ async def _apply_english_job(user: dict, vacancy: dict, resume_text: str, cover_
 
 # ── Campaign processor ────────────────────────────────────────────────────────
 
+async def _process_career_ops_campaign(campaign: dict, user: dict, remaining: int) -> int:
+    """
+    Delegate campaign to the career-ops quality engine.
+    Fetches vacancies via the API-board engine (same sources), then passes
+    all candidates to CareerOpsAdapter.run_batch() for scoring + PDF + HITL queue.
+    Returns number of applications queued for review.
+    """
+    from autoapply.engines.career_ops_adapter import run_batch as co_run_batch
+
+    job_title = campaign["job_title"]
+    location = campaign.get("location", "")
+    salary_min = campaign.get("salary_min", 0)
+    experience = campaign.get("experience", "")
+    platforms = campaign.get("platforms", ["all"])
+
+    # Collect candidates from all platforms (up to 3× the daily limit for scoring headroom)
+    all_vacancies: list = []
+    for platform in platforms:
+        if _shutdown:
+            break
+        vacancies = await _fetch_vacancies(platform, job_title, location, salary_min, experience)
+        all_vacancies.extend(vacancies)
+
+    # Cap to avoid spending too long
+    all_vacancies = all_vacancies[: max(remaining * 3, 30)]
+
+    logger.info(
+        "[worker/career_ops] campaign_id=%s fetched %d candidates for scoring",
+        campaign["id"], len(all_vacancies),
+    )
+
+    results = await co_run_batch(
+        campaign=campaign,
+        vacancies=all_vacancies,
+        user=user,
+    )
+    queued = len(results)
+    logger.info(
+        "[worker/career_ops] campaign_id=%s queued %d for pending_review", campaign["id"], queued
+    )
+
+    if queued:
+        try:
+            from bot.analytics import track as _ph_track
+            _ph_track(user["id"], "career_ops_batch_done", {
+                "campaign_id": campaign["id"],
+                "queued": queued,
+            })
+        except Exception:
+            pass
+
+    return queued
+
+
 async def process_campaign(campaign: dict) -> int:
     """
-    Process a single campaign. Returns number of applications sent.
+    Process a single campaign. Returns number of applications sent/queued.
     Never raises — all errors are caught and logged.
+    Routes to career-ops adapter if engine='career_ops', otherwise uses
+    the existing API-board (high-volume) path.
     """
     campaign_id = campaign["id"]
     user_id = campaign["user_id"]
@@ -218,10 +274,11 @@ async def process_campaign(campaign: dict) -> int:
     experience = campaign.get("experience", "")
     platforms = campaign.get("platforms", ["all"])
     campaign_daily_limit = campaign.get("daily_limit", 10)
+    engine = campaign.get("engine", "api_boards")
 
     logger.info(
-        "[worker] processing campaign_id=%s user_id=%s title=%s platforms=%s",
-        campaign_id, user_id, job_title, platforms,
+        "[worker] processing campaign_id=%s user_id=%s title=%s engine=%s platforms=%s",
+        campaign_id, user_id, job_title, engine, platforms,
     )
 
     user = await get_user_by_id(user_id, AUTOAPPLY_DB)
@@ -242,6 +299,17 @@ async def process_campaign(campaign: dict) -> int:
         )
         return 0
 
+    # ── Route to career-ops quality engine if requested ───────────────────────
+    if engine == "career_ops":
+        try:
+            count = await _process_career_ops_campaign(campaign, user, remaining)
+        except Exception as exc:
+            logger.exception("[worker] career_ops engine error campaign_id=%s: %s", campaign_id, exc)
+            count = 0
+        await update_campaign_last_run(campaign_id, AUTOAPPLY_DB)
+        return count
+
+    # ── Default: api_boards (high-volume) path ────────────────────────────────
     sent_count = 0
     failed_count = 0
 

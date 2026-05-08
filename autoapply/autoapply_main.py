@@ -67,6 +67,9 @@ from autoapply.autoapply_db import (
     get_portfolio_by_handle,
     get_portfolio_by_user,
     upsert_portfolio,
+    # P10 — career-ops review helpers
+    get_application_by_id,
+    update_application_after_review,
     # Inbox helpers
     add_message as db_add_message,
     create_or_get_thread,
@@ -444,6 +447,7 @@ class CampaignCreateRequest(BaseModel):
     experience: str = ""
     platforms: List[str] = ["all"]
     daily_limit: int = 10
+    engine: str = "api_boards"  # "api_boards" (speed) | "career_ops" (quality)
 
 
 class ResumeConnectRequest(BaseModel):
@@ -781,6 +785,7 @@ async def campaign_create(
         raise HTTPException(status_code=400, detail="At least one platform required")
 
     try:
+        engine = body.engine if body.engine in ("api_boards", "career_ops") else "api_boards"
         campaign_id = await create_campaign(
             user_id=user_id,
             job_title=body.job_title,
@@ -789,6 +794,7 @@ async def campaign_create(
             experience=body.experience,
             platforms=body.platforms,
             daily_limit=requested_limit,
+            engine=engine,
             db_path=AUTOAPPLY_DB,
         )
     except Exception as exc:
@@ -837,6 +843,9 @@ async def campaigns_create_alias(
 
     requested_limit = min(int(body.get("daily_limit", 10)), plan_info["daily_limit"])
 
+    raw_engine = body.get("engine", "api_boards")
+    engine = raw_engine if raw_engine in ("api_boards", "career_ops") else "api_boards"
+
     try:
         campaign_id = await create_campaign(
             user_id=user_id,
@@ -846,6 +855,7 @@ async def campaigns_create_alias(
             experience=body.get("experience", ""),
             platforms=platforms,
             daily_limit=requested_limit,
+            engine=engine,
             db_path=AUTOAPPLY_DB,
         )
     except Exception as exc:
@@ -1187,6 +1197,53 @@ async def restore_application(
     if not updated:
         raise HTTPException(status_code=404, detail="Application not found")
     return {"ok": True, "application_id": application_id, "user_status": "active"}
+
+
+@app.post(
+    "/api/applications/{application_id}/review",
+    summary="HITL review: submit or discard a career-ops pending_review application",
+)
+async def review_application(
+    application_id: int,
+    body: dict,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Human-in-the-loop review endpoint for career-ops engine applications.
+
+    body.action must be 'submit' or 'discard'.
+    'submit' → calls ATSFiller to do the actual apply, transitions to 'sent' (or 'queued').
+    'discard' → transitions to 'rejected' without submitting.
+
+    Country gate is applied inside the adapter; RU results never reach pending_review,
+    so this endpoint never submits to blocked jurisdictions.
+    """
+    action = body.get("action", "")
+    if action not in ("submit", "discard"):
+        raise HTTPException(status_code=400, detail="action must be 'submit' or 'discard'")
+
+    if action == "discard":
+        from autoapply.autoapply_db import update_application_after_review
+        updated = await update_application_after_review(
+            app_id=application_id,
+            user_id=current_user["id"],
+            new_status="rejected",
+            db_path=AUTOAPPLY_DB,
+        )
+        if not updated:
+            raise HTTPException(status_code=404, detail="Application not found or not in pending_review state")
+        return {"ok": True, "application_id": application_id, "status": "rejected"}
+
+    # action == "submit"
+    from autoapply.engines.career_ops_adapter import submit_application
+    result = await submit_application(
+        application_id=application_id,
+        user=current_user,
+        db_path=AUTOAPPLY_DB,
+    )
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail=result.get("detail", "Submit failed"))
+    return result
 
 
 @app.get("/api/user/view-prefs", summary="Get user view preferences")

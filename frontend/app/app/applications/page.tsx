@@ -12,10 +12,14 @@ interface ApplicationRow {
   vacancy_url: string;
   platform: string;
   company_country: string | null;
-  status: string;          // system status: sent, viewed, rejected, offer, interview
+  status: string;          // system status: sent, viewed, rejected, offer, interview, pending_review
   user_status: string;     // user status: active, archived
   sent_at: string;
   withdrawn_at: string | null;
+  // P10 — career-ops fields
+  engine: string | null;        // 'api_boards' | 'career_ops'
+  match_score: number | null;   // 0-10 composite match score
+  cv_pdf_path: string | null;   // absolute server path to generated PDF
 }
 
 interface ApiResponse {
@@ -24,7 +28,7 @@ interface ApiResponse {
   page: number;
   per_page: number;
   pages: number;
-  tab_counts: { active: number; archived: number; all: number };
+  tab_counts: { active: number; archived: number; all: number; pending_review: number };
 }
 
 interface Filters {
@@ -49,20 +53,29 @@ const EMPTY_FILTERS: Filters = {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const SOURCES = ['', 'Adzuna', 'Arbeitnow', 'RemoteOK', 'TheMuse'];
-const APP_STATUSES = ['', 'sent', 'viewed', 'interview', 'offer', 'rejected'];
+const SOURCES = ['', 'Adzuna', 'Arbeitnow', 'RemoteOK', 'TheMuse', 'career_ops'];
+const APP_STATUSES = ['', 'sent', 'viewed', 'interview', 'offer', 'rejected', 'pending_review'];
 
 const STATUS_STYLES: Record<string, string> = {
-  sent:      'bg-gray-500/20 text-gray-400 border border-gray-500/30',
-  viewed:    'bg-blue-500/20 text-blue-400 border border-blue-500/30',
-  interview: 'bg-violet-500/20 text-violet-400 border border-violet-500/30',
-  offer:     'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
-  rejected:  'bg-red-500/20 text-red-400 border border-red-500/30',
+  sent:           'bg-gray-500/20 text-gray-400 border border-gray-500/30',
+  viewed:         'bg-blue-500/20 text-blue-400 border border-blue-500/30',
+  interview:      'bg-violet-500/20 text-violet-400 border border-violet-500/30',
+  offer:          'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
+  rejected:       'bg-red-500/20 text-red-400 border border-red-500/30',
+  pending_review: 'bg-amber-500/20 text-amber-400 border border-amber-500/30',
+  queued:         'bg-gray-500/15 text-gray-500 border border-gray-500/20',
 };
 
 const STATUS_LABELS: Record<string, string> = {
   sent: 'Sent', viewed: 'Viewed', interview: 'Interview',
-  offer: 'Offer', rejected: 'Rejected',
+  offer: 'Offer', rejected: 'Rejected', pending_review: 'Pending Review',
+  queued: 'Queued',
+};
+
+// Engine badges
+const ENGINE_BADGE: Record<string, { label: string; cls: string }> = {
+  career_ops: { label: '🎯 Quality', cls: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25' },
+  api_boards:  { label: '⚡ Speed',   cls: 'bg-blue-500/15 text-blue-400 border border-blue-500/25' },
 };
 
 // ── API helpers ───────────────────────────────────────────────────────────────
@@ -140,7 +153,7 @@ function ConfirmDialog({
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function ApplicationsPage() {
-  const [tab, setTab] = useState<'active' | 'archived' | 'all'>('active');
+  const [tab, setTab] = useState<'active' | 'archived' | 'all' | 'pending_review'>('active');
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [pendingFilters, setPendingFilters] = useState<Filters>(EMPTY_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -187,7 +200,11 @@ export default function ApplicationsPage() {
       setLoading(true);
       try {
         const params = new URLSearchParams();
-        if (currentTab !== 'all') params.set('user_status', currentTab);
+        if (currentTab === 'pending_review') {
+          params.set('status', 'pending_review');
+        } else if (currentTab !== 'all') {
+          params.set('user_status', currentTab);
+        }
         params.set('page', String(currentPage));
         params.set('per_page', '50');
         if (currentFilters.date_from) params.set('date_from', currentFilters.date_from);
@@ -237,7 +254,40 @@ export default function ApplicationsPage() {
   const handleTabChange = (newTab: typeof tab) => {
     setTab(newTab);
     setPage(1);
-    savePrefs(newTab, filters, filtersOpen);
+    savePrefs(newTab as string, filters, filtersOpen);
+  };
+
+  // ── Career-ops HITL review actions ───────────────────────────────────────
+  const handleSubmitReview = async (app: ApplicationRow) => {
+    setActionLoading(app.id);
+    try {
+      await apiFetch(`/applications/${app.id}/review`, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'submit' }),
+      });
+      setToast('Application submitted successfully!');
+      fetchApps(tab, filters, page);
+    } catch (e: any) {
+      setToast(e.message ?? 'Error submitting application');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDiscardReview = async (app: ApplicationRow) => {
+    setActionLoading(app.id);
+    try {
+      await apiFetch(`/applications/${app.id}/review`, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'discard' }),
+      });
+      setToast('Application discarded');
+      fetchApps(tab, filters, page);
+    } catch (e: any) {
+      setToast(e.message ?? 'Error discarding application');
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   // ── Apply filters ─────────────────────────────────────────────────────────
@@ -310,15 +360,16 @@ export default function ApplicationsPage() {
     }
   };
 
-  const tabCounts = data?.tab_counts ?? { active: 0, archived: 0, all: 0 };
+  const tabCounts = data?.tab_counts ?? { active: 0, archived: 0, all: 0, pending_review: 0 };
   const items = data?.items ?? [];
   const totalPages = data?.pages ?? 1;
 
   // ── Empty state messages per tab ─────────────────────────────────────────
-  const emptyMessages: Record<typeof tab, string> = {
+  const emptyMessages: Record<string, string> = {
     active: 'No active applications. Once your campaigns run, applications will appear here.',
     archived: 'No archived applications yet. Withdraw or archive applications to move them here.',
     all: 'No applications found. Adjust your filters or start a campaign.',
+    pending_review: 'No applications awaiting review. Start a Quality (career-ops) campaign to generate AI-scored PDFs for review.',
   };
 
   return (
@@ -330,21 +381,31 @@ export default function ApplicationsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 mb-4 border-b border-white/[0.07] pb-0">
-        {(['active', 'archived', 'all'] as const).map(t => (
+      <div className="flex items-center gap-1 mb-4 border-b border-white/[0.07] pb-0 flex-wrap">
+        {([
+          { key: 'active',         label: 'Active' },
+          { key: 'pending_review', label: '🎯 Pending Review' },
+          { key: 'archived',       label: 'Archived' },
+          { key: 'all',            label: 'All' },
+        ] as const).map(({ key, label }) => (
           <button
-            key={t}
-            onClick={() => handleTabChange(t)}
-            className={`relative px-4 py-2.5 text-sm font-medium capitalize transition-all rounded-t-lg
-              ${tab === t
+            key={key}
+            onClick={() => handleTabChange(key)}
+            className={`relative px-4 py-2.5 text-sm font-medium transition-all rounded-t-lg
+              ${tab === key
                 ? 'text-white border-b-2 border-blue-500 -mb-px bg-white/[0.03]'
                 : 'text-gray-500 hover:text-gray-300 hover:bg-white/[0.02]'
               }`}
           >
-            {t.charAt(0).toUpperCase() + t.slice(1)}
+            {label}
             <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full font-semibold
-              ${tab === t ? 'bg-blue-600/30 text-blue-300' : 'bg-white/[0.06] text-gray-500'}`}>
-              {tabCounts[t]}
+              ${tab === key
+                ? key === 'pending_review'
+                  ? 'bg-emerald-600/30 text-emerald-300'
+                  : 'bg-blue-600/30 text-blue-300'
+                : 'bg-white/[0.06] text-gray-500'
+              }`}>
+              {tabCounts[key] ?? 0}
             </span>
           </button>
         ))}
@@ -532,9 +593,17 @@ export default function ApplicationsPage() {
                 <p className="text-sm text-gray-400 truncate">{app.vacancy_title || '—'}</p>
               </div>
 
-              {/* Source */}
-              <div className="hidden lg:block">
+              {/* Source + engine badge */}
+              <div className="hidden lg:flex flex-col gap-1">
                 <p className="text-sm text-gray-500">{app.platform || '—'}</p>
+                {app.engine && ENGINE_BADGE[app.engine] && (
+                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full w-fit ${ENGINE_BADGE[app.engine].cls}`}>
+                    {ENGINE_BADGE[app.engine].label}
+                  </span>
+                )}
+                {app.match_score != null && (
+                  <span className="text-[10px] text-gray-600">Match: {app.match_score.toFixed(1)}/10</span>
+                )}
               </div>
 
               {/* Country */}
@@ -576,8 +645,30 @@ export default function ApplicationsPage() {
                   <span className="px-2.5 py-1.5 rounded-lg text-[11px] text-gray-700 bg-white/[0.02] cursor-not-allowed">View</span>
                 )}
 
-                {/* Withdraw (active tab only) */}
-                {app.user_status === 'active' && (
+                {/* career-ops HITL review actions (pending_review only) */}
+                {app.status === 'pending_review' && (
+                  <>
+                    <button
+                      onClick={() => handleSubmitReview(app)}
+                      disabled={actionLoading === app.id}
+                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 hover:text-emerald-300 transition-all disabled:opacity-40"
+                      title="Submit this application"
+                    >
+                      {actionLoading === app.id ? '…' : '✓ Submit'}
+                    </button>
+                    <button
+                      onClick={() => handleDiscardReview(app)}
+                      disabled={actionLoading === app.id}
+                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-red-600/10 hover:bg-red-600/20 text-red-400 hover:text-red-300 transition-all disabled:opacity-40"
+                      title="Discard this application"
+                    >
+                      {actionLoading === app.id ? '…' : 'Discard'}
+                    </button>
+                  </>
+                )}
+
+                {/* Withdraw (active tab, non-pending_review only) */}
+                {app.user_status === 'active' && app.status !== 'pending_review' && (
                   <button
                     onClick={() => handleWithdraw(app)}
                     disabled={actionLoading === app.id}

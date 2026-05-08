@@ -130,6 +130,23 @@ _MIGRATE_VIEW_PREFS = """
 ALTER TABLE autoapply_users ADD COLUMN view_prefs TEXT
 """
 
+# P10 — career-ops engine variant
+_MIGRATE_CAMPAIGN_ENGINE = """
+ALTER TABLE campaigns ADD COLUMN engine TEXT DEFAULT 'api_boards'
+"""
+
+_MIGRATE_APPLICATION_ENGINE = """
+ALTER TABLE applications ADD COLUMN engine TEXT DEFAULT 'api_boards'
+"""
+
+_MIGRATE_APPLICATION_CV_PDF_PATH = """
+ALTER TABLE applications ADD COLUMN cv_pdf_path TEXT
+"""
+
+_MIGRATE_APPLICATION_MATCH_SCORE = """
+ALTER TABLE applications ADD COLUMN match_score REAL
+"""
+
 _CREATE_EMAIL_DRIP = """
 CREATE TABLE IF NOT EXISTS email_drip (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -336,6 +353,11 @@ async def init_db(db_path: str = AUTOAPPLY_DB) -> None:
                 _MIGRATE_WITHDRAWN_AT,
                 _MIGRATE_LAST_USER_ACTION,
                 _MIGRATE_VIEW_PREFS,
+                # P10 — career-ops engine variant
+                _MIGRATE_CAMPAIGN_ENGINE,
+                _MIGRATE_APPLICATION_ENGINE,
+                _MIGRATE_APPLICATION_CV_PDF_PATH,
+                _MIGRATE_APPLICATION_MATCH_SCORE,
             ):
                 try:
                     await db.execute(_migration)
@@ -449,6 +471,7 @@ async def create_campaign(
     experience: str,
     platforms: list,
     daily_limit: int,
+    engine: str = "api_boards",
     db_path: str = AUTOAPPLY_DB,
 ) -> int:
     """Create a new campaign. Returns campaign_id."""
@@ -460,11 +483,11 @@ async def create_campaign(
                 """
                 INSERT INTO campaigns
                     (user_id, job_title, location, salary_min, experience,
-                     platforms, daily_limit, status, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?)
+                     platforms, daily_limit, engine, status, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)
                 """,
                 (user_id, job_title, location, salary_min, experience,
-                 platforms_json, daily_limit, now),
+                 platforms_json, daily_limit, engine, now),
             )
             await db.commit()
             return cur.lastrowid
@@ -560,9 +583,13 @@ async def log_application(
     vacancy_url: str,
     resume_used: str,
     company_country: Optional[str] = None,
+    engine: str = "api_boards",
+    cv_pdf_path: Optional[str] = None,
+    match_score: Optional[float] = None,
+    status: str = "sent",
     db_path: str = AUTOAPPLY_DB,
 ) -> int:
-    """Log a sent application. Also increments counters. Returns app_id."""
+    """Log a sent or pending_review application. Also increments counters. Returns app_id."""
     now = datetime.utcnow().isoformat()
     try:
         async with aiosqlite.connect(db_path) as db:
@@ -571,11 +598,12 @@ async def log_application(
                 INSERT INTO applications
                     (campaign_id, user_id, platform, vacancy_id, vacancy_title,
                      company_name, vacancy_url, resume_used, status, sent_at,
-                     company_country)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'sent', ?, ?)
+                     company_country, engine, cv_pdf_path, match_score)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (campaign_id, user_id, platform, vacancy_id, vacancy_title,
-                 company_name, vacancy_url, resume_used, now, company_country),
+                 company_name, vacancy_url, resume_used, status, now,
+                 company_country, engine, cv_pdf_path, match_score),
             )
             app_id = cur.lastrowid
 
@@ -598,6 +626,49 @@ async def log_application(
     except Exception as exc:
         logger.exception("[autoapply_db] log_application error: %s", exc)
         raise
+
+
+async def get_application_by_id(
+    app_id: int, user_id: int, db_path: str = AUTOAPPLY_DB
+) -> Optional[dict]:
+    """Return a single application row visible to the given user."""
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                "SELECT * FROM applications WHERE id = ? AND user_id = ?",
+                (app_id, user_id),
+            ) as cur:
+                row = await cur.fetchone()
+                return dict(row) if row else None
+    except Exception as exc:
+        logger.exception("[autoapply_db] get_application_by_id error: %s", exc)
+        return None
+
+
+async def update_application_after_review(
+    app_id: int,
+    user_id: int,
+    new_status: str,
+    db_path: str = AUTOAPPLY_DB,
+) -> bool:
+    """Transition a pending_review application to sent (HITL submit) or rejected."""
+    now = datetime.utcnow().isoformat()
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            result = await db.execute(
+                """
+                UPDATE applications
+                SET status = ?, last_user_action_at = ?
+                WHERE id = ? AND user_id = ? AND status = 'pending_review'
+                """,
+                (new_status, now, app_id, user_id),
+            )
+            await db.commit()
+            return (result.rowcount or 0) > 0
+    except Exception as exc:
+        logger.exception("[autoapply_db] update_application_after_review error: %s", exc)
+        return False
 
 
 async def update_application_status(
@@ -714,6 +785,14 @@ async def get_applications_for_user(
                 row = await cur.fetchone()
                 count_all = row[0] if row else 0
 
+            # P10 — pending_review count (career-ops HITL queue)
+            async with db.execute(
+                "SELECT COUNT(*) FROM applications WHERE user_id = ? AND status = 'pending_review'",
+                (user_id,),
+            ) as cur:
+                row = await cur.fetchone()
+                count_pending_review = row[0] if row else 0
+
             query_params = params + [per_page, offset]
             async with db.execute(
                 f"""
@@ -737,13 +816,14 @@ async def get_applications_for_user(
                 "active": count_active,
                 "archived": count_archived,
                 "all": count_all,
+                "pending_review": count_pending_review,
             },
         }
     except Exception as exc:
         logger.exception("[autoapply_db] get_applications_for_user error: %s", exc)
         return {
             "items": [], "total": 0, "page": page, "per_page": per_page, "pages": 1,
-            "tab_counts": {"active": 0, "archived": 0, "all": 0},
+            "tab_counts": {"active": 0, "archived": 0, "all": 0, "pending_review": 0},
         }
 
 

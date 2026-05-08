@@ -30,6 +30,7 @@ export default function NewCampaignPage() {
     experience: '',
     cover_letter: true,
     daily_limit: 50,
+    engine: 'api_boards' as 'api_boards' | 'career_ops',
   });
 
   const set = (key: string, val: unknown) => setForm(f => ({ ...f, [key]: val }));
@@ -75,6 +76,58 @@ export default function NewCampaignPage() {
             placeholder="e.g. Senior Frontend Engineer"
             className="w-full bg-[#1a1a1a] border border-white/[0.07] rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-violet-500/50 transition-colors"
           />
+        </div>
+
+        {/* Engine selector */}
+        <div className="bg-[#141414] border border-white/[0.07] rounded-2xl p-5">
+          <label className="block text-xs font-medium text-gray-400 mb-1">Application Engine</label>
+          <p className="text-xs text-gray-600 mb-3">Choose your quality/speed tradeoff</p>
+          <div className="grid grid-cols-2 gap-3">
+            {/* Speed */}
+            <button
+              type="button"
+              onClick={() => set('engine', 'api_boards')}
+              className={`relative rounded-xl border p-4 text-left transition-all ${
+                form.engine === 'api_boards'
+                  ? 'border-violet-500/50 bg-violet-500/10'
+                  : 'border-white/[0.07] hover:border-white/20'
+              }`}
+            >
+              <div className="text-sm font-semibold text-white mb-1">⚡ Speed</div>
+              <div className="text-xs text-gray-400 leading-relaxed">
+                Up to 50 applications/day via Adzuna, RemoteOK, Arbeitnow &amp; The Muse.
+                Instant — no review needed.
+              </div>
+              {form.engine === 'api_boards' && (
+                <span className="absolute top-2 right-2 text-violet-400 text-xs font-medium">Selected</span>
+              )}
+            </button>
+
+            {/* Quality */}
+            <button
+              type="button"
+              onClick={() => set('engine', 'career_ops')}
+              className={`relative rounded-xl border p-4 text-left transition-all ${
+                form.engine === 'career_ops'
+                  ? 'border-emerald-500/50 bg-emerald-500/10'
+                  : 'border-white/[0.07] hover:border-white/20'
+              }`}
+            >
+              <div className="text-sm font-semibold text-white mb-1">🎯 Quality</div>
+              <div className="text-xs text-gray-400 leading-relaxed">
+                AI scores each job against your CV (0–10). Generates a tailored PDF.
+                You review &amp; submit — perfect for portals (Greenhouse, Ashby, Lever).
+              </div>
+              {form.engine === 'career_ops' && (
+                <span className="absolute top-2 right-2 text-emerald-400 text-xs font-medium">Selected</span>
+              )}
+            </button>
+          </div>
+          {form.engine === 'career_ops' && (
+            <p className="text-xs text-emerald-600/80 mt-2">
+              ✓ Match score + tailored PDF generated per job. Applications land in "Pending Review" — you decide which ones to submit.
+            </p>
+          )}
         </div>
 
         {/* Source */}

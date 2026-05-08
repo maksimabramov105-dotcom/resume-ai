@@ -1,0 +1,68 @@
+# career-ops.service — career-ops batch processor sidecar
+#
+# Runs as an isolated user (careerops) with a separate venv.
+# No access to autoapply.db secret columns (linkedin_password_enc):
+#   - the careerops user owns only /opt/careerops/workdir and /opt/resumeaibot/cv/
+#   - autoapply.db is owned by root:resumeaibot (mode 660)
+#   - this service never connects to autoapply.db directly; the Python
+#     adapter (running as resumeaibot) writes sanitised portfolio files
+#     to /opt/careerops/workdir/ before invoking career-ops batch jobs
+#
+# Setup:
+#   useradd -r -s /sbin/nologin -d /opt/careerops careerops
+#   mkdir -p /opt/careerops/workdir /opt/resumeaibot/cv
+#   chown careerops:careerops /opt/careerops/workdir
+#   chown careerops:resumeaibot /opt/resumeaibot/cv
+#   chmod 775 /opt/resumeaibot/cv
+#   cd /opt/resumeaibot/vendor/career-ops && npm ci --omit=dev
+#   npx playwright install chromium --with-deps  # for generate-pdf.mjs
+#
+# This service is optional (only needed if batch-runner.sh mode is used).
+# For PDF generation via the Python adapter, Node.js in PATH is sufficient.
+
+[Unit]
+Description=career-ops quality autoapply batch processor
+After=network.target autoapply.service
+PartOf=autoapply.service
+Documentation=file:///opt/resumeaibot/docs/runbooks/upgrade-career-ops.md
+
+[Service]
+Type=oneshot
+RemainAfterExit=no
+User=careerops
+Group=careerops
+
+WorkingDirectory=/opt/resumeaibot/vendor/career-ops
+
+# Isolated venv / environment
+Environment="PATH=/opt/careerops/venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="HOME=/opt/careerops"
+Environment="CAREER_OPS_WORKDIR=/opt/careerops/workdir"
+Environment="CAREER_OPS_CV_DIR=/opt/resumeaibot/cv"
+EnvironmentFile=-/opt/resumeaibot/.env
+
+# The batch runner script (uses claude -p workers for full oferta evaluation)
+ExecStart=/bin/bash /opt/resumeaibot/vendor/career-ops/batch/batch-runner.sh \
+  --parallel 1 \
+  --min-score 55
+
+# Hard limits — career-ops batch is intentionally slow; kill if stuck > 4h
+TimeoutStartSec=240min
+TimeoutStopSec=30
+
+# Security hardening — restricted access, no sensitive columns visible
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/careerops/workdir /opt/resumeaibot/cv /tmp
+
+# Never auto-restart — triggered on demand by autoapply worker
+Restart=no
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=career-ops
+
+[Install]
+# Not enabled by default — activated on demand; see docs/runbooks/upgrade-career-ops.md
+WantedBy=multi-user.target
