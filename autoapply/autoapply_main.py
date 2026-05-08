@@ -1717,24 +1717,24 @@ async def admin_generate_blog_post(payload: dict, request: Request):
     model = _os.getenv("OPENAI_MODEL", "openai/gpt-4o-mini")
     base_url = "https://openrouter.ai/api/v1" if _os.getenv("OPENROUTER_API_KEY") else "https://api.openai.com/v1"
 
-    prompt = f"""Напиши статью на 800 слов в блог для сайта по поиску работы. Тема: "{topic}"
+    prompt = f"""Write an 800-word blog article for a job search website. Topic: "{topic}"
 
-Верни ТОЛЬКО JSON следующего формата:
+Return ONLY JSON in this exact format:
 {{
-  "title": "заголовок статьи",
-  "slug": "url-slug-latinicey",
-  "meta_description": "SEO описание до 150 символов",
-  "content_html": "HTML контент статьи с тегами <h2>, <h3>, <p>, <ul><li>",
-  "faq": [{{"q": "вопрос", "a": "ответ"}}, {{"q": "вопрос2", "a": "ответ2"}}, {{"q": "вопрос3", "a": "ответ3"}}],
-  "reading_time": "5 мин чтения"
+  "title": "article title",
+  "slug": "url-slug-in-latin",
+  "meta_description": "SEO description up to 150 characters",
+  "content_html": "HTML article content with <h2>, <h3>, <p>, <ul><li> tags",
+  "faq": [{{"q": "question", "a": "answer"}}, {{"q": "question2", "a": "answer2"}}, {{"q": "question3", "a": "answer3"}}],
+  "reading_time": "5 min read"
 }}
 
-Требования к статье:
-- H2 подзаголовки каждые 150-200 слов
-- Упомяни РезюмеАИ (resumeai-bot.ru) один раз органично
-- Заканчивай призывом использовать AI для резюме
-- Практические советы с данными
-- Целевая аудитория: русскоязычные соискатели"""
+Article requirements:
+- H2 subheadings every 150-200 words
+- Mention ResumeAI (resumeai-bot.ru) once naturally
+- End with a call to action to use AI for resume building
+- Practical tips with data and statistics
+- Target audience: international job seekers"""
 
     try:
         async with _httpx_module.AsyncClient(timeout=60) as client:
@@ -1753,17 +1753,17 @@ async def admin_generate_blog_post(payload: dict, request: Request):
     meta_desc = article.get("meta_description", "")
     content = article.get("content_html", "")
     faqs = article.get("faq", [])
-    reading_time = article.get("reading_time", "5 мин чтения")
+    reading_time = article.get("reading_time", "5 min read")
     date_str = datetime.now(timezone.utc).strftime("%d.%m.%Y")
 
     faq_schema = _json.dumps({"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":f["q"],"acceptedAnswer":{"@type":"Answer","text":f["a"]}} for f in faqs]}, ensure_ascii=False)
     faq_html = "".join(f'<div class="faq-item"><div class="faq-q" onclick="this.nextElementSibling.classList.toggle(\'open\')">{f["q"]} <span>+</span></div><div class="faq-a">{f["a"]}</div></div>' for f in faqs)
 
     html = f"""<!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{title} | РезюмеАИ</title>
+  <title>{title} | ResumeAI</title>
   <meta name="description" content="{meta_desc}" />
   <meta property="og:title" content="{title}" /><meta property="og:description" content="{meta_desc}" />
   <meta property="og:image" content="https://resumeai-bot.ru/og-image.png" />
@@ -1793,12 +1793,12 @@ async def admin_generate_blog_post(payload: dict, request: Request):
   </style>
 </head>
 <body>
-<header><div class="header-inner"><a href="/" class="logo">ResumeAI</a><a href="/app" style="background:#F59E0B;color:#fff;padding:8px 20px;border-radius:8px;font-weight:600;font-size:.88rem;text-decoration:none;">Создать резюме</a></div></header>
-<div class="article-hero"><div class="container"><div style="font-size:.82rem;color:#94A3B8;margin-bottom:12px;"><a href="/" style="color:#2563EB;">Главная</a> › <a href="/blog/" style="color:#2563EB;">Блог</a> › {title}</div><h1>{title}</h1><div class="article-meta">📅 {date_str} · ✍️ РезюмеАИ · ⏱ {reading_time}</div></div></div>
+<header><div class="header-inner"><a href="/" class="logo">ResumeAI</a><a href="/app" style="background:#F59E0B;color:#fff;padding:8px 20px;border-radius:8px;font-weight:600;font-size:.88rem;text-decoration:none;">Build your resume</a></div></header>
+<div class="article-hero"><div class="container"><div style="font-size:.82rem;color:#94A3B8;margin-bottom:12px;"><a href="/" style="color:#2563EB;">Home</a> › <a href="/blog/" style="color:#2563EB;">Blog</a> › {title}</div><h1>{title}</h1><div class="article-meta">📅 {date_str} · ✍️ ResumeAI · ⏱ {reading_time}</div></div></div>
 <div class="container"><div class="article-body">{content}</div>
-<div class="cta-box"><h2>Создайте резюме с AI прямо сейчас</h2><p>Бесплатно · 30 секунд · ATS-оптимизация</p><a href="/app" class="btn-cta">Попробовать бесплатно →</a></div>
-<div class="faq-section"><h2 style="font-size:1.4rem;font-weight:800;color:#0F172A;margin-bottom:20px;">Частые вопросы</h2>{faq_html}</div></div>
-<footer>© 2026 РезюмеАИ · <a href="/privacy.html" style="color:#64748B;">Конфиденциальность</a> · <a href="https://t.me/topbestworkerbot" target="_blank" style="color:#0088CC;">@topbestworkerbot</a></footer>
+<div class="cta-box"><h2>Build your AI resume right now</h2><p>Free · 30 seconds · ATS-optimised</p><a href="/app" class="btn-cta">Try for free →</a></div>
+<div class="faq-section"><h2 style="font-size:1.4rem;font-weight:800;color:#0F172A;margin-bottom:20px;">Frequently Asked Questions</h2>{faq_html}</div></div>
+<footer>© 2026 ResumeAI · <a href="/privacy.html" style="color:#64748B;">Privacy</a> · <a href="https://t.me/topbestworkerbot" target="_blank" style="color:#0088CC;">@topbestworkerbot</a></footer>
 <script>document.querySelectorAll('.faq-q').forEach(q=>q.addEventListener('click',()=>q.nextElementSibling.classList.toggle('open')))</script>
 </body></html>"""
 
@@ -2229,23 +2229,23 @@ async def serve_template_preview(template_id: str):
 
     import json as _json
     sample = {
-        "name": "Иван Иванов",
+        "name": "Alex Johnson",
         "title": "Senior Python Developer",
-        "email": "ivan@example.com",
-        "phone": "+7 999 123-45-67",
-        "location": "Москва",
-        "summary": "Опытный Python-разработчик с 6+ годами коммерческого опыта. Специализируюсь на создании высоконагруженных микросервисов и REST API.",
+        "email": "alex.johnson@example.com",
+        "phone": "+49 30 1234567",
+        "location": "Berlin, Germany",
+        "summary": "Experienced Python developer with 6+ years of commercial experience. Specialises in high-load microservices and REST APIs.",
         "experience": [
-            {"company": "Яндекс", "position": "Senior Python Developer", "period": "2021–2024",
-             "description": "Разрабатывал микросервисы на FastAPI. Оптимизировал запросы PostgreSQL, снизив время ответа на 40%."},
-            {"company": "Сбербанк", "position": "Python Developer", "period": "2019–2021",
-             "description": "Разработал REST API для банковского мобильного приложения. Покрытие тестами 90%."},
+            {"company": "DataTech Inc", "position": "Senior Python Developer", "period": "2021–2024",
+             "description": "Built microservices with FastAPI. Optimised PostgreSQL queries, reducing response time by 40%."},
+            {"company": "FinanceCorp", "position": "Python Developer", "period": "2019–2021",
+             "description": "Developed REST API for banking mobile application. Achieved 90% test coverage."},
         ],
         "education": [
-            {"institution": "МГУ им. Ломоносова", "degree": "Бакалавр, Прикладная математика и информатика", "period": "2015–2019"},
+            {"institution": "State University", "degree": "B.Sc. Applied Mathematics & Computer Science", "period": "2015–2019"},
         ],
         "skills": ["Python", "FastAPI", "Django", "PostgreSQL", "Redis", "Docker", "Kubernetes", "AWS"],
-        "languages": [{"language": "Русский", "level": "Родной"}, {"language": "Английский", "level": "B2"}],
+        "languages": [{"language": "English", "level": "Native"}, {"language": "German", "level": "B1"}],
     }
     html_source = template_path.read_text(encoding="utf-8")
     data_script = f"<script>window.RESUME_DATA = {_json.dumps(sample, ensure_ascii=False)}; document.addEventListener('DOMContentLoaded', () => renderResume(null, window.RESUME_DATA));</script>"
@@ -2359,12 +2359,12 @@ async def _scrape_linkedin_url(url: str) -> dict:
     try:
         async with _httpx_module.AsyncClient(timeout=12, follow_redirects=True, headers={
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-            "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
         }) as client:
             resp = await client.get(url)
             html = resp.text
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Не удалось загрузить профиль: {exc}")
+        raise HTTPException(status_code=502, detail=f"Could not load profile: {exc}")
 
     result: dict = {}
     # JSON-LD (public profiles)
@@ -2389,7 +2389,7 @@ async def _scrape_linkedin_url(url: str) -> dict:
     if not result.get("name"):
         raise HTTPException(
             status_code=422,
-            detail="LinkedIn заблокировал автоматический парсинг. Используйте экспорт ZIP.",
+            detail="LinkedIn has blocked automated scraping. Please use the ZIP export instead.",
         )
     return result
 
@@ -2504,7 +2504,7 @@ async def resume_preview(body: ResumePreviewRequest, request: Request):
     _preview_rate_store[ip].append(now_ts)
 
     # --- Build prompt ---
-    job_title = body.job_title.strip() or "Специалист"
+    job_title = body.job_title.strip() or "Specialist"
     experience = max(0, body.experience)
     lang = body.lang.lower()
 
@@ -2612,6 +2612,133 @@ async def resume_preview(body: ResumePreviewRequest, request: Request):
         pass
 
     return JSONResponse(status_code=200, content={"preview_html": preview_html})
+
+
+# ── Voice-AI Resume Builder ───────────────────────────────────────────────────
+_VOICE_DAILY_LIMITS = {"free": 1, "trial": 5, "pro": 20, "unlimited": 100}
+
+
+async def _check_voice_quota(user: dict, db_path: str) -> bool:
+    """Returns True if user is under their daily voice-build limit."""
+    plan = user.get("plan", "free")
+    limit = _VOICE_DAILY_LIMITS.get(plan, 1)
+    async with aiosqlite.connect(db_path) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM web_generations WHERE user_id=? AND type='voice_build' AND created_at >= datetime('now', '-1 day')",
+            (user["id"],)
+        ) as cur:
+            count = (await cur.fetchone())[0]
+    return count < limit
+
+
+@app.post("/api/resume/voice/transcribe", summary="Transcribe audio to text via Whisper")
+async def voice_transcribe(
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+):
+    """Transcribe uploaded audio file using OpenAI Whisper API."""
+    import io as _io
+
+    form = await request.form()
+    audio_field = form.get("audio")
+    if not audio_field:
+        raise HTTPException(status_code=400, detail="audio field is required")
+
+    filename = getattr(audio_field, "filename", None) or "recording.webm"
+    content_type = getattr(audio_field, "content_type", None) or "application/octet-stream"
+
+    if not (content_type.startswith("audio/") or content_type == "application/octet-stream"):
+        raise HTTPException(status_code=400, detail="Invalid content type: expected audio file")
+
+    audio_bytes = await audio_field.read()
+    _MAX_AUDIO_BYTES = 5 * 1024 * 1024  # 5 MB
+    if len(audio_bytes) > _MAX_AUDIO_BYTES:
+        raise HTTPException(status_code=413, detail="Audio file exceeds 5 MB limit")
+
+    # Lazy import to avoid startup cost
+    from autoapply.services.voice import transcribe as _transcribe_audio
+
+    try:
+        transcript = await _transcribe_audio(audio_bytes, filename)
+    except ValueError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    except Exception as exc:
+        logger.warning("[voice/transcribe] Whisper API error: %s", exc)
+        raise HTTPException(status_code=502, detail=f"Transcription failed: {exc}")
+
+    # Optionally save recording if opted in and KEEP_RECORDING env var set
+    keep = os.getenv("KEEP_RECORDING", "").lower() in ("1", "true", "yes")
+    if keep and form.get("save_recording") in ("1", "true"):
+        try:
+            voice_dir = Path("/opt/resumeaibot/uploads/voice") / str(current_user["id"])
+            voice_dir.mkdir(parents=True, exist_ok=True)
+            ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+            (voice_dir / f"{ts}_{filename}").write_bytes(audio_bytes)
+        except Exception as _e:
+            logger.warning("[voice/transcribe] save recording failed: %s", _e)
+
+    asyncio.create_task(log_web_generation("voice_transcribe", current_user["id"], AUTOAPPLY_DB))
+
+    return JSONResponse({
+        "transcript": transcript,
+        "duration_hint": len(audio_bytes) // 16000,
+    })
+
+
+class VoiceBuildRequest(BaseModel):
+    transcript: str
+    save_to_portfolio: bool = True
+
+
+@app.post("/api/resume/voice/build", summary="Structure transcript into resume JSON via GPT-4o-mini")
+async def voice_build(
+    body: VoiceBuildRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """Structure a transcript into a resume blob using GPT-4o-mini."""
+    import json as _json
+
+    # Check daily quota
+    under_quota = await _check_voice_quota(current_user, AUTOAPPLY_DB)
+    if not under_quota:
+        plan = current_user.get("plan", "free")
+        limit = _VOICE_DAILY_LIMITS.get(plan, 1)
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "detail": "Daily voice limit reached",
+                "limit": limit,
+                "plan": plan,
+            }
+        )
+
+    # Lazy import to avoid startup cost
+    from autoapply.services.voice import structure_transcript as _structure
+
+    try:
+        resume_blob = await _structure(body.transcript)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception as exc:
+        logger.warning("[voice/build] structure error: %s", exc)
+        raise HTTPException(status_code=502, detail=f"Resume structuring failed: {exc}")
+
+    saved = False
+    if body.save_to_portfolio:
+        try:
+            blob_str = _json.dumps(resume_blob, ensure_ascii=False)
+            await upsert_portfolio(
+                user_id=current_user["id"],
+                fields={"resume_blob_json": blob_str},
+                db_path=AUTOAPPLY_DB,
+            )
+            saved = True
+        except Exception as exc:
+            logger.warning("[voice/build] upsert_portfolio failed: %s", exc)
+
+    asyncio.create_task(log_web_generation("voice_build", current_user["id"], AUTOAPPLY_DB))
+
+    return JSONResponse({"resume_blob": resume_blob, "saved": saved})
 
 
 # ── Uploads static files ──────────────────────────────────────────────────────
@@ -3004,12 +3131,12 @@ async def portfolio_public_page(handle: str):
 async def blog_index():
     """Blog index — placeholder until real articles are generated."""
     html = """<!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Блог — РезюмеАИ | ResumeAI Blog</title>
-  <meta name="description" content="Советы по поиску работы, оптимизации резюме, подготовке к собеседованию — от команды РезюмеАИ.">
+  <title>Blog — ResumeAI</title>
+  <meta name="description" content="Job search tips, resume optimisation, interview preparation — from the ResumeAI team.">
   <link rel="canonical" href="https://resumeai-bot.ru/blog">
   <style>
     body { font-family: system-ui, sans-serif; max-width: 720px; margin: 60px auto; padding: 0 20px; color: #1e293b; }
@@ -3021,20 +3148,19 @@ async def blog_index():
   </style>
 </head>
 <body>
-  <h1>📝 Блог / Blog</h1>
-  <p class="sub">Советы по карьере · Career tips · AI &amp; Job Search</p>
+  <h1>📝 Blog</h1>
+  <p class="sub">Career tips · AI &amp; Job Search</p>
 
   <div class="coming">
-    <strong>🚧 Статьи скоро появятся / Articles coming soon</strong><br><br>
-    Подпишись на бота — первым узнаешь о публикациях.<br>
+    <strong>🚧 Articles coming soon</strong><br><br>
     Follow the bot to be first to read new posts.
   </div>
 
   <p style="margin-top:32px">
-    <a class="cta" href="https://t.me/topbestworkerbot">🤖 Попробовать бота / Try the bot →</a>
+    <a class="cta" href="https://t.me/topbestworkerbot">🤖 Try the bot →</a>
   </p>
 
-  <footer>© 2026 ResumeAI · <a href="/">На главную / Home</a></footer>
+  <footer>© 2026 ResumeAI · <a href="/">Home</a></footer>
 </body>
 </html>"""
     from fastapi.responses import HTMLResponse
