@@ -35,7 +35,8 @@ _CACHE_MAX = 500  # evict oldest when full
 
 
 def _hash(text: str) -> str:
-    return hashlib.sha1(text.encode("utf-8", errors="replace")).hexdigest()[:16]
+    # usedforsecurity=False: SHA-1 here is a non-cryptographic cache key only
+    return hashlib.sha1(text.encode("utf-8", errors="replace"), usedforsecurity=False).hexdigest()[:16]  # noqa: S324
 
 
 def _cache_put(key: tuple[str, str], value: str) -> None:

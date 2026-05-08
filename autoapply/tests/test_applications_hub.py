@@ -31,7 +31,7 @@ def tmp_db(tmp_path_factory):
         from autoapply.autoapply_db import init_db
         await init_db(db_path)
 
-    asyncio.get_event_loop().run_until_complete(_init())
+    asyncio.run(_init())
     return db_path
 
 
@@ -43,7 +43,7 @@ def test_user(tmp_db):
         uid = await create_user("hubtest@example.com", "!fakehash", db_path=tmp_db)
         return await get_user_by_id(uid, db_path=tmp_db)
 
-    return asyncio.get_event_loop().run_until_complete(_create())
+    return asyncio.run(_create())
 
 
 @pytest.fixture(scope="module")
@@ -108,7 +108,7 @@ def _insert_apps(tmp_db, user_id, rows):
             await db.commit()
         return ids
 
-    return asyncio.get_event_loop().run_until_complete(_run())
+    return asyncio.run(_run())
 
 
 # ── Test 1: GET /api/applications returns items and tab_counts ────────────────
@@ -222,7 +222,7 @@ class TestWithdraw:
                 ) as cur:
                     return await cur.fetchone()
 
-        row = asyncio.get_event_loop().run_until_complete(_check())
+        row = asyncio.run(_check())
         assert row is not None
         assert row[0] == "archived"
         assert row[1] is not None  # withdrawn_at should be set
@@ -248,7 +248,7 @@ class TestRestore:
                 ) as cur:
                     return await cur.fetchone()
 
-        row = asyncio.get_event_loop().run_until_complete(_check())
+        row = asyncio.run(_check())
         assert row[0] == "active"
 
 
@@ -282,7 +282,7 @@ class TestOwnershipGuard:
                 await db.commit()
                 return cur.lastrowid
 
-        other_id = asyncio.get_event_loop().run_until_complete(_insert_other())
+        other_id = asyncio.run(_insert_other())
         resp = client.post(f"/api/applications/{other_id}/withdraw")
         assert resp.status_code == 404
 

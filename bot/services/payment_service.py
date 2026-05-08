@@ -1,56 +1,15 @@
 """
-Payment service supporting three methods:
-  1. CryptoBot — automatic crypto payments via @CryptoBot API (USDT/TON/BTC etc.)
-  2. RU Card    — manual transfer to Russian bank card, admin approval
-  3. Revolut    — manual transfer to Revolut, admin approval
+Payment service — international edition (May 2026).
+
+Supports:
+  1. Stripe Checkout — handled by autoapply FastAPI webhooks (not this module)
+  2. Revolut         — manual admin approval
+
+NOTE: CryptoBot (USDT) and RU bank card methods were removed in May 2026
+as part of the international pivot.  apply_package_credits() remains as
+the shared helper for crediting any payment method.
 """
-from config import PRICING, CRYPTOBOT_TOKEN
-
-
-# ---------------------------------------------------------------------------
-# CryptoBot
-# ---------------------------------------------------------------------------
-
-async def create_crypto_invoice(telegram_id: int, package: str) -> tuple[str, str]:
-    """
-    Create CryptoBot invoice.
-    Returns (pay_url, invoice_id_as_str).
-    Requires: pip install aiocryptopay
-    Get token: @CryptoBot → /pay → Create App
-    """
-    from aiocryptopay import AioCryptoPay, Networks
-
-    crypto = AioCryptoPay(token=CRYPTOBOT_TOKEN, network=Networks.MAIN_NET)
-
-    pkg = PRICING[package]
-    price_usdt = pkg.get("price_usdt", 1.00)
-
-    invoice = await crypto.create_invoice(
-        asset="USDT",
-        amount=price_usdt,
-        description=f"РезюмеАИ: {pkg['name']}",
-        payload=f"{telegram_id}:{package}",
-        expires_in=3600,  # 1 hour
-    )
-    await crypto.close()
-
-    return invoice.bot_invoice_url, str(invoice.invoice_id)
-
-
-async def check_crypto_invoice(invoice_id: str) -> str:
-    """
-    Check CryptoBot invoice status.
-    Returns: 'paid' | 'active' | 'expired'
-    """
-    from aiocryptopay import AioCryptoPay, Networks
-
-    crypto = AioCryptoPay(token=CRYPTOBOT_TOKEN, network=Networks.MAIN_NET)
-    invoices = await crypto.get_invoices(invoice_ids=[int(invoice_id)])
-    await crypto.close()
-
-    if not invoices:
-        return "expired"
-    return invoices[0].status  # 'active', 'paid', 'expired'
+from config import PRICING
 
 
 # ---------------------------------------------------------------------------
@@ -72,7 +31,8 @@ async def apply_package_credits(telegram_id: int, package: str):
     if "credits_assistant" in pkg:
         user.credits_assistant += pkg["credits_assistant"]
 
-    user.total_spent_rub += pkg["price_rub"]
+    # Track USD spend; total_spent_rub field retained for DB compatibility
+    user.total_spent_rub += pkg.get("price_usd", 0.0)
 
     if "duration_days" in pkg:
         from datetime import datetime, timedelta

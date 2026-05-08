@@ -264,7 +264,7 @@ export default function ReferPage() {
 
           {/* Terms note */}
           <p className="text-gray-700 text-xs text-center">
-            Free months are credited after your friend's first paid subscription. One reward per unique signup.
+            Free months are credited after your friend&apos;s first paid subscription. One reward per unique signup.
           </p>
         </div>
       )}

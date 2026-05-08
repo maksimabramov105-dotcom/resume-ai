@@ -46,7 +46,7 @@ def tmp_db(tmp_path):
         from autoapply.autoapply_db import init_db
         await init_db(db_path)
 
-    asyncio.get_event_loop().run_until_complete(_init())
+    asyncio.run(_init())
     return db_path
 
 
@@ -62,7 +62,7 @@ def tmp_db_with_user(tmp_db):
             )
             await db.commit()
 
-    asyncio.get_event_loop().run_until_complete(_seed())
+    asyncio.run(_seed())
     return tmp_db
 
 
@@ -75,7 +75,7 @@ class TestPortfolioDBHelpers:
             result = await get_portfolio_by_user(1, tmp_db_with_user)
             assert result is None
 
-        asyncio.get_event_loop().run_until_complete(_run())
+        asyncio.run(_run())
 
     def test_upsert_creates_portfolio(self, tmp_db_with_user):
         async def _run():
@@ -89,7 +89,7 @@ class TestPortfolioDBHelpers:
             assert p["assets"] == []
             assert p["links"] == []
 
-        asyncio.get_event_loop().run_until_complete(_run())
+        asyncio.run(_run())
 
     def test_upsert_updates_existing_portfolio(self, tmp_db_with_user):
         async def _run():
@@ -100,7 +100,7 @@ class TestPortfolioDBHelpers:
             assert p["headline"] == "Updated"
             assert p["handle"] == "user-1"  # unchanged
 
-        asyncio.get_event_loop().run_until_complete(_run())
+        asyncio.run(_run())
 
     def test_get_portfolio_by_handle(self, tmp_db_with_user):
         async def _run():
@@ -113,7 +113,7 @@ class TestPortfolioDBHelpers:
             missing = await get_portfolio_by_handle("doesnotexist", tmp_db_with_user)
             assert missing is None
 
-        asyncio.get_event_loop().run_until_complete(_run())
+        asyncio.run(_run())
 
     def test_add_and_delete_asset(self, tmp_db_with_user):
         async def _run():
@@ -132,7 +132,7 @@ class TestPortfolioDBHelpers:
             p2 = await get_portfolio_by_user(1, tmp_db_with_user)
             assert len(p2["assets"]) == 0
 
-        asyncio.get_event_loop().run_until_complete(_run())
+        asyncio.run(_run())
 
     def test_add_and_delete_link(self, tmp_db_with_user):
         async def _run():
@@ -151,7 +151,7 @@ class TestPortfolioDBHelpers:
             p2 = await get_portfolio_by_user(1, tmp_db_with_user)
             assert len(p2["links"]) == 0
 
-        asyncio.get_event_loop().run_until_complete(_run())
+        asyncio.run(_run())
 
     def test_count_portfolio_assets(self, tmp_db_with_user):
         async def _run():
@@ -162,7 +162,7 @@ class TestPortfolioDBHelpers:
                 await add_portfolio_asset(pid, "photo", f"/uploads/photo{i}.jpg", i, tmp_db_with_user)
             assert await count_portfolio_assets(pid, tmp_db_with_user) == 3
 
-        asyncio.get_event_loop().run_until_complete(_run())
+        asyncio.run(_run())
 
     def test_delete_asset_wrong_portfolio_id_fails(self, tmp_db_with_user):
         """delete_portfolio_asset should not delete an asset belonging to a different portfolio."""
@@ -173,7 +173,7 @@ class TestPortfolioDBHelpers:
             deleted = await delete_portfolio_asset(asset_id, pid + 999, tmp_db_with_user)
             assert deleted is False
 
-        asyncio.get_event_loop().run_until_complete(_run())
+        asyncio.run(_run())
 
 
 # ── Handle validation tests ───────────────────────────────────────────────────
@@ -420,4 +420,4 @@ class TestAssetLimit:
             count_after = await count_portfolio_assets(pid, tmp_db_with_user)
             assert count_after >= 10
 
-        asyncio.get_event_loop().run_until_complete(_run())
+        asyncio.run(_run())

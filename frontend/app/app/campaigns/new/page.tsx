@@ -125,7 +125,7 @@ export default function NewCampaignPage() {
           </div>
           {form.engine === 'career_ops' && (
             <p className="text-xs text-emerald-600/80 mt-2">
-              ✓ Match score + tailored PDF generated per job. Applications land in "Pending Review" — you decide which ones to submit.
+              ✓ Match score + tailored PDF generated per job. Applications land in &quot;Pending Review&quot; — you decide which ones to submit.
             </p>
           )}
         </div>

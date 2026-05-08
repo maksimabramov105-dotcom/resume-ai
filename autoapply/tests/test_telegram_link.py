@@ -76,7 +76,7 @@ def tmp_db(tmp_path):
         from autoapply.autoapply_db import init_db
         await init_db(db_path)
 
-    asyncio.get_event_loop().run_until_complete(_init())
+    asyncio.run(_init())
     return db_path
 
 
@@ -88,7 +88,7 @@ class TestJtiOneTimeUse:
             result = await consume_link_jti("unique-jti-abc", tmp_db)
             return result
 
-        assert asyncio.get_event_loop().run_until_complete(run()) is True
+        assert asyncio.run(run()) is True
 
     def test_replay_is_rejected(self, tmp_db):
         from autoapply.autoapply_db import consume_link_jti
@@ -99,7 +99,7 @@ class TestJtiOneTimeUse:
             second = await consume_link_jti(jti, tmp_db)
             return first, second
 
-        first, second = asyncio.get_event_loop().run_until_complete(run())
+        first, second = asyncio.run(run())
         assert first is True
         assert second is False
 
@@ -111,7 +111,7 @@ class TestJtiOneTimeUse:
             b = await consume_link_jti("jti-bbb", tmp_db)
             return a, b
 
-        a, b = asyncio.get_event_loop().run_until_complete(run())
+        a, b = asyncio.run(run())
         assert a is True
         assert b is True
 
@@ -142,7 +142,7 @@ class TestFindOrCreateTelegramUser:
             assert user["email"] == f"tg_{tid}@tg.autoapply"
             return user
 
-        asyncio.get_event_loop().run_until_complete(run())
+        asyncio.run(run())
 
     def test_upsert_link_is_idempotent(self, tmp_db):
         from autoapply.autoapply_db import create_telegram_user, upsert_user_link
@@ -153,4 +153,4 @@ class TestFindOrCreateTelegramUser:
             await upsert_user_link(tid, uid, tmp_db)
             await upsert_user_link(tid, uid, tmp_db)  # second call must not raise
 
-        asyncio.get_event_loop().run_until_complete(run())
+        asyncio.run(run())

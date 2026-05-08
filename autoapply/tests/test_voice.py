@@ -44,7 +44,7 @@ def tmp_db(tmp_path):
         from autoapply.autoapply_db import init_db
         await init_db(db_path)
 
-    asyncio.get_event_loop().run_until_complete(_init())
+    asyncio.run(_init())
     return db_path
 
 
@@ -60,7 +60,7 @@ def tmp_db_with_user(tmp_db):
             )
             await db.commit()
 
-    asyncio.get_event_loop().run_until_complete(_seed())
+    asyncio.run(_seed())
     return tmp_db
 
 
@@ -118,7 +118,7 @@ class TestTranscribeFunction:
                 result = await transcribe(b"fake_audio_bytes", "recording.webm")
             return result
 
-        result = asyncio.get_event_loop().run_until_complete(_run())
+        result = asyncio.run(_run())
         assert result == "Hello my name is Alex Johnson and I am a Python developer."
 
     def test_transcribe_raises_without_api_key(self):
@@ -135,7 +135,7 @@ class TestTranscribeFunction:
                     if saved is not None:
                         os.environ["OPENAI_API_KEY"] = saved
 
-        asyncio.get_event_loop().run_until_complete(_run())
+        asyncio.run(_run())
 
 
 class TestStructureTranscriptFunction:
@@ -183,7 +183,7 @@ class TestStructureTranscriptFunction:
                 result = await structure_transcript("My name is Alex Johnson, I am a Python developer.")
             return result
 
-        result = asyncio.get_event_loop().run_until_complete(_run())
+        result = asyncio.run(_run())
 
         assert isinstance(result, dict)
         assert result["name"] == "Alex Johnson"
@@ -224,7 +224,7 @@ class TestStructureTranscriptFunction:
                 with pytest.raises(ValueError, match="empty result"):
                     await structure_transcript("unclear mumbling...")
 
-        asyncio.get_event_loop().run_until_complete(_run())
+        asyncio.run(_run())
 
     def test_structure_transcript_strips_markdown_fences(self):
         """structure_transcript() should handle JSON wrapped in markdown code fences."""
@@ -258,7 +258,7 @@ class TestStructureTranscriptFunction:
                 result = await structure_transcript("My name is Jane Smith, I am a product manager.")
             return result
 
-        result = asyncio.get_event_loop().run_until_complete(_run())
+        result = asyncio.run(_run())
         assert result["name"] == "Jane Smith"
 
 
@@ -320,7 +320,7 @@ class TestVoiceBuildEndpoint:
                 )
                 await db.commit()
 
-        asyncio.get_event_loop().run_until_complete(_exhaust())
+        asyncio.run(_exhaust())
 
         # Override AUTOAPPLY_DB in the module being tested
         import autoapply.autoapply_main as _main
