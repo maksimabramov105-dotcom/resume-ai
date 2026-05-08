@@ -122,21 +122,36 @@ async def check_bot_service() -> tuple[bool, str]:
 
 
 async def check_dashboard() -> tuple[bool, str]:
-    """Check Streamlit dashboard availability via its built-in health endpoint."""
-    timeout = aiohttp.ClientTimeout(total=5)
-    # Streamlit exposes /_stcore/health (returns 200 + "ok") when the server is ready.
-    # The root / may return 404 while the app is still healthy (nginx not proxying it).
-    for path in ("/_stcore/health", "/healthz", "/"):
-        try:
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(f"http://localhost:8501{path}") as resp:
-                    if resp.status in (200, 302):
-                        return True, f"dashboard OK ({path} HTTP {resp.status})"
-        except asyncio.TimeoutError:
-            return False, "dashboard timeout (>5s)"
-        except Exception:
-            pass
-    return False, "dashboard unreachable on all health paths"
+    """Check AutoApply dashboard (Next.js SPA served by FastAPI on :8080).
+
+    Architecture (post-Streamlit pivot): nginx proxies /app → FastAPI :8080.
+    We verify two things:
+      1. nginx is running (systemd)
+      2. FastAPI serves the /app/ SPA entry point (HTTP 200)
+    """
+    # 1. nginx systemd check
+    try:
+        result = subprocess.run(
+            ["systemctl", "is-active", "nginx"],
+            capture_output=True, text=True, timeout=5
+        )
+        if result.stdout.strip() != "active":
+            return False, f"nginx service status: {result.stdout.strip()}"
+    except Exception as e:
+        return False, f"nginx service check error: {e}"
+
+    # 2. FastAPI /app/ endpoint check
+    try:
+        timeout = aiohttp.ClientTimeout(total=5)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get("http://localhost:8080/app/") as resp:
+                if resp.status in (200, 304):
+                    return True, f"dashboard OK (nginx active, /app/ HTTP {resp.status})"
+                return False, f"dashboard: FastAPI /app/ returned HTTP {resp.status}"
+    except asyncio.TimeoutError:
+        return False, "dashboard: FastAPI /app/ timeout (>5s)"
+    except Exception as e:
+        return False, f"dashboard: FastAPI /app/ error: {e}"
 
 
 async def check_disk_space() -> tuple[bool, str]:
@@ -366,6 +381,24 @@ async def main() -> None:
         restart_reports.append(rpt)
         if recovered:
             del failures["worker"]
+
+    if "dashboard" in failures:
+        # Dashboard = nginx + FastAPI /app/.  Try restarting nginx first,
+        # then autoapply if that doesn't help.
+        recovered, rpt = await attempt_restart_and_recheck(
+            "nginx", check_dashboard, "nginx (dashboard)"
+        )
+        restart_reports.append(rpt)
+        if recovered:
+            del failures["dashboard"]
+        else:
+            # nginx came back but /app/ still fails → autoapply is the issue
+            recovered2, rpt2 = await attempt_restart_and_recheck(
+                "autoapply", check_dashboard, "AutoApply (dashboard fallback)"
+            )
+            restart_reports.append(rpt2)
+            if recovered2:
+                del failures["dashboard"]
 
     # Build alert message
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
