@@ -2,6 +2,7 @@
 autoapply_db.py — Async SQLite database module for AutoApply.
 Uses aiosqlite. Never touches bot.db tables.
 """
+__version__ = "1.12.0"  # P12: dropped hh_token/hh_resume_id, removed cryptobot_events
 import json
 import logging
 from datetime import datetime, timedelta
@@ -28,13 +29,13 @@ CREATE TABLE IF NOT EXISTS autoapply_users (
     applications_today   INTEGER DEFAULT 0,
     applications_total   INTEGER DEFAULT 0,
     responses_received   INTEGER DEFAULT 0,
-    hh_token             TEXT,
-    hh_resume_id         TEXT,
     linkedin_email       TEXT,
     linkedin_password_enc TEXT,
     resume_text          TEXT
 )
 """
+# NOTE: hh_token and hh_resume_id were removed in P12 (2026-05 international pivot).
+# They are dropped via _MIGRATE_DROP_HH_TOKEN / _MIGRATE_DROP_HH_RESUME_ID below.
 
 _CREATE_CAMPAIGNS = """
 CREATE TABLE IF NOT EXISTS campaigns (
@@ -149,6 +150,22 @@ ALTER TABLE applications ADD COLUMN match_score REAL
 
 _MIGRATE_USER_REFERRAL_FREE = """
 ALTER TABLE autoapply_users ADD COLUMN referral_free_until TEXT
+"""
+
+# ── P12 cleanup migrations (2026-05 international pivot) ─────────────────────
+# Dry-run confirmed 0 non-null rows for hh_token/hh_resume_id before drop.
+# SQLite 3.35+ required for DROP COLUMN (VPS ships 3.45.1).
+_MIGRATE_DROP_HH_TOKEN = """
+ALTER TABLE autoapply_users DROP COLUMN hh_token
+"""
+
+_MIGRATE_DROP_HH_RESUME_ID = """
+ALTER TABLE autoapply_users DROP COLUMN hh_resume_id
+"""
+
+# CryptoBot integration removed; table may exist on upgraded installs.
+_MIGRATE_DROP_CRYPTOBOT_EVENTS = """
+DROP TABLE IF EXISTS cryptobot_events
 """
 
 _CREATE_REFERRALS = """
@@ -375,11 +392,15 @@ async def init_db(db_path: str = AUTOAPPLY_DB) -> None:
                 _MIGRATE_APPLICATION_MATCH_SCORE,
                 # P11 — referral program
                 _MIGRATE_USER_REFERRAL_FREE,
+                # P12 — drop deprecated HH.ru columns + cryptobot_events table
+                _MIGRATE_DROP_HH_TOKEN,
+                _MIGRATE_DROP_HH_RESUME_ID,
+                _MIGRATE_DROP_CRYPTOBOT_EVENTS,
             ):
                 try:
                     await db.execute(_migration)
                 except Exception:
-                    pass  # column already exists
+                    pass  # column already dropped / table doesn't exist
             await db.commit()
         logger.info("[autoapply_db] init_db: all tables ready at %s", db_path)
     except Exception as exc:
@@ -971,7 +992,7 @@ async def get_dashboard_stats(user_id: int, db_path: str = AUTOAPPLY_DB) -> dict
             "total_campaigns": total_campaigns,
             "by_platform": by_platform,
             "by_status": by_status,
-            "hh_connected": False,  # deprecated 2026-05: HH.ru removed (columns kept for DB compat)
+            "hh_connected": False,  # removed 2026-05 (P12): hh_token/hh_resume_id columns dropped
             "resume_loaded": bool(user.get("resume_text")),
         }
     except Exception as exc:

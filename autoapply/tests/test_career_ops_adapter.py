@@ -267,7 +267,6 @@ class TestRunBatch(unittest.TestCase):
                         applications_today INTEGER DEFAULT 0,
                         applications_total INTEGER DEFAULT 0,
                         responses_received INTEGER DEFAULT 0,
-                        hh_token TEXT, hh_resume_id TEXT,
                         linkedin_email TEXT, linkedin_password_enc TEXT,
                         resume_text TEXT
                     )

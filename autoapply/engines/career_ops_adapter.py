@@ -42,7 +42,8 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 
 # ── Secrets-safe public portfolio ─────────────────────────────────────────────
 
-_SECRET_COLUMNS = {"linkedin_password_enc", "password_hash", "hh_token"}
+_SECRET_COLUMNS = {"linkedin_password_enc", "password_hash"}
+# NOTE: hh_token was removed from this set in P12 — the column was dropped from autoapply_users.
 
 
 def _public_portfolio(user: dict) -> dict:

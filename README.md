@@ -1,7 +1,9 @@
 # ResumeAI Bot
 
-AI-powered job search assistant and auto-apply service.  
-**Live:** https://resumeai-bot.ru · **Bot:** [@topbestworkerbot](https://t.me/topbestworkerbot)
+AI-powered job search assistant and auto-apply service for **international job seekers**.
+Apply to English-language jobs worldwide — automatically.
+
+**Live:** https://resumeai-bot.ru · **Bot:** [@ResumeAIRobot](https://t.me/ResumeAIRobot)
 
 ---
 
@@ -9,9 +11,11 @@ AI-powered job search assistant and auto-apply service.
 
 | Product | Description |
 |---------|-------------|
-| **Telegram Bot** | Resume builder, cover-letter generator, interview prep — in Telegram |
-| **AutoApply** | Web dashboard + worker that applies to international jobs automatically |
-| **Landing page** | Next.js marketing site served via nginx |
+| **Telegram Bot** | Resume builder, cover-letter generator, interview prep — bilingual EN/RU |
+| **AutoApply** | Web dashboard + worker that applies to international jobs on autopilot |
+| **Daily Matches** | 07:00 UTC push of top-5 curated job matches per user (Sonara-style) |
+| **Referral Program** | Signed referral codes; +30 free days for referrer and new user |
+| **Landing page** | Next.js marketing site (Hero, Testimonials, Pricing, FAQ) |
 
 ---
 
@@ -22,34 +26,36 @@ AI-powered job search assistant and auto-apply service.
 │  nginx (HTTPS :443)  — rate limiting, HSTS │
 │  resumeai-bot.ru  /  www.resumeai-bot.ru   │
 └───┬────────────────────┬───────────────────┘
-    │ /api /app /static  │ / (landing)
+    │ /api /app          │ / (landing)
     ▼                    ▼
-┌──────────────┐   ┌──────────────────────┐
-│  FastAPI     │   │  Next.js static HTML │
-│  :8080       │   │  /opt/resumeaibot/   │
-│  autoapply   │   │  landing/            │
-└──────┬───────┘   └──────────────────────┘
+┌──────────────┐   ┌──────────────────────────┐
+│  FastAPI     │   │  Next.js static export   │
+│  :8080       │   │  landing/index.html      │
+│  autoapply   │   │  frontend/out/_next/     │
+└──────┬───────┘   └──────────────────────────┘
        │
-  ┌────┴────────────────────┐
-  │  autoapply-worker       │
-  │  (background job loop)  │
-  │  English job boards:    │
-  │  Adzuna · Arbeitnow     │
-  │  RemoteOK · The Muse    │
-  └────────────────────────┘
+  ┌────┴────────────────────────────────────┐
+  │  autoapply-worker  (background loop)    │
+  │  ⚡ api_boards engine — volume apply    │
+  │  🎯 career_ops engine — quality + HITL │
+  │  Sources: Adzuna · Arbeitnow           │
+  │           RemoteOK · The Muse          │
+  └─────────────────────────────────────────┘
 ┌──────────────┐
 │  aiogram 3   │
 │  Bot :8000   │ ← Telegram webhook
 │  resumeaibot │
 └──────────────┘
-┌──────────────────────┐
-│  Streamlit dashboard │ ← internal only, :8501
-└──────────────────────┘
 ```
 
+**Country gate:** All job sources run through `is_allowed_jurisdiction()` before apply.
+`COUNTRY_BLOCKLIST=RU,BY` — vacancies at Russian/Belarusian companies are never applied to.
+
 **Databases:** Two SQLite files (WAL mode)
-- `/opt/resumeaibot/autoapply.db` — AutoApply users, campaigns, applications
-- `/opt/resumeaibot/bot.db` — Telegram bot users and resumes
+- `/opt/resumeaibot/autoapply.db` — users, campaigns, applications, portfolios, referrals
+- `/opt/resumeaibot/bot.db` — Telegram bot users, credits, resume data
+
+Full details: [ARCHITECTURE.md](ARCHITECTURE.md)
 
 ---
 
@@ -57,14 +63,15 @@ AI-powered job search assistant and auto-apply service.
 
 | Layer | Tech |
 |-------|------|
-| Bot | Python 3.11 · aiogram 3 · aiosqlite |
+| Bot | Python 3.12 · aiogram 3 · aiosqlite |
 | API | FastAPI · uvicorn · python-jose (JWT) · bcrypt |
-| AI | OpenAI / OpenRouter (gpt-4o-mini default) |
-| Payments | Stripe Checkout · CryptoBot |
-| Encryption | Fernet (AES-128) via `cryptography` package |
-| Observability | Sentry · PostHog · Yandex Metrika · Google Analytics |
+| AI | OpenAI / OpenRouter (gpt-4o-mini default, claude-haiku-3-5 for scoring) |
+| Payments | Stripe Checkout (USD) · Revolut (manual, admin-approved) |
+| Encryption | Fernet (AES-128) via `cryptography` — linkedin_password_enc |
+| Observability | Sentry · PostHog · Google Analytics (GA4) |
 | Infra | Ubuntu 24.04 VPS · nginx · certbot (Let's Encrypt) · systemd |
-| Frontend | Next.js 14 (static export) · Tailwind |
+| Frontend | Next.js 14 (static export) · Tailwind CSS · TypeScript |
+| Quality engine | career-ops v8e554cc (Node.js PDF · OpenRouter scoring) |
 
 ---
 
@@ -73,37 +80,49 @@ AI-powered job search assistant and auto-apply service.
 ```
 resume-ai-bot/
 ├── autoapply/          # FastAPI app + worker (port 8080)
-│   ├── autoapply_main.py    # API routes
-│   ├── autoapply_db.py      # DB helpers
-│   ├── worker.py            # Job-apply background loop
+│   ├── autoapply_main.py    # ~65 API routes
+│   ├── autoapply_db.py      # Async SQLite helpers (v1.12.0)
+│   ├── worker.py            # Job-apply background loop (dual-engine)
+│   ├── country_gate.py      # Jurisdiction blocklist enforcement
 │   ├── crypto.py            # Fernet encrypt/decrypt
 │   ├── config.py            # All config (env vars + pricing.json)
-│   └── payments.py          # Stripe + CryptoBot payment logic
+│   ├── engines/
+│   │   └── career_ops_adapter.py  # Quality engine (scoring + HITL)
+│   └── services/
+│       ├── daily_matches.py       # 07:00 UTC digest cron
+│       └── referral.py            # Referral code generation + validation
 ├── bot/                # aiogram 3 Telegram bot (port 8000)
-├── api/                # Shared API helpers (bot-side)
-├── frontend/           # Next.js marketing site source
-├── landing/            # Built Next.js output (served by nginx)
-├── ops/
-│   ├── nginx/          # nginx configs (rate limiting, HTTPS)
-│   └── logrotate/      # logrotate config for /opt/resumeaibot/logs/
-├── scripts/
-│   ├── deploy.sh           # Safe rsync deploy (never --delete-excluded)
-│   ├── backup_db.sh        # SQLite backup with Telegram notification
-│   ├── reconcile_payments.py # Stripe ↔ DB reconciliation
-│   ├── smoke_test_payments.py # E2E payment smoke test
-│   └── check_ssl.sh        # SSL cert expiry check (weekly cron)
+│   ├── handlers/            # 14 feature handlers
+│   ├── utils/               # Keyboards, translations, texts
+│   └── config.py            # Bot-specific config
+├── api/                # Bot-side FastAPI server (port 8000)
+├── frontend/           # Next.js marketing site + React dashboard
+│   └── app/
+│       ├── page.tsx              # Landing page
+│       ├── app/campaigns/        # Campaign management
+│       ├── app/applications/     # HITL review + application tracker
+│       ├── app/templates/        # Resume template gallery (10 templates)
+│       └── app/account/refer/    # Referral share page
+├── landing/            # Built Next.js output (nginx root)
+├── vendor/
+│   └── career-ops/     # Pinned submodule @8e554cc (PDF + scoring)
 ├── docs/
 │   └── runbooks/
 │       ├── deploy.md
 │       ├── restore-db.md
+│       ├── restore-portfolio.md
 │       ├── incident-bot-down.md
-│       └── incident-payment-stuck.md
-├── .github/workflows/
-│   ├── ci.yml              # Lint + syntax + smoke tests on every push
-│   ├── deploy.yml          # Deploy to VPS on push to main
-│   └── security-review.yml # Bandit + TruffleHog on PRs
-├── pricing.json        # Single source of truth for plan pricing
+│       ├── incident-payment-stuck.md
+│       ├── incident-career-ops-stuck.md
+│       └── upgrade-career-ops.md
+├── scripts/
+│   ├── backup_db.sh            # SQLite backup with Telegram notification
+│   ├── reconcile_payments.py   # Stripe ↔ DB reconciliation
+│   ├── smoke_test_payments.py  # E2E payment smoke test
+│   └── check_ssl.sh            # SSL cert expiry check
+├── pricing.json        # Single source of truth for plan pricing (USD)
 ├── requirements.txt    # Pinned production dependencies
+├── deploy_all.sh       # One-command full deploy (build + sync + restart + smoke)
 └── .env.example        # All required env vars documented
 ```
 
@@ -119,7 +138,8 @@ pip install -r requirements.txt
 
 # 2. Copy and fill env
 cp .env.example .env
-# Fill in BOT_TOKEN, OPENAI_API_KEY, STRIPE_SECRET_KEY, etc.
+# Required: BOT_TOKEN, OPENAI_API_KEY or OPENROUTER_API_KEY,
+#           STRIPE_SECRET_KEY, JWT_SECRET, LINK_SECRET
 
 # 3. Start AutoApply API
 python3 -m uvicorn autoapply.autoapply_main:app --reload --port 8080
@@ -127,8 +147,8 @@ python3 -m uvicorn autoapply.autoapply_main:app --reload --port 8080
 # 4. Start bot (separate terminal)
 python3 run.py
 
-# 5. Run smoke tests
-BOT_API=http://localhost:8000 AA_API=http://localhost:8080 python3 scripts/smoke_test_payments.py
+# 5. Run autoapply tests
+cd autoapply && python -m pytest tests/ -q
 ```
 
 ---
@@ -136,7 +156,11 @@ BOT_API=http://localhost:8000 AA_API=http://localhost:8080 python3 scripts/smoke
 ## Deploy to production
 
 ```bash
-VPS_PASS='<password>' bash scripts/deploy.sh
+# Full deploy (builds frontend + syncs all code + restarts services):
+bash deploy_all.sh
+
+# Code-only deploy (skip Next.js build):
+bash deploy_all.sh --skip-build
 ```
 
 Full details: [docs/runbooks/deploy.md](docs/runbooks/deploy.md)
@@ -147,58 +171,38 @@ Full details: [docs/runbooks/deploy.md](docs/runbooks/deploy.md)
 
 See [`.env.example`](.env.example) for the complete annotated list.
 
-Critical ones:
-
 | Variable | Purpose |
 |----------|---------|
 | `BOT_TOKEN` | Telegram bot token |
-| `JWT_SECRET` | 64-char hex secret for JWT signing |
-| `OPENAI_API_KEY` or `OPENROUTER_API_KEY` | AI completions |
+| `JWT_SECRET` | 64-char hex secret — signs AutoApply JWT tokens |
+| `LINK_SECRET` | Shared secret — Telegram SSO link tokens (bot ↔ autoapply) |
+| `OPENAI_API_KEY` or `OPENROUTER_API_KEY` | AI completions + scoring |
 | `STRIPE_SECRET_KEY` | Stripe payments |
-| `STRIPE_WEBHOOK_SECRET` | Webhook signature verification |
-| `ENCRYPTION_KEY` | Fernet key for linkedin_password_enc |
-| `SENTRY_DSN` | Error tracking (optional but recommended) |
-| `AUTOAPPLY_ENABLED` | Set `0` to pause worker without stopping service |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook HMAC verification |
+| `ENCRYPTION_KEY` | Fernet key — encrypts `linkedin_password_enc` at rest |
+| `COUNTRY_BLOCKLIST` | ISO-2 codes to block (default: `RU,BY`) |
+| `ADZUNA_APP_ID` / `ADZUNA_APP_KEY` | Adzuna job search API (free tier) |
 
-Generate secrets:
+---
+
+## Tests
+
 ```bash
-# JWT_SECRET
-python3 -c "import secrets; print(secrets.token_hex(32))"
+# Autoapply test suite (10 tests)
+python -m pytest autoapply/tests/ -v
 
-# ENCRYPTION_KEY (Fernet)
-python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+# Frontend type-check + build
+cd frontend && npm run build
 ```
 
 ---
 
-## Monitoring
+## Payments
 
-- **Health check:** `GET https://resumeai-bot.ru/api/health`
-- **Deep health:** `GET https://resumeai-bot.ru/api/health/deep`
-- **Auto-restart:** `monitor.py` runs every 30 min via cron, restarts failed services (max 5 restarts/hour)
-- **Alerts:** Telegram message to `ADMIN_TELEGRAM_ID` on service failure
-- **SSL check:** Weekly cron via `scripts/check_ssl.sh`, alerts if cert < 21 days
+All payments are in **USD** via Stripe Checkout or Revolut (manual).
 
----
+CryptoBot (USDT) and Russian bank card methods were removed in May 2026
+as part of the international pivot.
 
-## Incident runbooks
-
-| Incident | Runbook |
-|----------|---------|
-| Bot or API down | [incident-bot-down.md](docs/runbooks/incident-bot-down.md) |
-| Payment not processed | [incident-payment-stuck.md](docs/runbooks/incident-payment-stuck.md) |
-| Database restore | [restore-db.md](docs/runbooks/restore-db.md) |
-| Deploy | [deploy.md](docs/runbooks/deploy.md) |
-
----
-
-## Pricing plans
-
-Defined in [`pricing.json`](pricing.json) — single source of truth used by both the API and frontend.
-
-| Plan | Daily limit | Price |
-|------|------------|-------|
-| Free | 3 apps/day | $0 |
-| Trial | 30 apps/day | $2.99 / 14 days |
-| Pro | 50 apps/day | $19.99 / month |
-| Unlimited | No cap | $29.99 / month |
+See [ARCHITECTURE.md § Block 2](ARCHITECTURE.md#block-2----api-layer) for the
+full payments endpoint list.
