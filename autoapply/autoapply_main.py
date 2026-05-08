@@ -67,7 +67,16 @@ from autoapply.autoapply_db import (
     get_portfolio_by_handle,
     get_portfolio_by_user,
     upsert_portfolio,
+    # Inbox helpers
+    add_message as db_add_message,
+    create_or_get_thread,
+    create_thread_manual,
+    get_messages_for_thread,
+    get_thread_by_id,
+    get_threads_for_user,
+    update_thread_status,
 )
+from autoapply.services.inbox import process_inbound_webhook, send_reply as inbox_send_reply
 from autoapply.email_sender import (
     send_drip_email,
     send_password_reset_email,
@@ -79,6 +88,7 @@ from autoapply.config import (
     AUTOAPPLY_HOST,
     AUTOAPPLY_PORT,
     BOT_DB,
+    INBOX_WEBHOOK_SECRET,
     JWT_ALGORITHM,
     JWT_EXPIRE_HOURS,
     JWT_SECRET,
@@ -314,7 +324,7 @@ _AUTH_PATHS = {
     "/api/auth/telegram-link",
 }
 # Public paths (no rate limiting applied at auth-path level, but no JWT required)
-_PUBLIC_PREFIX_PATHS = ("/api/portfolio/public/", "/p/")
+_PUBLIC_PREFIX_PATHS = ("/api/portfolio/public/", "/p/", "/webhook/")
 _AI_GENERAL_TOKENS = {"generate", "ai", "resume", "interview", "cover", "salary"}
 
 
@@ -498,7 +508,7 @@ async def register(body: RegisterRequest):
     if not validate_email_mx(body.email):
         raise HTTPException(
             status_code=400,
-            detail="Введите настоящий email-адрес — указанный домен не существует"
+            detail="Please enter a valid email address — the specified domain does not exist"
         )
 
     existing = await get_user_by_email(body.email, AUTOAPPLY_DB)
@@ -565,7 +575,7 @@ async def verify_email(token: str):
 @app.post("/api/resend-verification", summary="Resend email verification link")
 async def resend_verification(current_user: dict = Depends(get_current_user)):
     if current_user.get("is_verified"):
-        return {"ok": True, "message": "Уже подтверждён"}
+        return {"ok": True, "message": "Already verified"}
     try:
         verify_token = await create_email_token(current_user["id"], kind="verify", ttl_hours=24)
         await asyncio.to_thread(send_verification_email, current_user["email"], verify_token)
@@ -597,12 +607,12 @@ async def reset_password(body: ResetPasswordRequest):
 
     user_id = await consume_email_token(body.token, kind="reset")
     if not user_id:
-        raise HTTPException(status_code=400, detail="Ссылка недействительна или истекла")
+        raise HTTPException(status_code=400, detail="Link is invalid or expired")
 
     password_hash = _hash_password(body.password)
     await update_user_password(user_id, password_hash)
     logger.info("[api/reset-password] password updated for user_id=%s", user_id)
-    return {"ok": True, "message": "Пароль успешно изменён"}
+    return {"ok": True, "message": "Password changed successfully"}
 
 
 @app.post("/api/login", summary="Login and get JWT token")
@@ -1044,13 +1054,13 @@ async def resume_connect(
     # Combine available profile fields into a single resume text
     parts = []
     if row["specialty"]:
-        parts.append(f"Специальность: {row['specialty']}")
+        parts.append(f"Specialty: {row['specialty']}")
     if row["experience_text"]:
-        parts.append(f"Опыт работы:\n{row['experience_text']}")
+        parts.append(f"Work experience:\n{row['experience_text']}")
     if row["education_text"]:
-        parts.append(f"Образование:\n{row['education_text']}")
+        parts.append(f"Education:\n{row['education_text']}")
     if row["skills_text"]:
-        parts.append(f"Навыки:\n{row['skills_text']}")
+        parts.append(f"Skills:\n{row['skills_text']}")
 
     if not parts:
         raise HTTPException(
@@ -1942,8 +1952,8 @@ async def post_to_telegram_channel(payload: dict, request: Request):
     text = (
         f"📝 *{title}*\n\n"
         f"{excerpt}...\n\n"
-        f"👉 [Читать полностью]({url})\n\n"
-        f"🤖 Создать резюме: https://t.me/topbestworkerbot"
+        f"👉 [Read more]({url})\n\n"
+        f"🤖 Build your resume: https://t.me/topbestworkerbot"
     )
 
     async with _httpx_module.AsyncClient(timeout=10) as client:
@@ -2364,7 +2374,7 @@ async def serve_template_preview(template_id: str):
 class InterviewEvalRequest(BaseModel):
     question: str
     answer: str
-    job_title: str = "специалист"
+    job_title: str = "specialist"
 
 
 @app.post("/api/interview/evaluate", summary="Evaluate interview answer with STAR method")
@@ -2380,14 +2390,14 @@ async def evaluate_interview_answer(
         return {
             "score": 7,
             "star_breakdown": {
-                "situation": "Хорошо описана контекст ситуации",
-                "task": "Задача обозначена",
-                "action": "Действия перечислены",
-                "result": "Добавьте количественные результаты",
+                "situation": "Situation context well described",
+                "task": "Task clearly defined",
+                "action": "Actions listed",
+                "result": "Add quantified results",
             },
-            "strengths": ["Структурированный ответ", "Конкретный пример из практики"],
-            "improvements": ["Добавьте цифры: % рост, сроки, объём", "Усильте описание вашей личной роли"],
-            "better_answer": "Пример: В 2023 году наша команда столкнулась с X. Моей задачей было Y. Я предпринял A, B, C — в результате достигли D (конкретные цифры).",
+            "strengths": ["Structured response", "Concrete practical example"],
+            "improvements": ["Add numbers: % growth, timelines, volume", "Strengthen the description of your personal role"],
+            "better_answer": "Example: In 2023 our team faced challenge X. My task was Y. I took actions A, B, C — resulting in outcome D (specific metrics).",
             "demo": True,
         }
 
@@ -2526,7 +2536,7 @@ def _parse_linkedin_zip(zip_bytes: bytes) -> dict:
                     "company": r.get("Company Name", ""),
                     "title": r.get("Title", ""),
                     "start": r.get("Started On", ""),
-                    "end": r.get("Finished On", "") or "по настоящее время",
+                    "end": r.get("Finished On", "") or "Present",
                     "description": r.get("Description", ""),
                     "location": r.get("Location", ""),
                 }
@@ -2548,7 +2558,7 @@ def _parse_linkedin_zip(zip_bytes: bytes) -> dict:
                 for r in read_csv("Languages.csv") if r.get("Name")
             ]
     except zipfile.BadZipFile:
-        raise HTTPException(status_code=400, detail="Некорректный ZIP файл")
+        raise HTTPException(status_code=400, detail="Invalid ZIP file")
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Ошибка обработки ZIP: {exc}")
 
@@ -3228,6 +3238,170 @@ async def portfolio_public_page(handle: str):
 </body>
 </html>"""
     return HTMLResponse(content=html, status_code=200)
+
+
+# ── Inbox / Reply threads ─────────────────────────────────────────────────────
+
+@app.get("/api/threads", summary="List reply threads (inbox)")
+async def list_threads(
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=30, ge=1, le=100),
+    status: Optional[str] = Query(default=None),
+    current_user: dict = Depends(get_current_user),
+):
+    valid_statuses = {"open", "closed", "recruiter_replied", "rejected"}
+    if status and status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
+    result = await get_threads_for_user(
+        user_id=current_user["id"],
+        page=page,
+        per_page=per_page,
+        status=status,
+        db_path=AUTOAPPLY_DB,
+    )
+    return result
+
+
+@app.get("/api/threads/{thread_id}", summary="Get thread with messages")
+async def get_thread(thread_id: int, current_user: dict = Depends(get_current_user)):
+    thread = await get_thread_by_id(thread_id, current_user["id"], db_path=AUTOAPPLY_DB)
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    messages = await get_messages_for_thread(thread_id, current_user["id"], db_path=AUTOAPPLY_DB)
+    return {**thread, "messages": messages}
+
+
+@app.get("/api/threads/{thread_id}/messages", summary="List messages in thread")
+async def list_messages(thread_id: int, current_user: dict = Depends(get_current_user)):
+    # Check thread ownership first
+    thread = await get_thread_by_id(thread_id, current_user["id"], db_path=AUTOAPPLY_DB)
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    messages = await get_messages_for_thread(thread_id, current_user["id"], db_path=AUTOAPPLY_DB)
+    return {"thread_id": thread_id, "messages": messages}
+
+
+@app.post("/api/threads/{thread_id}/messages", summary="Send a reply in thread")
+async def send_thread_reply(
+    thread_id: int,
+    body: dict,
+    current_user: dict = Depends(get_current_user),
+):
+    body_text = (body.get("body_text") or "").strip()
+    if not body_text:
+        raise HTTPException(status_code=400, detail="body_text is required")
+
+    success = await inbox_send_reply(
+        thread_id=thread_id,
+        user_id=current_user["id"],
+        body_text=body_text,
+        db_path=AUTOAPPLY_DB,
+    )
+    if success is False and not await get_thread_by_id(thread_id, current_user["id"], db_path=AUTOAPPLY_DB):
+        raise HTTPException(status_code=404, detail="Thread not found")
+    return {"ok": True, "sent": success, "thread_id": thread_id}
+
+
+@app.post("/api/threads", summary="Create thread for an application (manual)")
+async def create_thread_endpoint(
+    body: dict,
+    current_user: dict = Depends(get_current_user),
+):
+    application_id = body.get("application_id")
+    company_name = (body.get("company_name") or "").strip()
+    company_email = (body.get("company_email") or "").strip()
+
+    if not company_name:
+        raise HTTPException(status_code=400, detail="company_name is required")
+
+    if application_id:
+        # Verify ownership of the application
+        async with aiosqlite.connect(AUTOAPPLY_DB) as _db:
+            async with _db.execute(
+                "SELECT id FROM applications WHERE id = ? AND user_id = ?",
+                (application_id, current_user["id"]),
+            ) as _cur:
+                if not await _cur.fetchone():
+                    raise HTTPException(status_code=404, detail="Application not found")
+        thread_id = await create_or_get_thread(
+            application_id=application_id,
+            user_id=current_user["id"],
+            company_name=company_name,
+            db_path=AUTOAPPLY_DB,
+        )
+    else:
+        thread_id = await create_thread_manual(
+            user_id=current_user["id"],
+            company_name=company_name,
+            company_email=company_email,
+            db_path=AUTOAPPLY_DB,
+        )
+
+    if not thread_id:
+        raise HTTPException(status_code=500, detail="Failed to create thread")
+
+    # Update company_email if provided
+    if company_email and application_id:
+        await update_thread_status(thread_id=thread_id, status="open", company_email=company_email, db_path=AUTOAPPLY_DB)
+
+    thread = await get_thread_by_id(thread_id, current_user["id"], db_path=AUTOAPPLY_DB)
+    return thread
+
+
+@app.post("/webhook/inbox", include_in_schema=False)
+async def inbound_email_webhook(request: Request):
+    """Mailgun/SES inbound email webhook — no JWT auth, protected by INBOX_WEBHOOK_SECRET."""
+    # Verify secret header
+    if INBOX_WEBHOOK_SECRET:
+        provided = request.headers.get("X-Inbox-Secret", "")
+        if provided != INBOX_WEBHOOK_SECRET:
+            logger.warning("[webhook/inbox] invalid X-Inbox-Secret from %s", request.client)
+            raise HTTPException(status_code=403, detail="Forbidden")
+    else:
+        logger.warning("[webhook/inbox] INBOX_WEBHOOK_SECRET not set — running in dev mode (no auth)")
+
+    # Parse payload: try JSON first, then form data
+    content_type = request.headers.get("content-type", "")
+    try:
+        if "application/json" in content_type:
+            payload = await request.json()
+        else:
+            form = await request.form()
+            payload = dict(form)
+    except Exception as exc:
+        logger.error("[webhook/inbox] payload parse error: %s", exc)
+        raise HTTPException(status_code=400, detail="Invalid payload")
+
+    try:
+        result = await process_inbound_webhook(payload, AUTOAPPLY_DB)
+    except Exception as exc:
+        logger.exception("[webhook/inbox] process error: %s", exc)
+        raise HTTPException(status_code=500, detail="Processing error")
+
+    # Notify user via Telegram if recruiter replied
+    thread_id = result.get("thread_id")
+    if thread_id and result.get("status") in ("recruiter_replied", "rejected"):
+        try:
+            async with aiosqlite.connect(AUTOAPPLY_DB) as _db:
+                async with _db.execute(
+                    "SELECT u.telegram_id, t.company_name FROM autoapply_users u "
+                    "JOIN app_threads t ON t.user_id = u.id WHERE t.id = ?",
+                    (thread_id,),
+                ) as _cur:
+                    tg_row = await _cur.fetchone()
+            if tg_row and tg_row[0]:
+                company = tg_row[1] or "a company"
+                from autoapply.payments import send_telegram_message
+                asyncio.create_task(
+                    send_telegram_message(
+                        tg_row[0],
+                        f"📬 New reply from {company}! Open your inbox: https://resumeai-bot.ru/app/inbox",
+                    )
+                )
+        except Exception as exc:
+            logger.warning("[webhook/inbox] telegram notify error: %s", exc)
+
+    return {"ok": True, **result}
 
 
 # ── SPA fallback ──────────────────────────────────────────────────────────────

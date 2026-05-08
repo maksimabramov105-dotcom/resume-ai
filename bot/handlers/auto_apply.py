@@ -42,7 +42,7 @@ def _auto_apply_kb(lang: str, telegram_id: int) -> InlineKeyboardMarkup:
 async def auto_apply_callback(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     user = await get_or_create_user(callback.from_user.id)
-    lang = user.language or 'ru'
+    lang = user.language or 'en'
     try:
         from bot.analytics import track as _ph_track
         _ph_track(callback.from_user.id, 'auto_apply_started', {'target_count': user.daily_limit if hasattr(user, 'daily_limit') else 0})

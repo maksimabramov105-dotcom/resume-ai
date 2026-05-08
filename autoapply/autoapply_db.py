@@ -231,6 +231,34 @@ CREATE TABLE IF NOT EXISTS portfolio_links (
 )
 """
 
+_CREATE_APP_THREADS = """
+CREATE TABLE IF NOT EXISTS app_threads (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    application_id  INTEGER UNIQUE REFERENCES applications(id),
+    user_id         INTEGER NOT NULL REFERENCES autoapply_users(id),
+    company_email   TEXT,
+    company_name    TEXT,
+    reply_to_addr   TEXT,
+    last_message_at TEXT DEFAULT (datetime('now')),
+    status          TEXT DEFAULT 'open'
+        CHECK(status IN ('open','closed','recruiter_replied','rejected'))
+)
+"""
+
+_CREATE_APP_MESSAGES = """
+CREATE TABLE IF NOT EXISTS app_messages (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    thread_id    INTEGER NOT NULL REFERENCES app_threads(id) ON DELETE CASCADE,
+    direction    TEXT NOT NULL CHECK(direction IN ('out','in')),
+    subject      TEXT,
+    body_text    TEXT,
+    body_html    TEXT,
+    message_id   TEXT,
+    in_reply_to  TEXT,
+    received_at  TEXT DEFAULT (datetime('now'))
+)
+"""
+
 # ── Indexes ───────────────────────────────────────────────────────────────────
 
 _CREATE_INDEXES = [
@@ -264,6 +292,9 @@ _CREATE_INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_portfolio_links_portfolio ON portfolio_links(portfolio_id)",
     # Applications hub — user_status filter + tab counts
     "CREATE INDEX IF NOT EXISTS idx_applications_user_status ON applications(user_id, user_status, sent_at)",
+    # Reply inbox
+    "CREATE INDEX IF NOT EXISTS idx_app_threads_user ON app_threads(user_id, last_message_at)",
+    "CREATE INDEX IF NOT EXISTS idx_app_messages_thread ON app_messages(thread_id, received_at)",
 ]
 
 # ── Init ─────────────────────────────────────────────────────────────────────
@@ -287,6 +318,8 @@ async def init_db(db_path: str = AUTOAPPLY_DB) -> None:
             await db.execute(_CREATE_PORTFOLIOS)
             await db.execute(_CREATE_PORTFOLIO_ASSETS)
             await db.execute(_CREATE_PORTFOLIO_LINKS)
+            await db.execute(_CREATE_APP_THREADS)
+            await db.execute(_CREATE_APP_MESSAGES)
             # Indexes
             for _idx_sql in _CREATE_INDEXES:
                 try:
@@ -1478,6 +1511,184 @@ async def count_portfolio_assets(portfolio_id: int, db_path: str = AUTOAPPLY_DB)
     except Exception as exc:
         logger.exception("[autoapply_db] count_portfolio_assets error: %s", exc)
         return 0
+
+
+# ── Reply Inbox helpers ───────────────────────────────────────────────────────
+
+async def get_threads_for_user(
+    user_id: int,
+    page: int = 1,
+    per_page: int = 30,
+    status: Optional[str] = None,
+    db_path: str = AUTOAPPLY_DB,
+) -> dict:
+    """Paginated list of threads for a user, newest first."""
+    offset = (page - 1) * per_page
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            db.row_factory = aiosqlite.Row
+            where = "t.user_id = ?"
+            params: list = [user_id]
+            if status:
+                where += " AND t.status = ?"
+                params.append(status)
+
+            async with db.execute(f"SELECT COUNT(*) FROM app_threads t WHERE {where}", params) as cur:
+                total = (await cur.fetchone())[0]
+
+            sql = f"""
+                SELECT t.*,
+                       m.body_text AS last_body_text,
+                       m.received_at AS last_received_at
+                FROM app_threads t
+                LEFT JOIN app_messages m ON m.id = (
+                    SELECT id FROM app_messages
+                    WHERE thread_id = t.id
+                    ORDER BY received_at DESC LIMIT 1
+                )
+                WHERE {where}
+                ORDER BY t.last_message_at DESC
+                LIMIT ? OFFSET ?
+            """
+            async with db.execute(sql, params + [per_page, offset]) as cur:
+                rows = [dict(r) for r in await cur.fetchall()]
+
+        pages = max(1, (total + per_page - 1) // per_page)
+        return {"items": rows, "total": total, "page": page, "per_page": per_page, "pages": pages}
+    except Exception as exc:
+        logger.exception("[autoapply_db] get_threads_for_user error: %s", exc)
+        return {"items": [], "total": 0, "page": page, "per_page": per_page, "pages": 1}
+
+
+async def get_thread_by_id(
+    thread_id: int, user_id: int, db_path: str = AUTOAPPLY_DB
+) -> Optional[dict]:
+    """Single thread — checks ownership."""
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                "SELECT * FROM app_threads WHERE id = ? AND user_id = ?",
+                (thread_id, user_id),
+            ) as cur:
+                row = await cur.fetchone()
+                return dict(row) if row else None
+    except Exception as exc:
+        logger.exception("[autoapply_db] get_thread_by_id error: %s", exc)
+        return None
+
+
+async def get_messages_for_thread(
+    thread_id: int, user_id: int, db_path: str = AUTOAPPLY_DB
+) -> list:
+    """All messages for a thread, oldest first. Checks ownership."""
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            db.row_factory = aiosqlite.Row
+            # Ownership check
+            async with db.execute(
+                "SELECT id FROM app_threads WHERE id = ? AND user_id = ?",
+                (thread_id, user_id),
+            ) as cur:
+                if not await cur.fetchone():
+                    return []
+            async with db.execute(
+                "SELECT * FROM app_messages WHERE thread_id = ? ORDER BY received_at ASC",
+                (thread_id,),
+            ) as cur:
+                return [dict(r) for r in await cur.fetchall()]
+    except Exception as exc:
+        logger.exception("[autoapply_db] get_messages_for_thread error: %s", exc)
+        return []
+
+
+async def create_or_get_thread(
+    application_id: int, user_id: int, company_name: str, db_path: str = AUTOAPPLY_DB
+) -> int:
+    """INSERT OR IGNORE; returns thread id."""
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            await db.execute(
+                "INSERT OR IGNORE INTO app_threads (application_id, user_id, company_name) VALUES (?, ?, ?)",
+                (application_id, user_id, company_name),
+            )
+            await db.commit()
+            async with db.execute(
+                "SELECT id FROM app_threads WHERE application_id = ?",
+                (application_id,),
+            ) as cur:
+                row = await cur.fetchone()
+                return row[0] if row else 0
+    except Exception as exc:
+        logger.exception("[autoapply_db] create_or_get_thread error: %s", exc)
+        return 0
+
+
+async def create_thread_manual(
+    user_id: int, company_name: str, company_email: str = "", db_path: str = AUTOAPPLY_DB
+) -> int:
+    """Create a thread not tied to an application. Returns thread id."""
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            cur = await db.execute(
+                "INSERT INTO app_threads (application_id, user_id, company_name, company_email) VALUES (NULL, ?, ?, ?)",
+                (user_id, company_name, company_email),
+            )
+            await db.commit()
+            return cur.lastrowid
+    except Exception as exc:
+        logger.exception("[autoapply_db] create_thread_manual error: %s", exc)
+        return 0
+
+
+async def add_message(
+    thread_id: int,
+    direction: str,
+    subject: str,
+    body_text: str,
+    body_html: str,
+    message_id: str,
+    in_reply_to: str,
+    db_path: str = AUTOAPPLY_DB,
+) -> int:
+    """Insert message. Returns new message id."""
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            cur = await db.execute(
+                """INSERT INTO app_messages
+                   (thread_id, direction, subject, body_text, body_html, message_id, in_reply_to)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (thread_id, direction, subject, body_text, body_html, message_id, in_reply_to),
+            )
+            await db.commit()
+            return cur.lastrowid
+    except Exception as exc:
+        logger.exception("[autoapply_db] add_message error: %s", exc)
+        return 0
+
+
+async def update_thread_status(
+    thread_id: int,
+    status: str,
+    company_email: str = None,
+    db_path: str = AUTOAPPLY_DB,
+) -> None:
+    """Update thread status and optionally company_email."""
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            if company_email is not None:
+                await db.execute(
+                    "UPDATE app_threads SET status = ?, company_email = ?, last_message_at = datetime('now') WHERE id = ?",
+                    (status, company_email, thread_id),
+                )
+            else:
+                await db.execute(
+                    "UPDATE app_threads SET status = ?, last_message_at = datetime('now') WHERE id = ?",
+                    (status, thread_id),
+                )
+            await db.commit()
+    except Exception as exc:
+        logger.exception("[autoapply_db] update_thread_status error: %s", exc)
 
 
 async def import_bot_resume(

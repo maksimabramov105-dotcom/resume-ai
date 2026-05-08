@@ -89,6 +89,11 @@ except (FileNotFoundError, json.JSONDecodeError):
         "unlimited": {"daily_limit": 9999, "price_usd": 29.99, "trial_days": 0,  "label": "Unlimited"},
     }
 
+# ── Inbox webhook ────────────────────────────────────────────────────────
+# Set INBOX_WEBHOOK_SECRET to a strong random string in production.
+# If empty, signature check is skipped with a warning (dev mode only).
+INBOX_WEBHOOK_SECRET: str = os.getenv("INBOX_WEBHOOK_SECRET", "")
+
 # ── Delays between applications (seconds) ────────────────────────────────
 MIN_APPLY_DELAY = int(os.getenv("MIN_APPLY_DELAY", "30"))
 MAX_APPLY_DELAY = int(os.getenv("MAX_APPLY_DELAY", "90"))
