@@ -44,7 +44,7 @@ def _tracker_text(lang: str, s: dict) -> str:
 @router.message(Command("tracker"))
 async def cmd_tracker(message: Message) -> None:
     user = await get_or_create_user(message.from_user.id)
-    lang = user.language or "ru"
+    lang = user.language or "en"
     stats = await get_application_stats(message.from_user.id)
 
     try:

@@ -18,7 +18,7 @@ class VacancyAnalysisStates(StatesGroup):
 @router.callback_query(F.data == "vacancy_analysis")
 async def start_analysis(callback: CallbackQuery, state: FSMContext):
     user = await get_or_create_user(callback.from_user.id)
-    lang = user.language or 'ru'
+    lang = user.language or 'en'
     await state.set_state(VacancyAnalysisStates.waiting_vacancy)
     await callback.message.edit_text(t(lang, 'vacancy.ask'), reply_markup=cancel_kb(lang))
 
@@ -29,7 +29,7 @@ async def got_vacancy(message: Message, state: FSMContext):
     await state.clear()
 
     user = await get_or_create_user(message.from_user.id)
-    lang = user.language or 'ru'
+    lang = user.language or 'en'
 
     status_msg = await message.answer(t(lang, 'vacancy.analyzing'))
 

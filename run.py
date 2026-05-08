@@ -28,7 +28,10 @@ from apscheduler.triggers.cron import CronTrigger
 from config import BOT_TOKEN  # flat import (bot/ is in sys.path)
 from database.db import init_db
 from handlers import start, resume, cover_letter, interview, vacancy_analysis, ai_assistant, payment, profile, support, language, auto_apply, tracker, digest_settings, resume_tailor
-from utils.texts import BOT_DESCRIPTION, BOT_SHORT_DESCRIPTION
+from utils.texts import (
+    BOT_DESCRIPTION, BOT_SHORT_DESCRIPTION,
+    BOT_DESCRIPTION_RU, BOT_SHORT_DESCRIPTION_RU,
+)
 from utils.bot_translations import t as _t
 
 # Analytics system — project root is already in sys.path
@@ -60,7 +63,7 @@ async def _get_lang_from_update(update) -> str:
         elif update.callback_query:
             user_id = update.callback_query.from_user.id
         if user_id is None:
-            return "ru"
+            return "en"
         db_file = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./bot.db")
         # Strip SQLAlchemy driver prefix
         db_file = db_file.replace("sqlite+aiosqlite:///", "").replace("sqlite:///", "")
@@ -73,7 +76,7 @@ async def _get_lang_from_update(update) -> str:
             return row[0]
     except Exception:
         pass
-    return "ru"
+    return "en"
 
 
 async def run_bot() -> None:
@@ -86,32 +89,57 @@ async def run_bot() -> None:
     await startup_analytics(bot=bot, admin_chat_id=ADMIN_CHAT_ID)
 
     # Set description visible before /start and in "About" section
+    # EN is the global default (no language_code); RU is a locale override
     try:
-        await bot.set_my_description(description=BOT_DESCRIPTION, language_code="ru")
-        logger.info("Bot description set (%d chars).", len(BOT_DESCRIPTION))
+        await bot.set_my_description(description=BOT_DESCRIPTION)
+        await bot.set_my_description(description=BOT_DESCRIPTION_RU, language_code="ru")
+        logger.info("Bot description set (EN default + RU override).")
     except Exception as e:
         logger.warning("Could not set description: %s", e)
     try:
-        await bot.set_my_short_description(short_description=BOT_SHORT_DESCRIPTION, language_code="ru")
-        logger.info("Bot short description set (%d chars).", len(BOT_SHORT_DESCRIPTION))
+        await bot.set_my_short_description(short_description=BOT_SHORT_DESCRIPTION)
+        await bot.set_my_short_description(short_description=BOT_SHORT_DESCRIPTION_RU, language_code="ru")
+        logger.info("Bot short description set (EN default + RU override).")
     except Exception as e:
         logger.warning("Could not set short description: %s", e)
 
     # Register bot commands (shows in Telegram menu "/" list)
+    # EN is the global default; RU locale gets Russian descriptions
     try:
-        from aiogram.types import BotCommand
-        await bot.set_my_commands([
-            BotCommand(command="start",      description="🏠 Main menu / Главное меню"),
-            BotCommand(command="resume",     description="📄 Build resume / Создать резюме"),
-            BotCommand(command="cover",      description="✉️ Cover letter / Сопроводительное письмо"),
-            BotCommand(command="interview",  description="🎤 Mock interview / Подготовка к собеседованию"),
-            BotCommand(command="vacancy",    description="🔍 Analyze job / Анализ вакансии"),
-            BotCommand(command="assistant",  description="🤖 AI assistant / AI-ассистент"),
-            BotCommand(command="upgrade",    description="💎 Plans & pricing / Тарифы и оплата"),
-            BotCommand(command="profile",    description="👤 My profile / Мой профиль"),
-            BotCommand(command="language",   description="🌐 Switch language / Сменить язык"),
-        ], language_code="ru")
-        logger.info("Bot commands registered.")
+        from aiogram.types import BotCommand, BotCommandScopeDefault
+        en_commands = [
+            BotCommand(command="start",     description="🏠 Main menu"),
+            BotCommand(command="resume",    description="📄 Create resume"),
+            BotCommand(command="cover",     description="✉️ Cover letter"),
+            BotCommand(command="interview", description="🎤 Mock interview"),
+            BotCommand(command="vacancy",   description="🔍 Analyze job posting"),
+            BotCommand(command="assistant", description="🤖 AI assistant"),
+            BotCommand(command="tailor",    description="✂️ Tailor resume to job"),
+            BotCommand(command="digest",    description="📬 Daily job digest"),
+            BotCommand(command="tracker",   description="📊 Application tracker"),
+            BotCommand(command="upgrade",   description="💎 Plans & pricing"),
+            BotCommand(command="profile",   description="👤 My profile"),
+            BotCommand(command="language",  description="🌐 Switch language"),
+            BotCommand(command="help",      description="❓ Help"),
+        ]
+        ru_commands = [
+            BotCommand(command="start",     description="🏠 Главное меню"),
+            BotCommand(command="resume",    description="📄 Создать резюме"),
+            BotCommand(command="cover",     description="✉️ Сопроводительное письмо"),
+            BotCommand(command="interview", description="🎤 Подготовка к собеседованию"),
+            BotCommand(command="vacancy",   description="🔍 Анализ вакансии"),
+            BotCommand(command="assistant", description="🤖 AI-ассистент"),
+            BotCommand(command="tailor",    description="✂️ Адаптировать резюме"),
+            BotCommand(command="digest",    description="📬 Дайджест вакансий"),
+            BotCommand(command="tracker",   description="📊 Трекер откликов"),
+            BotCommand(command="upgrade",   description="💎 Тарифы и оплата"),
+            BotCommand(command="profile",   description="👤 Мой профиль"),
+            BotCommand(command="language",  description="🌐 Сменить язык"),
+            BotCommand(command="help",      description="❓ Помощь"),
+        ]
+        await bot.set_my_commands(en_commands)                             # global default (EN)
+        await bot.set_my_commands(ru_commands, language_code="ru")         # RU locale override
+        logger.info("Bot commands registered (EN default + RU override).")
     except Exception as e:
         logger.warning("Could not set commands: %s", e)
 

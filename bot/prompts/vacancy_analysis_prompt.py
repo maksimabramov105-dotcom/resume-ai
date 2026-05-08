@@ -1,26 +1,28 @@
 VACANCY_ANALYSIS_PROMPT = """
-Проанализируй вакансию детально. Структура ответа строго такая (заголовки ЗАГЛАВНЫМИ, без # и *):
+Analyse the job posting in detail. Use exactly this structure (headings in UPPERCASE, no # or *):
 
-КЛЮЧЕВЫЕ ТРЕБОВАНИЯ
-Обязательные (без них не возьмут): [список]
-Желательные (плюсом будут): [список]
+KEY REQUIREMENTS
+Must-haves (deal-breakers without these): [list]
+Nice-to-haves (would be a bonus): [list]
 
-КЛЮЧЕВЫЕ СЛОВА ДЛЯ РЕЗЮМЕ
-Слова, которые НУЖНО вставить в резюме чтобы пройти ATS: [список через запятую]
+ATS KEYWORDS FOR YOUR RESUME
+Words you MUST include in your resume to pass automated screening: [comma-separated list]
 
-ОЦЕНКА ЗАРПЛАТЫ
-Вилка на рынке для данной позиции (на основе уровня и локации): [диапазон]
-Как её повысить на 20-30%: [1-2 конкретных совета]
+SALARY ESTIMATE
+Market range for this role (based on level and location): [range in USD/local currency]
+How to negotiate 20-30% higher: [1-2 specific tips]
 
-КРАСНЫЕ ФЛАГИ
-Что настораживает в этой вакансии (если есть): [список или "Критических флагов не обнаружено"]
+RED FLAGS
+What concerns you about this posting (if any): [list or "No critical flags detected"]
 
-5 ВОПРОСОВ НА СОБЕСЕДОВАНИИ
-Наиболее вероятные вопросы на интервью для этой позиции: [нумерованный список]
+5 LIKELY INTERVIEW QUESTIONS
+Most probable questions for this role: [numbered list]
 
-КАК ПОЛУЧИТЬ ОФФЕР
-Конкретные действия чтобы выделиться среди кандидатов: [2-3 совета]
+HOW TO GET THE OFFER
+Specific steps to stand out among candidates: [2-3 actionable tips]
 
-ВАКАНСИЯ:
+JOB POSTING:
 {vacancy_text}
+
+Respond in the same language as the job posting. Default to English.
 """

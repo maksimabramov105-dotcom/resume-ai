@@ -26,7 +26,7 @@ class AssistantStates(StatesGroup):
 @router.callback_query(F.data == "ai_assistant")
 async def start_assistant(callback: CallbackQuery, state: FSMContext):
     user = await get_or_create_user(callback.from_user.id)
-    lang = user.language or 'ru'
+    lang = user.language or 'en'
 
     if user.credits_assistant <= 0:
         await callback.message.edit_text(t(lang, 'assistant.no_credits'), reply_markup=buy_assistant_kb(lang))
@@ -44,7 +44,7 @@ async def start_assistant(callback: CallbackQuery, state: FSMContext):
 @router.message(AssistantStates.active, F.text)
 async def handle_assistant_message(message: Message, state: FSMContext):
     user = await get_or_create_user(message.from_user.id)
-    lang = user.language or 'ru'
+    lang = user.language or 'en'
 
     if user.credits_assistant <= 0:
         await message.answer(t(lang, 'assistant.no_credits'), reply_markup=buy_assistant_kb(lang))
@@ -124,5 +124,5 @@ async def clear_history(callback: CallbackQuery):
 async def exit_assistant(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     user = await get_or_create_user(callback.from_user.id)
-    lang = user.language or 'ru'
+    lang = user.language or 'en'
     await callback.message.edit_text(t(lang, 'start.welcome'), reply_markup=main_menu_kb(lang))

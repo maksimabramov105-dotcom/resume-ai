@@ -23,7 +23,7 @@ class InterviewStates(StatesGroup):
 async def start_interview_handler(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     user = await get_or_create_user(callback.from_user.id)
-    lang = user.language or 'ru'
+    lang = user.language or 'en'
     if user.credits_interview <= 0:
         await callback.message.edit_text(t(lang, 'interview.no_credits'), reply_markup=buy_credits_kb(lang))
         return
@@ -35,7 +35,7 @@ async def start_interview_handler(callback: CallbackQuery, state: FSMContext):
 async def got_vacancy(message: Message, state: FSMContext):
     vacancy = message.text
     user = await get_or_create_user(message.from_user.id)
-    lang = user.language or 'ru'
+    lang = user.language or 'en'
 
     candidate_summary = _build_candidate_summary(user)
 
@@ -81,7 +81,7 @@ async def handle_answer(message: Message, state: FSMContext):
     await message.chat.do("typing")
 
     user_for_lang = await get_or_create_user(message.from_user.id)
-    _lang = user_for_lang.language or 'ru'
+    _lang = user_for_lang.language or 'en'
     response, tokens = await continue_interview(vacancy, candidate_summary, history, message.text, lang=_lang)
     history.append({"role": "assistant", "content": response})
 
@@ -90,7 +90,7 @@ async def handle_answer(message: Message, state: FSMContext):
 
     can_finish = question_count >= MIN_QUESTIONS_TO_FINISH
     user = await get_or_create_user(message.from_user.id)
-    lang = user.language or 'ru'
+    lang = user.language or 'en'
 
     await message.answer(
         md_to_telegram(response),
@@ -103,7 +103,7 @@ async def handle_answer(message: Message, state: FSMContext):
 async def finish_interview_handler(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     user = await get_or_create_user(callback.from_user.id)
-    lang = user.language or 'ru'
+    lang = user.language or 'en'
 
     data = await state.get_data()
     history = data.get("history", [])
@@ -160,7 +160,7 @@ async def exit_interview_handler(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await state.clear()
     user = await get_or_create_user(callback.from_user.id)
-    lang = user.language or 'ru'
+    lang = user.language or 'en'
     await callback.message.edit_text(t(lang, 'start.welcome'), reply_markup=main_menu_kb(lang))
 
 

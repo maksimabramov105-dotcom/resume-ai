@@ -22,7 +22,7 @@ class ResumeStates(StatesGroup):
 @router.callback_query(F.data == "create_resume")
 async def start_resume(callback: CallbackQuery, state: FSMContext):
     user = await get_or_create_user(callback.from_user.id)
-    lang = user.language or 'ru'
+    lang = user.language or 'en'
     if user.credits_resume <= 0:
         await callback.message.edit_text(t(lang, 'resume.no_credits'), reply_markup=buy_credits_kb(lang))
         return
@@ -44,7 +44,7 @@ async def got_vacancy(message: Message, state: FSMContext):
         )
         await _generate_and_send(message, state, user)
     else:
-        lang = user.language or 'ru'
+        lang = user.language or 'en'
         await state.set_state(ResumeStates.waiting_experience)
         await message.answer(t(lang, 'resume.ask_experience'), reply_markup=cancel_kb(lang))
 
@@ -59,7 +59,7 @@ async def resume_vacancy_wrong_type(message: Message):
 async def got_experience(message: Message, state: FSMContext):
     await state.update_data(experience=message.text)
     user = await get_or_create_user(message.from_user.id)
-    lang = user.language or 'ru'
+    lang = user.language or 'en'
     await state.set_state(ResumeStates.waiting_education)
     await message.answer(t(lang, 'resume.ask_education'), reply_markup=cancel_kb(lang))
 
@@ -74,7 +74,7 @@ async def resume_experience_wrong_type(message: Message):
 async def got_education(message: Message, state: FSMContext):
     await state.update_data(education=message.text)
     user = await get_or_create_user(message.from_user.id)
-    lang = user.language or 'ru'
+    lang = user.language or 'en'
     await state.set_state(ResumeStates.waiting_skills)
     await message.answer(t(lang, 'resume.ask_skills'), reply_markup=cancel_kb(lang))
 
@@ -99,7 +99,7 @@ async def resume_skills_wrong_type(message: Message):
 
 
 async def _generate_and_send(message: Message, state: FSMContext, user):
-    lang = user.language or 'ru'
+    lang = user.language or 'en'
     data = await state.get_data()
     await state.clear()
 

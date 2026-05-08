@@ -82,7 +82,7 @@ async def cmd_start(message: Message, state: FSMContext):
         )
         return
 
-    lang = user.language or 'ru'
+    lang = user.language or 'en'
     await message.answer(t(lang, 'start.welcome'), reply_markup=main_menu_kb(lang))
 
 
@@ -91,7 +91,7 @@ async def go_main_menu(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await state.clear()
     user = await get_or_create_user(callback.from_user.id)
-    lang = user.language or 'ru'
+    lang = user.language or 'en'
     await callback.message.edit_text(t(lang, 'start.welcome'), reply_markup=main_menu_kb(lang))
 
 
@@ -138,33 +138,29 @@ async def cmd_report(message: Message):
 @router.message(Command("pay"))
 @router.message(Command("plans"))
 async def cmd_upgrade(message: Message):
-    """Show payment options — website or crypto (CryptoBot)."""
+    """Show payment options — Stripe card or contact support."""
     user = await get_or_create_user(message.from_user.id)
-    lang = user.language or 'ru'
+    lang = user.language or 'en'
     if lang == 'en':
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="💳 Pay by card (Visa/MC)", url="https://resumeai-bot.ru/app#plans")],
-            [InlineKeyboardButton(text="₿ Pay with crypto (USDT/BTC)", callback_data="buy_credits")],
-            [InlineKeyboardButton(text="💬 Contact us", url="https://t.me/topbestworkerbot")],
+            [InlineKeyboardButton(text="💳 Pay by card (Visa/MC/Amex)", url="https://resumeai-bot.ru/app#plans")],
+            [InlineKeyboardButton(text="💬 Contact support", url="https://t.me/topbestworkerbot")],
         ])
         text = (
-            "💎 <b>Choose payment method:</b>\n\n"
-            "💳 <b>Card</b> (Visa / Mastercard / Amex) — via our secure website\n"
-            "₿ <b>Crypto</b> (USDT / BTC / ETH / TON) — right here in the bot\n"
-            "🇷🇺 <b>Russian card / Revolut</b> — contact us in Telegram\n\n"
+            "💎 <b>Choose your plan:</b>\n\n"
+            "💳 <b>Card</b> (Visa / Mastercard / Amex) — secure Stripe checkout\n"
+            "💬 <b>Other payment methods</b> — contact us in Telegram\n\n"
             "Plan activates <b>instantly</b> after payment ✅"
         )
     else:
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="💳 Оплатить картой (Visa/MC)", url="https://resumeai-bot.ru/app#plans")],
-            [InlineKeyboardButton(text="₿ Оплатить криптовалютой (USDT/BTC)", callback_data="buy_credits")],
-            [InlineKeyboardButton(text="💬 Связаться с нами", url="https://t.me/topbestworkerbot")],
+            [InlineKeyboardButton(text="💳 Оплатить картой (Visa/MC/Amex)", url="https://resumeai-bot.ru/app#plans")],
+            [InlineKeyboardButton(text="💬 Связаться с поддержкой", url="https://t.me/topbestworkerbot")],
         ])
         text = (
-            "💎 <b>Выберите способ оплаты:</b>\n\n"
-            "💳 <b>Карта</b> (Visa / Mastercard / Amex) — через наш защищённый сайт\n"
-            "₿ <b>Криптовалюта</b> (USDT / BTC / ETH / TON) — прямо здесь в боте\n"
-            "🇷🇺 <b>Карта РФ / Revolut</b> — свяжитесь с нами в Telegram\n\n"
+            "💎 <b>Выберите тариф:</b>\n\n"
+            "💳 <b>Карта</b> (Visa / Mastercard / Amex) — безопасная оплата через Stripe\n"
+            "💬 <b>Другие способы оплаты</b> — свяжитесь с нами в Telegram\n\n"
             "После оплаты план активируется <b>мгновенно</b> ✅"
         )
     try:
@@ -186,7 +182,7 @@ async def cmd_tracker(message: Message):
     db_path = _os.getenv("AUTOAPPLY_DB", "/opt/resumeaibot/autoapply.db")
     uid = message.from_user.id
     user = await get_or_create_user(uid)
-    lang = user.language or 'ru'
+    lang = user.language or 'en'
     try:
         conn = sqlite3.connect(db_path)
         row = conn.execute(

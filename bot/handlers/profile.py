@@ -19,7 +19,7 @@ _SUB_KEYS = {
 @router.callback_query(F.data == "profile")
 async def show_profile(callback: CallbackQuery):
     user = await get_or_create_user(callback.from_user.id)
-    lang = user.language or 'ru'
+    lang = user.language or 'en'
 
     sub_label = t(lang, _SUB_KEYS.get(user.subscription_type, 'profile.sub.free'))
 
@@ -41,7 +41,7 @@ async def show_profile(callback: CallbackQuery):
 @router.callback_query(F.data == "referral")
 async def show_referral(callback: CallbackQuery):
     user = await get_or_create_user(callback.from_user.id)
-    lang = user.language or 'ru'
+    lang = user.language or 'en'
 
     bot_info = await callback.bot.get_me()
 

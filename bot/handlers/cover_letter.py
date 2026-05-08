@@ -19,7 +19,7 @@ class CoverLetterStates(StatesGroup):
 @router.callback_query(F.data == "cover_letter")
 async def start_cover_letter(callback: CallbackQuery, state: FSMContext):
     user = await get_or_create_user(callback.from_user.id)
-    lang = user.language or 'ru'
+    lang = user.language or 'en'
     if user.credits_cover_letter <= 0:
         await callback.message.edit_text(t(lang, 'cover.no_credits'), reply_markup=buy_credits_kb(lang))
         return
@@ -33,7 +33,7 @@ async def got_vacancy(message: Message, state: FSMContext):
     await state.clear()
 
     user = await get_or_create_user(message.from_user.id)
-    lang = user.language or 'ru'
+    lang = user.language or 'en'
 
     status_msg = await message.answer(t(lang, 'cover.generating'))
 

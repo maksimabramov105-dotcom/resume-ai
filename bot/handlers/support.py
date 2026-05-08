@@ -143,7 +143,7 @@ def _back_kb(lang: str = 'ru') -> InlineKeyboardMarkup:
 @router.message(Command("help"))
 async def cmd_help(message: Message):
     user = await get_or_create_user(message.from_user.id)
-    lang = user.language or 'ru'
+    lang = user.language or 'en'
     if lang == 'en':
         text = (
             "❓ <b>ResumeAI Help Center</b>\n\n"
@@ -163,7 +163,7 @@ async def cmd_help(message: Message):
 async def kb_article(callback: CallbackQuery):
     await callback.answer()
     user = await get_or_create_user(callback.from_user.id)
-    lang = user.language or 'ru'
+    lang = user.language or 'en'
     articles = _KB_ARTICLES_EN if lang == 'en' else _KB_ARTICLES_RU
     title, body = articles.get(callback.data, ("❓", "Article not found" if lang == 'en' else "Статья не найдена"))
     await callback.message.answer(
@@ -176,7 +176,7 @@ async def kb_article(callback: CallbackQuery):
 async def kb_menu(callback: CallbackQuery):
     await callback.answer()
     user = await get_or_create_user(callback.from_user.id)
-    lang = user.language or 'ru'
+    lang = user.language or 'en'
     if lang == 'en':
         text = (
             "❓ <b>ResumeAI Help Center</b>\n\n"
@@ -199,7 +199,7 @@ class SupportStates(StatesGroup):
 @router.callback_query(F.data == "support")
 async def open_support(callback: CallbackQuery, state: FSMContext):
     user = await get_or_create_user(callback.from_user.id)
-    lang = user.language or 'ru'
+    lang = user.language or 'en'
     await state.set_state(SupportStates.waiting_message)
     await callback.message.edit_text(t(lang, 'support.ask'), reply_markup=support_kb(lang))
 
@@ -207,7 +207,7 @@ async def open_support(callback: CallbackQuery, state: FSMContext):
 @router.message(SupportStates.waiting_message, F.text)
 async def got_support_message(message: Message, state: FSMContext, bot: Bot):
     user = await get_or_create_user(message.from_user.id)
-    lang = user.language or 'ru'
+    lang = user.language or 'en'
     data = await state.get_data()
     reply_user_id = data.get("reply_to_user_id")
     await state.clear()
@@ -237,7 +237,7 @@ async def got_support_message(message: Message, state: FSMContext, bot: Bot):
 @router.message(SupportStates.waiting_message, F.photo)
 async def got_support_photo(message: Message, state: FSMContext, bot: Bot):
     user = await get_or_create_user(message.from_user.id)
-    lang = user.language or 'ru'
+    lang = user.language or 'en'
     await state.clear()
 
     caption_text = message.caption or ("(no caption)" if lang == 'en' else "(без подписи)")
