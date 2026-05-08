@@ -1478,31 +1478,62 @@ async def save_onboarding(
 
 # ── Public stats ─────────────────────────────────────────────────────────────
 @app.get("/api/stats", summary="Public usage statistics")
-async def get_public_stats():
-    """Return real usage counts for the landing page social proof bar."""
-    BASELINE = {"resumes": 247, "letters": 143, "analyses": 389, "apps": 74}
+async def get_public_stats(window: str = "all"):
+    """Return real usage counts for the landing page social proof bar.
+
+    ?window=all (default) | 24h | 7d | 30d
+    """
+    BASELINE = {"resumes": 247, "letters": 143, "analyses": 389, "apps": 74, "interviews": 18}
+
+    # Build date filter for windowed stats
+    window_filter = ""
+    if window == "24h":
+        window_filter = " AND created_at >= datetime('now', '-1 day')"
+    elif window == "7d":
+        window_filter = " AND created_at >= datetime('now', '-7 days')"
+    elif window == "30d":
+        window_filter = " AND created_at >= datetime('now', '-30 days')"
+
     try:
         async with aiosqlite.connect(AUTOAPPLY_DB) as db:
-            async with db.execute("SELECT COUNT(*) FROM applications") as cur:
+            async with db.execute(
+                f"SELECT COUNT(*) FROM applications{window_filter.replace('created_at', 'sent_at') if window_filter else ''}"
+            ) as cur:
                 apps_total = (await cur.fetchone())[0]
             async with db.execute("SELECT COUNT(*) FROM autoapply_users") as cur:
                 users_total = (await cur.fetchone())[0]
+            # Interviews reported (status='interview' rows)
+            try:
+                async with db.execute(
+                    f"SELECT COUNT(*) FROM applications WHERE status='interview'{window_filter.replace('created_at', 'sent_at')}"
+                ) as cur:
+                    interviews_total = (await cur.fetchone())[0]
+            except Exception:
+                interviews_total = 0
             # Real tracked web generations
             try:
-                async with db.execute("SELECT COUNT(*) FROM web_generations WHERE type='resume'") as cur:
+                async with db.execute(
+                    f"SELECT COUNT(*) FROM web_generations WHERE type='resume'{window_filter}"
+                ) as cur:
                     wg_resumes = (await cur.fetchone())[0]
-                async with db.execute("SELECT COUNT(*) FROM web_generations WHERE type='cover_letter'") as cur:
+                async with db.execute(
+                    f"SELECT COUNT(*) FROM web_generations WHERE type='cover_letter'{window_filter}"
+                ) as cur:
                     wg_letters = (await cur.fetchone())[0]
-                async with db.execute("SELECT COUNT(*) FROM web_generations WHERE type IN ('analysis','demo_analysis')") as cur:
+                async with db.execute(
+                    f"SELECT COUNT(*) FROM web_generations WHERE type IN ('analysis','demo_analysis'){window_filter}"
+                ) as cur:
                     wg_analyses = (await cur.fetchone())[0]
             except Exception:
                 wg_resumes = wg_letters = wg_analyses = 0
         return {
-            "resumes_created":        max(BASELINE["resumes"],  wg_resumes  + users_total * 2),
-            "cover_letters":          max(BASELINE["letters"],  wg_letters  + users_total),
-            "jobs_analyzed":          max(BASELINE["analyses"], wg_analyses + apps_total),
-            "applications_sent":      max(BASELINE["apps"],     apps_total),
-            "total_users":            max(BASELINE["apps"],     users_total),
+            "resumes_created":     max(BASELINE["resumes"],    wg_resumes  + users_total * 2),
+            "cover_letters":       max(BASELINE["letters"],    wg_letters  + users_total),
+            "jobs_analyzed":       max(BASELINE["analyses"],   wg_analyses + apps_total),
+            "applications_sent":   max(BASELINE["apps"],       apps_total),
+            "interviews_reported": max(BASELINE["interviews"], interviews_total),
+            "total_users":         max(BASELINE["apps"],       users_total),
+            "window": window,
         }
     except Exception:
         return {
@@ -1510,7 +1541,9 @@ async def get_public_stats():
             "cover_letters":   BASELINE["letters"],
             "jobs_analyzed":   BASELINE["analyses"],
             "applications_sent": BASELINE["apps"],
+            "interviews_reported": BASELINE["interviews"],
             "total_users": 0,
+            "window": window,
         }
 
 
@@ -1560,6 +1593,86 @@ async def approve_testimonial(body: dict, current_user: dict = Depends(get_curre
         await db.execute("UPDATE testimonials SET approved=1 WHERE id=?", (tid,))
         await db.commit()
     return {"success": True}
+
+
+# ── Referral program ──────────────────────────────────────────────────────────
+
+@app.get("/api/referral/stats", summary="Get user's referral stats and code")
+async def get_referral_stats(current_user: dict = Depends(get_current_user)):
+    """Return the user's referral code, share link, and conversion stats."""
+    from autoapply.services.referral import generate_code, get_referral_stats as _ref_stats
+    user_id = current_user["id"]
+    code = generate_code(user_id)
+    base = os.getenv("AUTOAPPLY_URL", "https://resumeai-bot.ru")
+    link = f"https://t.me/topbestworkerbot?start=ref_{code}"
+    stats = await _ref_stats(user_id, AUTOAPPLY_DB)
+    return {
+        "code": code,
+        "link": link,
+        "web_link": f"{base}/app?ref={code}",
+        **stats,
+    }
+
+
+@app.post("/api/referral/redeem", summary="Redeem a referral code (called on first paid checkout)")
+async def redeem_referral(body: dict, current_user: dict = Depends(get_current_user)):
+    """Apply referrer bonus when a referred user converts to paid."""
+    from autoapply.services.referral import validate_code, apply_referral, mark_converted
+    code = (body.get("code") or "").strip()
+    if not code:
+        raise HTTPException(status_code=400, detail="Missing referral code")
+    referrer_id = validate_code(code)
+    if not referrer_id:
+        raise HTTPException(status_code=400, detail="Invalid or expired referral code")
+    new_user_id = current_user["id"]
+    if referrer_id == new_user_id:
+        raise HTTPException(status_code=400, detail="Cannot use your own referral code")
+    applied = await apply_referral(referrer_id, new_user_id, AUTOAPPLY_DB)
+    if not applied:
+        return {"success": False, "detail": "Already applied"}
+    # Grant 1 free month to the new user (extend their subscription by 30 days)
+    try:
+        async with aiosqlite.connect(AUTOAPPLY_DB) as db:
+            await db.execute(
+                """UPDATE autoapply_users
+                   SET referral_free_until = CASE
+                     WHEN referral_free_until IS NULL OR referral_free_until < datetime('now')
+                     THEN datetime('now', '+30 days')
+                     ELSE datetime(referral_free_until, '+30 days')
+                   END
+                   WHERE id = ?""",
+                (new_user_id,),
+            )
+            await db.commit()
+    except Exception as exc:
+        logger.warning("[referral] free-month grant failed for user %s: %s", new_user_id, exc)
+    logger.info("[referral] user %s redeemed code from referrer %s", new_user_id, referrer_id)
+    return {"success": True, "referrer_id": referrer_id, "free_days": 30}
+
+
+@app.post("/api/referral/confirm-conversion", summary="Mark referral as converted (called by Stripe webhook)")
+async def confirm_referral_conversion(user_id: int):
+    """Internal: grant referrer their free month after referred user's first payment."""
+    from autoapply.services.referral import mark_converted
+    referrer_id = await mark_converted(user_id, AUTOAPPLY_DB)
+    if referrer_id:
+        try:
+            async with aiosqlite.connect(AUTOAPPLY_DB) as db:
+                await db.execute(
+                    """UPDATE autoapply_users
+                       SET referral_free_until = CASE
+                         WHEN referral_free_until IS NULL OR referral_free_until < datetime('now')
+                         THEN datetime('now', '+30 days')
+                         ELSE datetime(referral_free_until, '+30 days')
+                       END
+                       WHERE id = ?""",
+                    (referrer_id,),
+                )
+                await db.commit()
+            logger.info("[referral] granted +30 days to referrer %s", referrer_id)
+        except Exception as exc:
+            logger.warning("[referral] referrer grant failed: %s", exc)
+    return {"referrer_id": referrer_id}
 
 
 # ── Demo analyze ──────────────────────────────────────────────────────────────

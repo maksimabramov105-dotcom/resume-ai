@@ -147,6 +147,20 @@ _MIGRATE_APPLICATION_MATCH_SCORE = """
 ALTER TABLE applications ADD COLUMN match_score REAL
 """
 
+_MIGRATE_USER_REFERRAL_FREE = """
+ALTER TABLE autoapply_users ADD COLUMN referral_free_until TEXT
+"""
+
+_CREATE_REFERRALS = """
+CREATE TABLE IF NOT EXISTS referrals (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    referrer_id  INTEGER NOT NULL,
+    new_user_id  INTEGER NOT NULL UNIQUE,
+    created_at   TEXT DEFAULT (datetime('now')),
+    converted_at TEXT
+)
+"""
+
 _CREATE_EMAIL_DRIP = """
 CREATE TABLE IF NOT EXISTS email_drip (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -337,6 +351,7 @@ async def init_db(db_path: str = AUTOAPPLY_DB) -> None:
             await db.execute(_CREATE_PORTFOLIO_LINKS)
             await db.execute(_CREATE_APP_THREADS)
             await db.execute(_CREATE_APP_MESSAGES)
+            await db.execute(_CREATE_REFERRALS)
             # Indexes
             for _idx_sql in _CREATE_INDEXES:
                 try:
@@ -358,6 +373,8 @@ async def init_db(db_path: str = AUTOAPPLY_DB) -> None:
                 _MIGRATE_APPLICATION_ENGINE,
                 _MIGRATE_APPLICATION_CV_PDF_PATH,
                 _MIGRATE_APPLICATION_MATCH_SCORE,
+                # P11 — referral program
+                _MIGRATE_USER_REFERRAL_FREE,
             ):
                 try:
                     await db.execute(_migration)

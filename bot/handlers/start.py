@@ -42,21 +42,24 @@ async def cmd_start(message: Message, state: FSMContext):
         full_name=message.from_user.full_name,
     )
 
-    # Referral handling
+    # Referral handling — store pending referral code in FSM until user pays
     if args.startswith("ref_") and not user.referred_by:
         referral_code = args[4:]
-        from sqlalchemy import select
-        from database.db import get_session
-        from models.user import User as UserModel
-        async with get_session() as session:
-            result = await session.execute(
-                select(UserModel).where(UserModel.referral_code == referral_code)
-            )
-            referrer = result.scalar_one_or_none()
-            if referrer and referrer.telegram_id != user.telegram_id:
-                user.referred_by = referrer.telegram_id
-                await save_user(user)
-                await add_referral_bonus(referrer)
+        try:
+            from sqlalchemy import select
+            from database.db import get_session
+            from models.user import User as UserModel
+            async with get_session() as session:
+                result = await session.execute(
+                    select(UserModel).where(UserModel.referral_code == referral_code)
+                )
+                referrer = result.scalar_one_or_none()
+                if referrer and referrer.telegram_id != user.telegram_id:
+                    user.referred_by = referrer.telegram_id
+                    await save_user(user)
+                    await add_referral_bonus(referrer)
+        except Exception:
+            pass
 
     # Track join source for analytics (never raises)
     await track_start(user.telegram_id, args, _ANALYTICS_DB_PATH)
@@ -74,7 +77,7 @@ async def cmd_start(message: Message, state: FSMContext):
     except Exception:
         pass
 
-    # First-time user: ask language before showing main menu
+    # First-time user: ask language → triggers onboarding after language selection
     if not user.language:
         await message.answer(
             t(None, 'start.choose_lang'),
@@ -83,11 +86,288 @@ async def cmd_start(message: Message, state: FSMContext):
         return
 
     lang = user.language or 'en'
-    await message.answer(t(lang, 'start.welcome'), reply_markup=main_menu_kb(lang))
+
+    # Returning user with completed onboarding → show main menu
+    try:
+        onboarding_done = getattr(user, 'onboarding_done', None) or user.__dict__.get('onboarding_done')
+    except Exception:
+        onboarding_done = None
+
+    if onboarding_done:
+        await message.answer(t(lang, 'start.welcome'), reply_markup=main_menu_kb(lang))
+    else:
+        # New user who just set their language → start onboarding step 1
+        await _send_onboarding_step1(message, lang)
 
 
 @router.callback_query(F.data == "main_menu")
 async def go_main_menu(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await state.clear()
+    user = await get_or_create_user(callback.from_user.id)
+    lang = user.language or 'en'
+    await callback.message.edit_text(t(lang, 'start.welcome'), reply_markup=main_menu_kb(lang))
+
+
+# ── 4-Step Inline Onboarding ──────────────────────────────────────────────────
+#
+# Step 1: Set goals (what kind of role are you looking for?)
+# Step 2: CV — paste link or existing resume, or start from voice
+# Step 3: Pick a resume template
+# Step 4: Start first campaign — redirects to web app
+#
+# Each step uses inline buttons only. Completes in under 90s.
+# After step 4, onboarding_done flag is saved.
+
+_GOAL_OPTIONS_EN = [
+    ("💻 Software / Tech", "ob_goal:tech"),
+    ("📊 Data / AI / ML",   "ob_goal:data"),
+    ("📣 Marketing / Sales", "ob_goal:marketing"),
+    ("🏗 Product / Design", "ob_goal:product"),
+    ("💼 Finance / Ops",    "ob_goal:finance"),
+    ("🌍 Other",             "ob_goal:other"),
+]
+
+_GOAL_OPTIONS_RU = [
+    ("💻 IT / Разработка",   "ob_goal:tech"),
+    ("📊 Данные / AI / ML",  "ob_goal:data"),
+    ("📣 Маркетинг / Продажи", "ob_goal:marketing"),
+    ("🏗 Продукт / Дизайн", "ob_goal:product"),
+    ("💼 Финансы / Операции", "ob_goal:finance"),
+    ("🌍 Другое",             "ob_goal:other"),
+]
+
+_TEMPLATE_OPTIONS = [
+    ("⚡ Modern Blue (Popular)", "ob_tpl:modern-blue"),
+    ("🛡 ATS Safe",              "ob_tpl:ats-safe"),
+    ("🎨 Creative Gradient",     "ob_tpl:creative-gradient"),
+    ("📋 Classic Serif",         "ob_tpl:classic-serif"),
+    ("🌑 Executive Dark",        "ob_tpl:executive-dark"),
+]
+
+
+async def _send_onboarding_step1(message_or_callback, lang: str):
+    """Step 1: Goal selection."""
+    options = _GOAL_OPTIONS_EN if lang == 'en' else _GOAL_OPTIONS_RU
+
+    if lang == 'en':
+        text = (
+            "👋 <b>Welcome! Let's get you set up in 4 quick steps.</b>\n\n"
+            "<b>Step 1 of 4</b> — What kind of role are you targeting?\n"
+            "<i>This helps us tune your job search.</i>"
+        )
+    else:
+        text = (
+            "👋 <b>Добро пожаловать! Настроим всё за 4 шага.</b>\n\n"
+            "<b>Шаг 1 из 4</b> — На какую должность вы претендуете?\n"
+            "<i>Это поможет нам точнее настроить поиск.</i>"
+        )
+
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[[InlineKeyboardButton(text=label, callback_data=cb)] for label, cb in options]
+    )
+
+    if isinstance(message_or_callback, Message):
+        await message_or_callback.answer(text, reply_markup=kb, parse_mode="HTML")
+    else:
+        await message_or_callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("ob_goal:"))
+async def onboarding_step2(callback: CallbackQuery, state: FSMContext):
+    """Step 2: CV input — paste LinkedIn URL / existing resume, or use voice."""
+    await callback.answer()
+    goal = callback.data.split(":")[1]
+    await state.update_data(ob_goal=goal)
+    user = await get_or_create_user(callback.from_user.id)
+    lang = user.language or 'en'
+
+    if lang == 'en':
+        text = (
+            "✅ Got it!\n\n"
+            "<b>Step 2 of 4</b> — Add your CV so we can tailor applications.\n\n"
+            "• Paste your <b>LinkedIn URL</b> and we'll import it automatically\n"
+            "• Or tap <b>Upload CV</b> to send a PDF/DOCX\n"
+            "• No CV yet? Tap <b>Record voice intro</b> — we'll build one from your speech"
+        )
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔗 Paste LinkedIn URL",   callback_data="ob_cv:linkedin")],
+            [InlineKeyboardButton(text="📎 Upload CV (PDF/DOCX)", callback_data="ob_cv:upload")],
+            [InlineKeyboardButton(text="🎤 Record voice intro",   callback_data="ob_cv:voice")],
+            [InlineKeyboardButton(text="⏭ Skip for now",          callback_data="ob_cv:skip")],
+        ])
+    else:
+        text = (
+            "✅ Принято!\n\n"
+            "<b>Шаг 2 из 4</b> — Добавьте резюме для персонализации откликов.\n\n"
+            "• Вставьте <b>ссылку на LinkedIn</b> — импортируем автоматически\n"
+            "• Или нажмите <b>Загрузить резюме</b> (PDF/DOCX)\n"
+            "• Нет резюме? Нажмите <b>Голосовое представление</b> — создадим из речи"
+        )
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔗 Вставить LinkedIn URL",  callback_data="ob_cv:linkedin")],
+            [InlineKeyboardButton(text="📎 Загрузить резюме",       callback_data="ob_cv:upload")],
+            [InlineKeyboardButton(text="🎤 Голосовое представление", callback_data="ob_cv:voice")],
+            [InlineKeyboardButton(text="⏭ Пропустить",              callback_data="ob_cv:skip")],
+        ])
+
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("ob_cv:"))
+async def onboarding_step3(callback: CallbackQuery, state: FSMContext):
+    """Step 3: Pick a resume template."""
+    await callback.answer()
+    cv_choice = callback.data.split(":")[1]
+    await state.update_data(ob_cv=cv_choice)
+    user = await get_or_create_user(callback.from_user.id)
+    lang = user.language or 'en'
+
+    # Route CV choices that require real input to dedicated handlers
+    if cv_choice == 'linkedin':
+        if lang == 'en':
+            await callback.message.edit_text(
+                "🔗 <b>Paste your LinkedIn profile URL</b>\n\n"
+                "Example: <code>https://linkedin.com/in/yourname</code>\n\n"
+                "<i>We'll extract your experience and build a CV automatically.</i>",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="⏭ Skip", callback_data="ob_cv:skip")]
+                ]),
+                parse_mode="HTML",
+            )
+        else:
+            await callback.message.edit_text(
+                "🔗 <b>Вставьте ссылку на профиль LinkedIn</b>\n\n"
+                "Пример: <code>https://linkedin.com/in/yourname</code>",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="⏭ Пропустить", callback_data="ob_cv:skip")]
+                ]),
+                parse_mode="HTML",
+            )
+        await state.update_data(ob_awaiting='linkedin_url')
+        return
+
+    if cv_choice == 'upload':
+        if lang == 'en':
+            await callback.message.edit_text(
+                "📎 <b>Send your CV as a file</b> (PDF or DOCX, max 5 MB).\n\n"
+                "<i>Once uploaded we'll skip ahead to picking a template.</i>",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="⏭ Skip", callback_data="ob_cv:skip")]
+                ]),
+                parse_mode="HTML",
+            )
+        else:
+            await callback.message.edit_text(
+                "📎 <b>Отправьте файл резюме</b> (PDF или DOCX, до 5 МБ).",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="⏭ Пропустить", callback_data="ob_cv:skip")]
+                ]),
+                parse_mode="HTML",
+            )
+        await state.update_data(ob_awaiting='cv_file')
+        return
+
+    if cv_choice == 'voice':
+        if lang == 'en':
+            await callback.message.edit_text(
+                "🎤 <b>Send a voice message</b> — introduce yourself in 30–90 seconds.\n\n"
+                "Tell us: your name, role, years of experience, and key skills.\n"
+                "We'll transcribe it and build your CV automatically.",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="⏭ Skip", callback_data="ob_cv:skip")]
+                ]),
+                parse_mode="HTML",
+            )
+        else:
+            await callback.message.edit_text(
+                "🎤 <b>Отправьте голосовое сообщение</b> — расскажите о себе 30–90 секунд.\n\n"
+                "Имя, должность, опыт, ключевые навыки — мы создадим резюме автоматически.",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="⏭ Пропустить", callback_data="ob_cv:skip")]
+                ]),
+                parse_mode="HTML",
+            )
+        await state.update_data(ob_awaiting='voice_msg')
+        return
+
+    # Skip or anything else → go straight to step 3 template picker
+    await _send_onboarding_step3(callback, lang)
+
+
+async def _send_onboarding_step3(callback: CallbackQuery, lang: str):
+    """Step 3: template picker."""
+    if lang == 'en':
+        text = (
+            "🎨 <b>Step 3 of 4</b> — Pick a resume template.\n\n"
+            "You can change this any time in /resume."
+        )
+    else:
+        text = (
+            "🎨 <b>Шаг 3 из 4</b> — Выберите шаблон резюме.\n\n"
+            "Изменить можно в любое время через /resume."
+        )
+
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[[InlineKeyboardButton(text=label, callback_data=cb)]
+                          for label, cb in _TEMPLATE_OPTIONS]
+    )
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("ob_tpl:"))
+async def onboarding_step4(callback: CallbackQuery, state: FSMContext):
+    """Step 4: launch first campaign — send link to web app."""
+    await callback.answer()
+    template = callback.data.split(":")[1]
+    await state.update_data(ob_template=template)
+    user = await get_or_create_user(callback.from_user.id)
+    lang = user.language or 'en'
+
+    app_url = f"https://resumeai-bot.ru/app/campaigns/new?template={template}"
+    if lang == 'en':
+        text = (
+            f"🚀 <b>Step 4 of 4</b> — Launch your first campaign!\n\n"
+            f"Template locked in: <b>{template.replace('-', ' ').title()}</b> ✅\n\n"
+            f"Tap the button below to open the campaign wizard. It takes under 60 seconds — "
+            f"just pick keywords, location, and daily limit. The bot does the rest."
+        )
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🚀 Launch my first campaign", url=app_url)],
+            [InlineKeyboardButton(text="📋 Go to main menu", callback_data="ob_finish")],
+        ])
+    else:
+        text = (
+            f"🚀 <b>Шаг 4 из 4</b> — Запустите первую кампанию!\n\n"
+            f"Шаблон выбран: <b>{template.replace('-', ' ').title()}</b> ✅\n\n"
+            f"Нажмите кнопку ниже — займёт меньше 60 секунд. "
+            f"Укажите ключевые слова, город и лимит. Бот сделает всё остальное."
+        )
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🚀 Запустить первую кампанию", url=app_url)],
+            [InlineKeyboardButton(text="📋 Главное меню", callback_data="ob_finish")],
+        ])
+
+    # Mark onboarding complete
+    try:
+        async with __import__('database.db', fromlist=['get_session']).get_session() as session:
+            from sqlalchemy import update
+            from models.user import User as UserModel
+            await session.execute(
+                update(UserModel)
+                .where(UserModel.telegram_id == callback.from_user.id)
+                .values(onboarding_done=True)
+            )
+            await session.commit()
+    except Exception:
+        pass  # non-critical — user can always redo via /start
+
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+
+
+@router.callback_query(F.data == "ob_finish")
+async def onboarding_finish(callback: CallbackQuery, state: FSMContext):
+    """Onboarding complete — show main menu."""
     await callback.answer()
     await state.clear()
     user = await get_or_create_user(callback.from_user.id)
@@ -102,7 +382,7 @@ async def cmd_maintenance_on(message: Message):
     """Admin only: broadcast maintenance message to all active users."""
     if message.from_user.id != ADMIN_ID:
         return
-    await message.answer(t('ru', 'admin.maintenance_on'))
+    await message.answer(t('en', 'admin.maintenance_on'))
     await broadcast_maintenance_start(message.bot)
 
 
@@ -111,7 +391,7 @@ async def cmd_maintenance_off(message: Message):
     """Admin only: broadcast recovery message to all active users."""
     if message.from_user.id != ADMIN_ID:
         return
-    await message.answer(t('ru', 'admin.maintenance_off'))
+    await message.answer(t('en', 'admin.maintenance_off'))
     await broadcast_maintenance_end(message.bot)
 
 
@@ -121,7 +401,7 @@ async def cmd_report(message: Message):
     """Admin only: trigger daily report immediately (/report or /отчет)."""
     if message.from_user.id != ADMIN_ID:
         return
-    await message.answer(t('ru', 'admin.report_generating'))
+    await message.answer(t('en', 'admin.report_generating'))
     try:
         class _ReplyBot:
             async def send_message(self, chat_id, text, **kw):
@@ -129,7 +409,7 @@ async def cmd_report(message: Message):
 
         await send_daily_report(_ReplyBot(), ADMIN_ID, _ANALYTICS_DB_PATH)
     except Exception as exc:
-        await message.answer(t('ru', 'admin.report_error', error=exc))
+        await message.answer(t('en', 'admin.report_error', error=exc))
 
 
 # ── Upgrade / Pay commands ────────────────────────────────────────────────────
@@ -168,7 +448,7 @@ async def cmd_upgrade(message: Message):
         _ph_track(message.from_user.id, 'subscription_page_viewed', {})
     except Exception:
         pass
-    await message.answer(text, reply_markup=kb)
+    await message.answer(text, reply_markup=kb, parse_mode="HTML")
 
 
 # ── Tracker command ────────────────────────────────────────────────────────────
@@ -178,7 +458,6 @@ async def cmd_upgrade(message: Message):
 async def cmd_tracker(message: Message):
     """Show user's application stats."""
     import sqlite3
-    import os as _os
     db_path = _os.getenv("AUTOAPPLY_DB", "/opt/resumeaibot/autoapply.db")
     uid = message.from_user.id
     user = await get_or_create_user(uid)
@@ -194,9 +473,9 @@ async def cmd_tracker(message: Message):
         ).fetchone()
         conn.close()
         total, sent, viewed, interview = row if row else (0, 0, 0, 0)
-        total    = total    or 0
-        sent     = sent     or 0
-        viewed   = viewed   or 0
+        total     = total     or 0
+        sent      = sent      or 0
+        viewed    = viewed    or 0
         interview = interview or 0
     except Exception:
         total = sent = viewed = interview = 0
@@ -217,5 +496,4 @@ async def cmd_tracker(message: Message):
             f"🎯 Приглашений на интервью: <b>{interview}</b>\n\n"
             f"<i>Подсказка: больше откликов = больше ответов!</i>"
         )
-    from utils.keyboards import main_menu_kb
-    await message.answer(text, reply_markup=main_menu_kb(lang))
+    await message.answer(text, reply_markup=main_menu_kb(lang), parse_mode="HTML")
