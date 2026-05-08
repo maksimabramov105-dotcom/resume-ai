@@ -23,6 +23,8 @@ async def init_db():
         "ALTER TABLE users ADD COLUMN checkin_sent_at DATETIME",
         "ALTER TABLE users ADD COLUMN language VARCHAR DEFAULT 'en'",
         "ALTER TABLE users ADD COLUMN email VARCHAR",
+        "ALTER TABLE users ADD COLUMN digest_sent_at DATETIME",
+        "ALTER TABLE users ADD COLUMN digest_enabled INTEGER DEFAULT 1",
     ]
     for _sql in _migrations:
         try:
@@ -171,11 +173,17 @@ async def get_application_stats(telegram_id: int) -> dict:
     }
 
 
-async def save_payment(telegram_id: int, amount_rub: float, package: str, payment_id: str = None) -> Payment:
+async def save_payment(
+    telegram_id: int,
+    package: str,
+    payment_id: str = None,
+    amount: float = 0.0,
+    amount_rub: float = 0.0,  # kept for backward compat — not used
+) -> Payment:
     async with get_session() as session:
         payment = Payment(
             telegram_id=telegram_id,
-            amount_rub=amount_rub,
+            amount_rub=amount,  # stores USD amount in the legacy column
             package=package,
             payment_id=payment_id,
             status="pending",
@@ -184,6 +192,25 @@ async def save_payment(telegram_id: int, amount_rub: float, package: str, paymen
         await session.flush()
         await session.refresh(payment)
         return payment
+
+
+async def update_user_digest_sent_at(telegram_id: int) -> None:
+    """Record that we sent the daily digest to this user now."""
+    from datetime import datetime
+    async with get_session() as session:
+        result = await session.execute(select(User).where(User.telegram_id == telegram_id))
+        user = result.scalar_one_or_none()
+        if user:
+            user.digest_sent_at = datetime.utcnow()
+
+
+async def update_user_digest_enabled(telegram_id: int, enabled: bool) -> None:
+    """Enable or disable daily digest for a user."""
+    async with get_session() as session:
+        result = await session.execute(select(User).where(User.telegram_id == telegram_id))
+        user = result.scalar_one_or_none()
+        if user:
+            user.digest_enabled = int(enabled)
 
 
 async def update_payment_status(payment_id: str, status: str) -> Optional[Payment]:

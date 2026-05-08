@@ -27,7 +27,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from config import BOT_TOKEN  # flat import (bot/ is in sys.path)
 from database.db import init_db
-from handlers import start, resume, cover_letter, interview, vacancy_analysis, ai_assistant, payment, profile, support, language, auto_apply, tracker
+from handlers import start, resume, cover_letter, interview, vacancy_analysis, ai_assistant, payment, profile, support, language, auto_apply, tracker, digest_settings
 from utils.texts import BOT_DESCRIPTION, BOT_SHORT_DESCRIPTION
 from utils.bot_translations import t as _t
 
@@ -220,14 +220,24 @@ async def run_bot() -> None:
     dp.include_router(support.router)
     dp.include_router(auto_apply.router)
     dp.include_router(tracker.router)
-    # Weekly digest — every Monday 10:00 Moscow time (UTC+3 = 07:00 UTC)
+    dp.include_router(digest_settings.router)
+    # Daily job digest — every day at 09:00 UTC
     scheduler = AsyncIOScheduler()
+    from services.job_digest import send_daily_digest
+    scheduler.add_job(
+        send_daily_digest,
+        CronTrigger(hour=9, minute=0),
+        args=[bot],
+        id='daily_job_digest',
+        replace_existing=True,
+    )
+    # Weekly career tip digest — every Monday 10:00 Moscow time (UTC+3 = 07:00 UTC)
     from services.digest import send_weekly_digest
     scheduler.add_job(
         send_weekly_digest,
         CronTrigger(day_of_week='mon', hour=7, minute=0),
         args=[bot],
-        id='weekly_digest',
+        id='weekly_career_digest',
         replace_existing=True,
     )
     # Daily analytics report — every day at 08:00 Moscow (05:00 UTC)
@@ -275,7 +285,7 @@ async def run_bot() -> None:
         replace_existing=True,
     )
     scheduler.start()
-    logger.info("Weekly digest scheduler started (Mon 10:00 MSK).")
+    logger.info("Scheduler started: daily job digest 09:00 UTC, weekly career tip Mon 07:00 UTC.")
 
     logger.info("Bot started.")
     await dp.start_polling(bot)

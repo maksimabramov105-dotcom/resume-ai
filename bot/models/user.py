@@ -45,6 +45,8 @@ class User(Base):
     checkin_sent_at = Column(DateTime, nullable=True)   # T+24h onboarding check-in
     language = Column(String, nullable=True, default='en')  # 'ru' | 'en' — user language preference
     email = Column(String, nullable=True)               # collected during onboarding for drip emails
+    digest_sent_at = Column(DateTime, nullable=True)    # last daily job digest sent timestamp
+    digest_enabled = Column(Integer, nullable=False, default=1)  # 0=opted out, 1=active
     created_at = Column(DateTime, default=datetime.utcnow)
     last_active = Column(DateTime, default=datetime.utcnow)
 

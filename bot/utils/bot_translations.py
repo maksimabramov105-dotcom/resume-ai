@@ -271,6 +271,13 @@ STRINGS: dict[str, dict[str, str]] = {
             "Весь трекинг заявок — тоже в кабинете."
         ),
         'auto_apply.open_btn': "🌐 Открыть кабинет → /app",
+        # Job digest
+        'digest.no_profile': (
+            "📬 Чтобы получать подборку вакансий, укажите специальность в /profile.\n"
+            "Я буду присылать топ-5 подходящих вакансий каждое утро."
+        ),
+        'digest.toggled_on': "🔔 Ежедневная подборка вакансий включена!",
+        'digest.toggled_off': "🔕 Ежедневная подборка вакансий выключена.",
     },
     # ────────────────────────────────────────────────────────────────────────
     'en': {
@@ -534,6 +541,13 @@ STRINGS: dict[str, dict[str, str]] = {
             "All application tracking is also in your dashboard."
         ),
         'auto_apply.open_btn': "🌐 Open Dashboard → /app",
+        # Job digest
+        'digest.no_profile': (
+            "📬 To receive daily job matches, set your specialty in /profile.\n"
+            "I'll send you the top 5 matching openings every morning."
+        ),
+        'digest.toggled_on': "🔔 Daily job digest enabled!",
+        'digest.toggled_off': "🔕 Daily job digest disabled.",
     },
 }
 
