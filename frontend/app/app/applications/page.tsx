@@ -254,7 +254,7 @@ export default function ApplicationsPage() {
   const handleTabChange = (newTab: typeof tab) => {
     setTab(newTab);
     setPage(1);
-    savePrefs(newTab as string, filters, filtersOpen);
+    savePrefs(newTab, filters, filtersOpen);
   };
 
   // ── Career-ops HITL review actions ───────────────────────────────────────

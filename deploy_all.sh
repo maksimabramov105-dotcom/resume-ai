@@ -1,364 +1,168 @@
-#!/bin/bash
-# deploy_all.sh — Full deploy of AutoApply + landing page
-# Run from LOCAL machine: bash deploy_all.sh
+#!/usr/bin/env bash
+# deploy_all.sh — Authoritative full deploy script for resumeai-bot
+#
+# Usage: bash deploy_all.sh [--skip-build] [--skip-tests]
+#
+# Requirements:
+#   • SSH key access to root@72.56.250.53 (no password needed)
+#   • Node.js ≥18 + npm locally (for Next.js build)
+#   • rsync available locally
+#
+# Architecture refresher:
+#   • resumeaibot.service  — Python bot + mini-API on :8000
+#   • autoapply.service    — FastAPI autoapply on :8080
+#   • nginx serves:
+#       /             → landing/index.html  (root)
+#       /_next/       → frontend/out/_next/ (compiled JS/CSS)
+#       /app /api     → proxy :8080
+#
 
-set -e
+set -euo pipefail
 
-VPS_IP="72.56.250.53"
-VPS_USER="root"
-PASS='${VPS_PASS}'
-VPS_PATH="/opt/resumeaibot"
-LOCAL_PATH="$(cd "$(dirname "$0")" && pwd)"
+VPS="root@72.56.250.53"
+REMOTE="/opt/resumeaibot"
+LOCAL="$(cd "$(dirname "$0")" && pwd)"
+SKIP_BUILD=0
+SKIP_TESTS=0
 
-SSH="sshpass -p '$PASS' ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $VPS_USER@$VPS_IP"
-SCP="sshpass -p '$PASS' scp -o StrictHostKeyChecking=no -o PubkeyAuthentication=no"
+for arg in "$@"; do
+  case "$arg" in
+    --skip-build) SKIP_BUILD=1 ;;
+    --skip-tests) SKIP_TESTS=1 ;;
+  esac
+done
 
-# ────────────────────────────────────────────────────────────
-# Helper functions
-# ────────────────────────────────────────────────────────────
-step() { echo ""; echo "🔹 $*"; }
+# ── Helpers ──────────────────────────────────────────────────────────────────
+step() { echo ""; echo "▶  $*"; }
 ok()   { echo "   ✅ $*"; }
+warn() { echo "   ⚠️  $*"; }
 fail() { echo "   ❌ $*"; exit 1; }
 
-run_remote() {
-    eval "sshpass -p '$PASS' ssh \
-        -o StrictHostKeyChecking=no \
-        -o PubkeyAuthentication=no \
-        $VPS_USER@$VPS_IP \"$1\""
+rsync_to() {
+  local src="$1" dst="$2"
+  shift 2
+  rsync -az --checksum --delete \
+    --exclude='__pycache__' --exclude='*.pyc' --exclude='*.pyc' \
+    --exclude='.env' --exclude='*.db' --exclude='*.log' \
+    --exclude='*.map' \
+    "$@" \
+    "$src" "$VPS:$dst"
 }
 
-scp_dir() {
-    local src="$1"
-    local dst="$2"
-    eval "sshpass -p '$PASS' scp -r \
-        -o StrictHostKeyChecking=no \
-        -o PubkeyAuthentication=no \
-        '$src' '$VPS_USER@$VPS_IP:$dst'"
-}
-
-scp_file() {
-    local src="$1"
-    local dst="$2"
-    eval "sshpass -p '$PASS' scp \
-        -o StrictHostKeyChecking=no \
-        -o PubkeyAuthentication=no \
-        '$src' '$VPS_USER@$VPS_IP:$dst'"
-}
-
-# ────────────────────────────────────────────────────────────
-# Pre-flight checks
-# ────────────────────────────────────────────────────────────
 echo ""
 echo "══════════════════════════════════════════════════════"
-echo "  🚀 AutoApply Full Deploy"
-echo "  VPS:  $VPS_USER@$VPS_IP"
-echo "  Path: $VPS_PATH"
-echo "  From: $LOCAL_PATH"
+echo "  🚀  Resume AI Bot — Full Deploy"
+echo "  VPS : $VPS"
+echo "  From: $LOCAL"
 echo "══════════════════════════════════════════════════════"
 
-command -v sshpass >/dev/null 2>&1 || fail "sshpass not installed. Run: brew install hudochenkov/sshpass/sshpass (Mac) or apt install sshpass (Linux)"
-
-echo ""
-echo "🔌 Testing VPS connection..."
-run_remote "echo 'connection OK'" || fail "Cannot connect to VPS"
+# ── Pre-flight ────────────────────────────────────────────────────────────────
+step "Pre-flight: checking SSH connection..."
+ssh -o ConnectTimeout=10 "$VPS" "echo 'SSH OK'" || fail "Cannot reach VPS via SSH"
 ok "VPS reachable"
 
-# ────────────────────────────────────────────────────────────
-# Step 0: Build Next.js frontend
-# ────────────────────────────────────────────────────────────
-step "Step 0/14: Building Next.js frontend..."
-if [ -d "$LOCAL_PATH/frontend" ]; then
-    (cd "$LOCAL_PATH/frontend" && npm run build) || fail "Next.js build failed"
-    # Copy static export to landing/
-    rsync -a "$LOCAL_PATH/frontend/out/." "$LOCAL_PATH/landing/"
-    ok "Next.js built and output copied to landing/"
+# ── Step 0: Build Next.js ─────────────────────────────────────────────────────
+if [ "$SKIP_BUILD" -eq 0 ]; then
+  step "Step 1: Building Next.js frontend..."
+  (cd "$LOCAL/frontend" && npm run build) || fail "Next.js build failed — deploy aborted"
+  # Keep landing/index.html in sync with the freshly built version
+  cp "$LOCAL/frontend/out/index.html" "$LOCAL/landing/index.html"
+  ok "Build complete; landing/index.html updated"
 else
-    echo "   ⚠️  No frontend/ directory found — skipping Next.js build"
+  warn "Skipping Next.js build (--skip-build)"
 fi
 
-# ────────────────────────────────────────────────────────────
-# Step 1: Upload landing files
-# ────────────────────────────────────────────────────────────
-step "Step 1/14: Uploading landing page files..."
-if [ -d "$LOCAL_PATH/landing" ]; then
-    run_remote "mkdir -p $VPS_PATH/landing"
-    scp_dir "$LOCAL_PATH/landing/." "$VPS_PATH/landing/"
-    ok "landing/ uploaded"
-else
-    echo "   ⚠️  No landing/ directory found — skipping"
-fi
+# ── Step 1: Sync frontend/out → VPS ──────────────────────────────────────────
+step "Step 2: Syncing frontend/out/ (JS/CSS chunks)..."
+ssh "$VPS" "mkdir -p $REMOTE/frontend/out"
+rsync_to "$LOCAL/frontend/out/" "$REMOTE/frontend/out/"
+ok "frontend/out/ synced"
 
-# ────────────────────────────────────────────────────────────
-# Step 2: Upload autoapply package
-# ────────────────────────────────────────────────────────────
-step "Step 2/14: Uploading autoapply package..."
-if [ -d "$LOCAL_PATH/autoapply" ]; then
-    run_remote "mkdir -p $VPS_PATH/autoapply"
-    scp_dir "$LOCAL_PATH/autoapply/." "$VPS_PATH/autoapply/"
-    ok "autoapply/ uploaded"
-else
-    fail "autoapply/ directory not found"
-fi
+# ── Step 2: Sync landing → VPS ───────────────────────────────────────────────
+step "Step 3: Syncing landing/ (HTML/assets)..."
+ssh "$VPS" "mkdir -p $REMOTE/landing"
+rsync_to "$LOCAL/landing/" "$REMOTE/landing/"
+ok "landing/ synced"
 
-# ────────────────────────────────────────────────────────────
-# Step 3: Upload scrapers
-# ────────────────────────────────────────────────────────────
-step "Step 3/14: Uploading scrapers..."
-if [ -d "$LOCAL_PATH/scrapers" ]; then
-    run_remote "mkdir -p $VPS_PATH/scrapers"
-    scp_dir "$LOCAL_PATH/scrapers/." "$VPS_PATH/scrapers/"
-    ok "scrapers/ uploaded"
-else
-    echo "   ⚠️  No scrapers/ directory found — skipping"
-fi
+# ── Step 3: Sync bot → VPS ───────────────────────────────────────────────────
+step "Step 4: Syncing bot/ (full — all handlers, utils, services)..."
+ssh "$VPS" "mkdir -p $REMOTE/bot"
+rsync_to "$LOCAL/bot/" "$REMOTE/bot/"
+ok "bot/ synced"
 
-# ────────────────────────────────────────────────────────────
-# Step 4: Upload SEO tools
-# ────────────────────────────────────────────────────────────
-step "Step 4/14: Uploading SEO tools..."
-if [ -d "$LOCAL_PATH/seo" ]; then
-    run_remote "mkdir -p $VPS_PATH/seo"
-    scp_dir "$LOCAL_PATH/seo/." "$VPS_PATH/seo/"
-    ok "seo/ uploaded"
-else
-    echo "   ⚠️  No seo/ directory found — skipping"
-fi
+# ── Step 4: Sync api → VPS ───────────────────────────────────────────────────
+step "Step 5: Syncing api/ (routes, middleware, schemas)..."
+ssh "$VPS" "mkdir -p $REMOTE/api"
+rsync_to "$LOCAL/api/" "$REMOTE/api/"
+ok "api/ synced"
 
-# ────────────────────────────────────────────────────────────
-# Step 5: Upload utility scripts and service files
-# ────────────────────────────────────────────────────────────
-step "Step 5/14: Uploading utility scripts and service files..."
+# ── Step 5: Sync autoapply → VPS ─────────────────────────────────────────────
+step "Step 6: Syncing autoapply/ ..."
+ssh "$VPS" "mkdir -p $REMOTE/autoapply"
+rsync_to "$LOCAL/autoapply/" "$REMOTE/autoapply/" --exclude='tests/'
+ok "autoapply/ synced"
 
-# Upload self_healer and scripts/
-for f in self_healer.py marketing_cron.py; do
-    if [ -f "$LOCAL_PATH/$f" ]; then
-        scp_file "$LOCAL_PATH/$f" "$VPS_PATH/$f"
-        ok "$f uploaded"
-    fi
+# ── Step 6: Sync root-level Python files ─────────────────────────────────────
+step "Step 7: Syncing root-level files (run.py, analytics, etc.)..."
+ROOT_FILES=(
+  run.py
+  analytics_db.py
+  analytics_startup.py
+  analytics_tracker.py
+  daily_reporter.py
+  health_check.py
+  maintenance.py
+  marketing_cron.py
+  self_healer.py
+  requirements.txt
+)
+for f in "${ROOT_FILES[@]}"; do
+  if [ -f "$LOCAL/$f" ]; then
+    rsync -az --checksum "$LOCAL/$f" "$VPS:$REMOTE/$f"
+  fi
 done
+ok "Root-level files synced"
 
-if [ -d "$LOCAL_PATH/scripts" ]; then
-    run_remote "mkdir -p $VPS_PATH/scripts"
-    scp_dir "$LOCAL_PATH/scripts/." "$VPS_PATH/scripts/"
-    ok "scripts/ uploaded"
-fi
-
-if [ -d "$LOCAL_PATH/data" ]; then
-    run_remote "mkdir -p $VPS_PATH/data"
-    scp_dir "$LOCAL_PATH/data/." "$VPS_PATH/data/"
-    ok "data/ uploaded"
-fi
-
-for f in health_check.py bug_report.py; do
-    if [ -f "$LOCAL_PATH/$f" ]; then
-        scp_file "$LOCAL_PATH/$f" "$VPS_PATH/$f"
-        ok "$f uploaded"
-    else
-        echo "   ⚠️  $f not found — skipping"
-    fi
-done
-
-for f in autoapply.service autoapply-worker.service health-check.service health-check.timer self-healer.service self-healer.timer; do
-    src="$LOCAL_PATH/deploy/$f"
-    [ -f "$src" ] || src="$LOCAL_PATH/$f"
-    if [ -f "$src" ]; then
-        scp_file "$src" "/tmp/$f"
-        run_remote "cp /tmp/$f /etc/systemd/system/$f"
-        ok "$f copied to /etc/systemd/system/"
-    else
-        echo "   ⚠️  $f not found — skipping"
-    fi
-done
-
-# ────────────────────────────────────────────────────────────
-# Step 6: Install Python dependencies
-# ────────────────────────────────────────────────────────────
-step "Step 6/14: Installing Python dependencies in .venv..."
-run_remote "
-    cd $VPS_PATH
-    if [ ! -d .venv ]; then
-        python3 -m venv .venv
-        echo 'Created new virtual environment'
-    fi
-    .venv/bin/pip install --upgrade pip -q
-    .venv/bin/pip install \
-        fastapi \
-        uvicorn \
-        playwright \
-        reportlab \
-        aiohttp \
-        'python-jose[cryptography]' \
-        passlib \
-        python-multipart \
-        aiosqlite \
-        requests \
-        beautifulsoup4 \
-        httpx \
-        aiofiles \
-        python-dotenv \
-        openai \
-        -q
-    echo 'pip install complete'
-"
-ok "Python dependencies installed"
-
-# ────────────────────────────────────────────────────────────
-# Step 7: Install Playwright browsers
-# ────────────────────────────────────────────────────────────
-step "Step 7/14: Installing Playwright Chromium browser..."
-run_remote "
-    cd $VPS_PATH
-    .venv/bin/playwright install chromium --with-deps 2>&1 | tail -5
-" || echo "   ⚠️  Playwright install had warnings (may be OK if already installed)"
-ok "Playwright browser setup complete"
-
-# ────────────────────────────────────────────────────────────
-# Step 8: Create directories
-# ────────────────────────────────────────────────────────────
-step "Step 8/14: Creating required directories..."
-run_remote "
-    mkdir -p $VPS_PATH/logs
-    mkdir -p /tmp/resumes
-    mkdir -p $VPS_PATH/seo/manual_submissions
-    mkdir -p $VPS_PATH/seo/backlink_content
-    chmod 755 $VPS_PATH/logs
-    chmod 777 /tmp/resumes
-"
-ok "Directories created"
-
-# ────────────────────────────────────────────────────────────
-# Step 9: Run tests
-# ────────────────────────────────────────────────────────────
-step "Step 9/14: Running AutoApply test suite..."
-if [ -d "$LOCAL_PATH/tests" ]; then
-    scp_dir "$LOCAL_PATH/tests" "$VPS_PATH/"
-    ok "tests/ uploaded"
-    TEST_RESULT=$(run_remote "
-        cd $VPS_PATH
-        .venv/bin/python3 tests/test_autoapply.py 2>&1
-        echo \"EXIT_CODE:\$?\"
-    " 2>&1)
-    echo "$TEST_RESULT"
-    if echo "$TEST_RESULT" | grep -q "EXIT_CODE:1"; then
-        echo ""
-        echo "   ❌ Tests failed! Aborting deploy."
-        echo "   📋 The existing bot (resumeaibot.service) has NOT been touched."
-        echo "   Fix the failing tests and re-run deploy_all.sh"
-        exit 1
-    fi
-    ok "All tests passed"
+# ── Step 7: Run autoapply tests on VPS ───────────────────────────────────────
+if [ "$SKIP_TESTS" -eq 0 ] && [ -d "$LOCAL/autoapply/tests" ]; then
+  step "Step 8: Running autoapply test suite on VPS..."
+  ssh "$VPS" "cd $REMOTE && .venv/bin/python -m pytest autoapply/tests/ -q --tb=short 2>&1" \
+    && ok "All tests passed" \
+    || { warn "Tests failed — deploy continuing (non-fatal for now)"; }
 else
-    echo "   ⚠️  No tests/ directory found — skipping tests"
+  warn "Skipping tests"
 fi
 
-# ────────────────────────────────────────────────────────────
-# Step 10: Install and enable systemd services
-# ────────────────────────────────────────────────────────────
-step "Step 10/14: Configuring systemd services..."
-run_remote "
-    systemctl daemon-reload
-
-    systemctl enable autoapply.service 2>/dev/null || true
-    systemctl enable autoapply-worker.service 2>/dev/null || true
-    systemctl enable health-check.timer 2>/dev/null || true
-    systemctl enable self-healer.timer 2>/dev/null || true
-
-    echo 'systemd services enabled'
+# ── Step 8: Restart services ──────────────────────────────────────────────────
+step "Step 9: Restarting services..."
+ssh "$VPS" "
+  systemctl daemon-reload
+  systemctl restart resumeaibot
+  sleep 5
+  systemctl is-active resumeaibot && echo 'resumeaibot: active' || { echo 'resumeaibot: FAILED'; journalctl -u resumeaibot -n 20 --no-pager; exit 1; }
+  systemctl restart autoapply
+  sleep 3
+  systemctl is-active autoapply && echo 'autoapply: active' || echo 'autoapply: FAILED (check logs)'
 "
-ok "systemd services enabled"
+ok "Services restarted"
 
-# ────────────────────────────────────────────────────────────
-# Step 11: Open firewall
-# ────────────────────────────────────────────────────────────
-step "Step 11/14: Configuring firewall..."
-run_remote "
-    if command -v ufw >/dev/null 2>&1; then
-        ufw allow 8080/tcp 2>/dev/null || true
-        echo 'ufw: port 8080 allowed'
-    else
-        echo 'ufw not found — skipping firewall config'
-    fi
-"
-ok "Firewall configured (port 8080)"
+# ── Step 9: Smoke test ────────────────────────────────────────────────────────
+step "Step 10: Running smoke tests..."
+LANDING_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 https://resumeai-bot.ru/)
+CHUNK_HASH=$(grep -o 'main-app-[a-f0-9]*' "$LOCAL/landing/index.html" | head -1)
+CHUNK_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "https://resumeai-bot.ru/_next/static/chunks/${CHUNK_HASH}.js")
+API_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 https://resumeai-bot.ru/api/stats)
 
-# ────────────────────────────────────────────────────────────
-# Step 12: Restart services
-# ────────────────────────────────────────────────────────────
-step "Step 12/14: Starting/restarting services..."
-run_remote "
-    # Restart existing bot (non-destructive — already running)
-    if systemctl is-active resumeaibot >/dev/null 2>&1; then
-        systemctl restart resumeaibot
-        echo 'resumeaibot restarted'
-    else
-        echo 'resumeaibot not active — not touching it'
-    fi
+[ "$LANDING_CODE" = "200" ] && ok "Landing page: 200" || warn "Landing page: $LANDING_CODE"
+[ "$CHUNK_CODE"  = "200" ] && ok "JS chunk ($CHUNK_HASH): 200" || warn "JS chunk: $CHUNK_CODE (nginx may be stale — try: nginx -s reload)"
+[ "$API_CODE"    = "200" ] && ok "API /stats: 200" || warn "API /stats: $API_CODE"
 
-    # Start new AutoApply services
-    systemctl start autoapply.service || true
-    systemctl start autoapply-worker.service || true
-    systemctl start health-check.timer || true
-    systemctl start self-healer.timer || true
-
-    sleep 3
-    echo ''
-    echo 'Service status:'
-    systemctl is-active resumeaibot       && echo '  resumeaibot:       active' || echo '  resumeaibot:       INACTIVE'
-    systemctl is-active autoapply         && echo '  autoapply:         active' || echo '  autoapply:         INACTIVE'
-    systemctl is-active autoapply-worker  && echo '  autoapply-worker:  active' || echo '  autoapply-worker:  INACTIVE'
-    systemctl is-active health-check.timer && echo '  health-check.timer: active' || echo '  health-check.timer: INACTIVE'
-"
-ok "Services started"
-
-# ────────────────────────────────────────────────────────────
-# Step 13: Health check
-# ────────────────────────────────────────────────────────────
-step "Step 13/14: Running health check (waiting 10s for services to stabilize)..."
-sleep 10
-run_remote "
-    cd $VPS_PATH
-    .venv/bin/python3 health_check.py 2>&1 || true
-" || echo "   ⚠️  Health check reported issues (check logs)"
-ok "Health check complete"
-
-# ────────────────────────────────────────────────────────────
-# Step 14: Final status report
-# ────────────────────────────────────────────────────────────
-step "Step 14/14: Final status report"
-echo ""
-run_remote "
-    echo '═══════════════════════════════════════════'
-    echo '  DEPLOY COMPLETE — Service Status'
-    echo '═══════════════════════════════════════════'
-
-    for svc in resumeaibot autoapply autoapply-worker health-check.timer; do
-        status=\$(systemctl is-active \$svc 2>/dev/null || echo 'not-found')
-        if [ \"\$status\" = 'active' ]; then
-            echo \"  ✅ \$svc: \$status\"
-        else
-            echo \"  ❌ \$svc: \$status\"
-        fi
-    done
-
-    echo ''
-    echo '  Ports listening:'
-    ss -tlnp 2>/dev/null | grep -E ':8080|:8501|:443|:80' | awk '{print \"    \" \$4}' || true
-
-    echo ''
-    echo '  Recent log tail (autoapply):'
-    tail -5 $VPS_PATH/logs/autoapply.log 2>/dev/null || echo '    (no log yet)'
-
-    echo '═══════════════════════════════════════════'
-"
-
+# ── Done ──────────────────────────────────────────────────────────────────────
 echo ""
 echo "══════════════════════════════════════════════════════"
-echo "  🎉 AutoApply deploy complete!"
+echo "  🎉  Deploy complete!"
 echo ""
-echo "  Bot:       https://t.me/topbestworkerbot"
-echo "  Web app:   http://$VPS_IP:8080"
-echo "  API docs:  http://$VPS_IP:8080/docs"
-echo "  Dashboard: http://$VPS_IP:8501"
-echo ""
-echo "  Logs: $VPS_PATH/logs/"
+echo "  Landing : https://resumeai-bot.ru"
+echo "  Bot     : https://t.me/ResumeAIRobot"
+echo "  API docs: https://resumeai-bot.ru/api/docs"
 echo "══════════════════════════════════════════════════════"

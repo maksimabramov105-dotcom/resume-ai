@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from api.middleware.auth import get_telegram_user
 from api.schemas import PaymentCreateRequest, PaymentResponse, CryptoCheckResponse
-from config import PRICING, CRYPTOBOT_TOKEN, RU_CARD_NUMBER, RU_CARD_HOLDER, RU_BANK_NAME, REVOLUT_TAG, REVOLUT_LINK
+from config import PRICING, REVOLUT_TAG, REVOLUT_LINK
 from database.db import save_payment
 
 router = APIRouter()
@@ -16,53 +16,22 @@ async def api_create_payment(
         raise HTTPException(status_code=400, detail="Unknown package")
 
     pkg = PRICING[req.package]
+    price_usd = pkg.get("price_usd", 0)
 
-    if req.method == "crypto":
-        if not CRYPTOBOT_TOKEN:
-            raise HTTPException(status_code=503, detail="Crypto payments not configured")
-        from services.payment_service import create_crypto_invoice
-        pay_url, invoice_id = await create_crypto_invoice(tg_user["id"], req.package)
-        await save_payment(
-            telegram_id=tg_user["id"],
-            amount_rub=pkg["price_rub"],
-            package=req.package,
-            payment_id=invoice_id,
-        )
-        return PaymentResponse(
-            method="crypto",
-            payment_url=pay_url,
-            invoice_id=invoice_id,
-            amount_rub=pkg["price_rub"],
-            amount_usdt=pkg.get("price_usdt"),
-        )
-
-    elif req.method == "rucard":
-        db_payment = await save_payment(
-            telegram_id=tg_user["id"],
-            amount_rub=pkg["price_rub"],
-            package=req.package,
-        )
-        return PaymentResponse(
-            method="rucard",
-            card_number=RU_CARD_NUMBER,
-            card_holder=RU_CARD_HOLDER,
-            bank_name=RU_BANK_NAME,
-            amount_rub=pkg["price_rub"],
-            payment_db_id=db_payment.id,
-        )
+    if req.method in ("crypto", "rucard"):
+        raise HTTPException(status_code=503, detail="Payment method not available")
 
     elif req.method == "revolut":
         db_payment = await save_payment(
             telegram_id=tg_user["id"],
-            amount_rub=pkg["price_rub"],
+            amount_rub=0,
             package=req.package,
         )
         return PaymentResponse(
             method="revolut",
             revolut_tag=REVOLUT_TAG,
             revolut_link=REVOLUT_LINK or None,
-            amount_rub=pkg["price_rub"],
-            amount_usdt=pkg.get("price_usdt"),
+            amount_usdt=price_usd,
             payment_db_id=db_payment.id,
         )
 
